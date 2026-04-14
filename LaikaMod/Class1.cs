@@ -139,8 +139,8 @@ public class LaikaMod : BaseUnityPlugin
         Log.LogInfo($"QUEUE: added pending item -> {item}");
     }
 
-    // Logs the visible runtime weapon inventory.
-    internal static void LogWeaponSnapshot(string label)
+    // Logs the current visible weapon inventory for debugging before/after queue processing.
+    internal static void LogWeaponInventorySnapshot(string label)
     {
         var inventory = Singleton<WeaponsInventory>.Instance;
 
@@ -157,7 +157,7 @@ public class LaikaMod : BaseUnityPlugin
         }
 
         StringBuilder sb = new StringBuilder();
-        sb.Append($"VISIBLE WEAPON SNAPSHOT {label}: count={inventory.Weapons.Count}");
+        sb.Append($"WEAPON INVENTORY SNAPSHOT {label}: count={inventory.Weapons.Count}");
 
         foreach (var weapon in inventory.Weapons)
         {
@@ -190,7 +190,7 @@ public class LaikaMod : BaseUnityPlugin
         try
         {
             Log.LogInfo($"{sourceTag}: starting queue processing. Count={PendingItemQueue.Count}");
-            LogWeaponSnapshot($"{sourceTag} BEFORE");
+            LogWeaponInventorySnapshot($"{sourceTag} BEFORE");
 
             Queue<PendingItem> remainingQueue = new Queue<PendingItem>();
 
@@ -217,7 +217,7 @@ public class LaikaMod : BaseUnityPlugin
 
             PendingItemQueue = remainingQueue;
 
-            LogWeaponSnapshot($"{sourceTag} AFTER");
+            LogWeaponInventorySnapshot($"{sourceTag} AFTER");
             Log.LogInfo($"{sourceTag}: queue processing finished. Remaining={PendingItemQueue.Count}");
         }
         finally
@@ -443,12 +443,11 @@ public class LaikaMod : BaseUnityPlugin
             bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
             Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
-            // Check ownership again after trying to add it.
-            bool ownedAfter = inventory.HasItem(item.Id);
-            Log.LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for upgrade/key item {item.Id}");
+            // Key items/upgrades may not show up in the normal HasItem() check.
+            // If AddItem() returned true, trust the game's internal key item handling.
+            Log.LogInfo($"{sourceTag}: assuming success from AddItem result for upgrade/key item {item.Id}");
 
-            // Success if the player now owns it.
-            return ownedAfter;
+            return addResult;
         }
         catch (Exception ex)
         {
@@ -488,10 +487,10 @@ public class LaikaMod : BaseUnityPlugin
                 LogAllCassetteIds();
             }
 
-            ProcessPendingItemQueue("InitializeWeaponsData");
+            ProcessPendingItemQueue("InitialItemGrant");
 
             // Process AP queue afterward.
-            ProcessPendingItemQueue("InitializeWeaponsData");
+            ProcessPendingItemQueue("InitialItemGrant");
         }
     }
 
