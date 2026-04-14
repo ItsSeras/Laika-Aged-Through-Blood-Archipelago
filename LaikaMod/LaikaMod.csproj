@@ -64,10 +64,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\..\..\..\OneDrive\Desktop\Laika - Aged Through Blood\Visual Basic Project\Class1.cs">
-      <Link>Class1.cs</Link>
-    </Compile>
+    <Compile Include="Class1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy /Y "$(TargetDir)LaikaMod.dll" "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins\"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
