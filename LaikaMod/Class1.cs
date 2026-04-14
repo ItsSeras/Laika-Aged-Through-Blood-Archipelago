@@ -42,8 +42,8 @@ public class LaikaMod : BaseUnityPlugin
         EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
 
         // Current subsystem under investigation.
-        // TEST_BIKE_UPGRADE is still a fake placeholder for now.
-        EnqueueItem(new PendingItem(ItemKind.Upgrade, "TEST_BIKE_UPGRADE", 1, "Test Bike Upgrade"));
+        // Maya's Pendant is explicitly handled in AddKeyItem(...), so it is a great first real test.
+        EnqueueItem(new PendingItem(ItemKind.Upgrade, "I_MAYA_PENDANT", 1, "Maya's Pendant"));
 
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
@@ -408,12 +408,53 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Placeholder upgrade handler.
+    // Grants a key item / upgrade through the game's inventory system.
+    // The InventoryManager will internally route key items through AddKeyItem(...)
     internal static bool TryGrantUpgrade(PendingItem item, string sourceTag)
     {
-        // TODO: Replace with actual upgrade unlock call once found.
-        Log.LogInfo($"{sourceTag}: TODO upgrade grant -> id={item.Id}, amount={item.Amount}");
-        return false;
+        // Friendly log line so we can read logs more easily.
+        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+
+        // Grab the runtime inventory manager singleton.
+        var inventory = Singleton<InventoryManager>.Instance;
+
+        // Safety check in case inventory is not ready yet.
+        if (inventory == null)
+        {
+            Log.LogWarning($"{sourceTag}: upgrade grant failed, InventoryManager is null.");
+            return false;
+        }
+
+        try
+        {
+            // Check whether the player already has this item before granting it.
+            bool alreadyOwned = inventory.HasItem(item.Id);
+            Log.LogInfo($"{sourceTag}: upgrade/key item {item.Id}, alreadyOwned={alreadyOwned}");
+
+            // If already owned, treat it as success so it does not stay in the queue.
+            if (alreadyOwned)
+            {
+                Log.LogInfo($"{sourceTag}: skipping upgrade/key item {item.Id} because player already owns it.");
+                return true;
+            }
+
+            // Try to add it through InventoryManager.
+            // If the item is marked as a key item internally, the game will route it through AddKeyItem(...).
+            bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
+            Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+
+            // Check ownership again after trying to add it.
+            bool ownedAfter = inventory.HasItem(item.Id);
+            Log.LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for upgrade/key item {item.Id}");
+
+            // Success if the player now owns it.
+            return ownedAfter;
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"{sourceTag}: exception while granting upgrade/key item {item.Id}:\n{ex}");
+            return false;
+        }
     }
 
     // Placeholder fast travel handler.
