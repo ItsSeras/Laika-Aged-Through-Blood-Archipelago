@@ -43,7 +43,7 @@ public class LaikaMod : BaseUnityPlugin
         EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
 
         // Current subsystem under investigation.
-        EnqueueItem(new PendingItem(ItemKind.Upgrade, "I_E_HOOK", 1, "Hook"));
+        EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Toy Bike (Puppy's Treat)"));
 
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
@@ -244,6 +244,9 @@ public class LaikaMod : BaseUnityPlugin
 
             case ItemKind.Collectible:
                 return TryGrantCollectible(item, sourceTag);
+           
+            case ItemKind.PuppyTreat:
+                return TryGrantPuppyTreat(item, sourceTag);
 
             case ItemKind.Upgrade:
                 return TryGrantUpgrade(item, sourceTag);
@@ -408,6 +411,33 @@ public class LaikaMod : BaseUnityPlugin
             Log.LogError($"{sourceTag}: exception while granting ingredient {item.Id}:\n{ex}");
             return false;
         }
+    }
+
+    // Grants a "Puppy's Treat" key item.
+    internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
+    {
+        Log.LogInfo($"{sourceTag}: granting Puppy Treat {item.DisplayName}");
+
+        var inventory = Singleton<InventoryManager>.Instance;
+
+        if (inventory == null)
+        {
+            Log.LogWarning($"{sourceTag}: puppy treat grant failed, InventoryManager is null.");
+            return false;
+        }
+
+        bool alreadyOwned = inventory.HasItem(item.Id);
+
+        Log.LogInfo($"{sourceTag}: puppy treat {item.Id}, alreadyOwned={alreadyOwned}");
+
+        if (alreadyOwned)
+            return true;
+
+        bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
+
+        Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+
+        return addResult;
     }
 
     // Grants a cassette / collectible using the game's cassette manager.
@@ -589,6 +619,7 @@ public enum ItemKind
     Currency,
     Ingredient,
     Collectible,
+    PuppyTreat,
     Upgrade,
     FastTravel,
     Unknown
