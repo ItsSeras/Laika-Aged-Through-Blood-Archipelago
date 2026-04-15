@@ -14,7 +14,7 @@ Sending checks and Archipelago networking is the next step planned for the futur
 For questions, feedback, or discussion related to the randomizer, please visit the "`Laika: Aged Through Blood`" thread in the [Archipelago Discord server](https://discord.com/channels/731205301247803413/1491947867345129522), or message me (`@itsseras`) directly on Discord.
 
 # What is an "Archipelago Randomizer", and why would I want one?
-![apicon](Images&Icons/apicon.png)
+![apicon](Images&Icons/archipelagoicon.png)
 
 Archipelago allows for various games to be randomized in a vast amount of ways. Not only that, but Archipelago allows these games to link to each other and send various in game items to one another.
 
