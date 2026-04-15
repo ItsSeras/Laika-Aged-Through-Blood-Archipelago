@@ -10,6 +10,7 @@ using Laika.UI.InGame.Inventory;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Laika.PlayMaker.FsmActions;
 
 [BepInPlugin("com.seras.laikaapprototype", "Laika AP Prototype", "1.0.0")]
 public class LaikaMod : BaseUnityPlugin
@@ -43,7 +44,7 @@ public class LaikaMod : BaseUnityPlugin
         EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
 
         // Current subsystem under investigation.
-        EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Toy Bike (Puppy's Treat)"));
+        EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
 
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
@@ -251,8 +252,8 @@ public class LaikaMod : BaseUnityPlugin
             case ItemKind.Upgrade:
                 return TryGrantUpgrade(item, sourceTag);
 
-            case ItemKind.FastTravel:
-                return TryGrantFastTravel(item, sourceTag);
+            case ItemKind.MapUnlock:
+                return TryGrantMapUnlock(item, sourceTag);
 
             case ItemKind.WeaponUpgrade:
                 return TryGrantWeaponUpgrade(item, sourceTag);
@@ -557,12 +558,34 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Placeholder fast travel handler.
-    internal static bool TryGrantFastTravel(PendingItem item, string sourceTag)
+    // Grants a map/traversal unlock through ProgressionData.
+    // Renato's map popup and unlock flow use IDs like M_A_W06.
+    internal static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
     {
-        // TODO: Replace with actual teleport / map unlock call once found.
-        Log.LogInfo($"{sourceTag}: TODO fast travel grant -> id={item.Id}, amount={item.Amount}");
-        return false;
+        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+
+        var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+
+        if (progressionManager == null)
+        {
+            Log.LogWarning($"{sourceTag}: Map unlock grant failed, ProgressionManager is null.");
+            return false;
+        }
+
+        try
+        {
+            // Ask the game to unlock the target map area directly.
+            progressionManager.ProgressionData.UnlockMapArea(item.Id);
+            Log.LogInfo($"{sourceTag}: UnlockMapArea({item.Id}) called successfully.");
+
+            // For now, trust the game's internal unlock flow.
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"{sourceTag}: exception while unlocking map area {item.Id}:\n{ex}");
+            return false;
+        }
     }
 
     [HarmonyPatch(typeof(WeaponsOverlay), "InitializeWeaponsData")]
@@ -611,6 +634,62 @@ public class LaikaMod : BaseUnityPlugin
     }
 }
 
+// Logs Renato's map popup data when the buy-map popup opens.
+// This helps us discover the real runtime mapAreaID values used by UnlockMapArea(...).
+[HarmonyPatch(typeof(ShowBuyingMapPopup), "OnEnter")]
+public class ShowBuyingMapPopupPatch
+{
+    static void Prefix(ShowBuyingMapPopup __instance)
+    {
+        try
+        {
+            // Safety check in case the FSM values are missing for some reason.
+            if (__instance == null)
+            {
+                LaikaMod.Log.LogWarning("ShowBuyingMapPopupPatch: __instance was null.");
+                return;
+            }
+
+            // Read the real PlayMaker values that Renato's popup is using.
+            string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
+            int mapAreaPrice = __instance.mapAreaPrice != null ? __instance.mapAreaPrice.Value : -1;
+
+            // Log both the area ID and the price so we can identify which map piece is which.
+            LaikaMod.Log.LogInfo($"RENATO MAP POPUP: mapAreaID={mapAreaId}, price={mapAreaPrice}");
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.Log.LogError($"ShowBuyingMapPopupPatch: exception while logging Renato map popup:\n{ex}");
+        }
+    }
+}
+
+// Logs the real map area ID when the game performs the map unlock.
+// This helps confirm the purchase result and gives us the exact value used by ProgressionData.UnlockMapArea(...).
+[HarmonyPatch(typeof(UnlockMapArea), "OnEnter")]
+public class UnlockMapAreaPatch
+{
+    static void Prefix(UnlockMapArea __instance)
+    {
+        try
+        {
+            if (__instance == null)
+            {
+                LaikaMod.Log.LogWarning("UnlockMapAreaPatch: __instance was null.");
+                return;
+            }
+
+            string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
+
+            LaikaMod.Log.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.Log.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
+        }
+    }
+}
+
 // High-level AP item categories.
 public enum ItemKind
 {
@@ -621,7 +700,7 @@ public enum ItemKind
     Collectible,
     PuppyTreat,
     Upgrade,
-    FastTravel,
+    MapUnlock,
     Unknown
 }
 
