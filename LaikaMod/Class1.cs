@@ -31,6 +31,9 @@ public class LaikaMod : BaseUnityPlugin
     // Prevents cassette IDs from logging repeatedly.
     internal static bool CassetteIdsLogged = false;
 
+    // Prevents duplicate map-unlock check logs during the current session.
+    internal static HashSet<string> SentMapUnlockChecks = new HashSet<string>();
+
     private void Awake()
     {
         // Save logger for static patches.
@@ -664,8 +667,8 @@ public class ShowBuyingMapPopupPatch
     }
 }
 
+// Tracks map unlock purchases/checks when Renato's map purchase actually succeeds.
 // Logs the real map area ID when the game performs the map unlock.
-// This helps confirm the purchase result and gives us the exact value used by ProgressionData.UnlockMapArea(...).
 [HarmonyPatch(typeof(UnlockMapArea), "OnEnter")]
 public class UnlockMapAreaPatch
 {
@@ -682,6 +685,20 @@ public class UnlockMapAreaPatch
             string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
 
             LaikaMod.Log.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
+
+            // Avoid duplicate check logs during the same session.
+            if (!LaikaMod.SentMapUnlockChecks.Contains(mapAreaId))
+            {
+                LaikaMod.SentMapUnlockChecks.Add(mapAreaId);
+
+                // Prototype send-side check logging.
+                // Later replace this with actual Archipelago check sending.
+                LaikaMod.Log.LogInfo($"CHECK SENT: map_unlock:{mapAreaId}");
+            }
+            else
+            {
+                LaikaMod.Log.LogInfo($"MAP CHECK ALREADY SENT THIS SESSION: map_unlock:{mapAreaId}");
+            }
         }
         catch (Exception ex)
         {
