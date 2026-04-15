@@ -32,23 +32,41 @@ public class LaikaMod : BaseUnityPlugin
     internal static bool CassetteIdsLogged = false;
 
     // Prevents duplicate map-unlock check logs during the current session.
-    internal static HashSet<string> SentMapUnlockChecks = new HashSet<string>();
+    internal static HashSet<string> SentMapUnlockChecksThisSession = new HashSet<string>();
 
+    // ===== Startup =====
     private void Awake()
     {
         // Save logger for static patches.
         Log = Logger;
 
         // Confirm plugin loaded.
-        Log.LogInfo("LaikaMod Awake() called. GENERALIZED QUEUE BUILD 25");
+        Log.LogInfo("LaikaMod Awake() called. This is Prototype Version .01!");
 
         // Known-good sanity test.
-        // Internal ID is VISCERA, but the friendly name is what we want players to see later.
+        // Known-good sanity test.
         EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
 
-        // Current subsystem under investigation.
+        // Controlled map unlock test.
         EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
 
+        // Weapon test.
+        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_ROCKETLAUNCHER", 1, "Rocket Launcher"));
+
+        // Progressive weapon upgrade test.
+        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Progressive Sniper Rifle"));
+
+        // Ingredient test.
+        EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine"));
+
+        // Collectible / cassette test.
+        EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_11", 1, "Cassette 11"));
+
+        // Puppy's Treat test.
+        EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console (Puppy's Treat)"));
+
+        // Key item / traversal unlock test.
+        EnqueueItem(new PendingItem(ItemKind.KeyItem, "I_E_DASH", 1, "Nitrous Dash"));
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
         harmony.PatchAll();
@@ -56,6 +74,7 @@ public class LaikaMod : BaseUnityPlugin
         Log.LogInfo("Harmony patches applied.");
     }
 
+    // ===== Discovery / debug helpers =====
     // Logs every ingredient ID the game has loaded.
     // This helps us discover REAL ingredient IDs for testing.
     internal static void LogAllIngredientIds()
@@ -136,13 +155,6 @@ public class LaikaMod : BaseUnityPlugin
         Log.LogInfo("CASSETTE LIST END");
     }
 
-    // Adds a pending item to the queue.
-    internal static void EnqueueItem(PendingItem item)
-    {
-        PendingItemQueue.Enqueue(item);
-        Log.LogInfo($"QUEUE: added pending item -> {item}");
-    }
-
     // Logs the current visible weapon inventory for debugging before/after queue processing.
     internal static void LogWeaponInventorySnapshot(string label)
     {
@@ -172,6 +184,14 @@ public class LaikaMod : BaseUnityPlugin
         }
 
         Log.LogInfo(sb.ToString());
+    }
+
+    // ===== Queue processing =====
+    // Adds a pending item to the queue.
+    internal static void EnqueueItem(PendingItem item)
+    {
+        PendingItemQueue.Enqueue(item);
+        Log.LogInfo($"QUEUE: added pending item -> {item}");
     }
 
     // Main queue processor. Called when game systems are in a good state.
@@ -230,6 +250,7 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
+    // ===== Grant handlers =====
     // Routes an item to the correct grant handler.
     internal static bool TryGrantPendingItem(PendingItem item, string sourceTag)
     {
@@ -239,6 +260,9 @@ public class LaikaMod : BaseUnityPlugin
         {
             case ItemKind.Weapon:
                 return TryGrantWeapon(item, sourceTag);
+
+            case ItemKind.WeaponUpgrade:
+                return TryGrantWeaponUpgrade(item, sourceTag);
 
             case ItemKind.Currency:
                 return TryGrantCurrency(item, sourceTag);
@@ -252,14 +276,11 @@ public class LaikaMod : BaseUnityPlugin
             case ItemKind.PuppyTreat:
                 return TryGrantPuppyTreat(item, sourceTag);
 
-            case ItemKind.Upgrade:
-                return TryGrantUpgrade(item, sourceTag);
+            case ItemKind.KeyItem:
+                return TryGrantKeyItem(item, sourceTag);
 
             case ItemKind.MapUnlock:
                 return TryGrantMapUnlock(item, sourceTag);
-
-            case ItemKind.WeaponUpgrade:
-                return TryGrantWeaponUpgrade(item, sourceTag);
 
             default:
                 Log.LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
@@ -345,7 +366,7 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Real currency handler using EconomyManager.
+    // Grants Viscera through EconomyManager.
     internal static bool TryGrantCurrency(PendingItem item, string sourceTag)
     {
         // Friendly log line for player-facing readability.
@@ -382,7 +403,7 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Real currency handler using InventoryManager.
+    // Grants ingredients through InventoryManager using the item's internal ID.
     internal static bool TryGrantIngredient(PendingItem item, string sourceTag)
     {
         var inventory = Singleton<InventoryManager>.Instance;
@@ -420,7 +441,7 @@ public class LaikaMod : BaseUnityPlugin
     // Grants a "Puppy's Treat" key item.
     internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
     {
-        Log.LogInfo($"{sourceTag}: granting Puppy Treat {item.DisplayName}");
+        Log.LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
 
         var inventory = Singleton<InventoryManager>.Instance;
 
@@ -488,9 +509,9 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Grants a key item / upgrade through the game's inventory system.
+    // Grants a key item through the game's inventory system.
     // The InventoryManager will internally route key items through AddKeyItem(...)
-    internal static bool TryGrantUpgrade(PendingItem item, string sourceTag)
+    internal static bool TryGrantKeyItem(PendingItem item, string sourceTag)
     {
         // Friendly log line so we can read logs more easily.
         Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
@@ -501,7 +522,7 @@ public class LaikaMod : BaseUnityPlugin
         // Safety check in case inventory is not ready yet.
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: upgrade grant failed, InventoryManager is null.");
+            Log.LogWarning($"{sourceTag}: key item grant failed, InventoryManager is null.");
             return false;
         }
 
@@ -509,12 +530,12 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Check whether the player already has this item before granting it.
             bool alreadyOwned = inventory.HasItem(item.Id);
-            Log.LogInfo($"{sourceTag}: upgrade/key item {item.Id}, alreadyOwned={alreadyOwned}");
+            Log.LogInfo($"{sourceTag}: key item {item.Id}, alreadyOwned={alreadyOwned}");
 
             // If already owned, treat it as success so it does not stay in the queue.
             if (alreadyOwned)
             {
-                Log.LogInfo($"{sourceTag}: skipping upgrade/key item {item.Id} because player already owns it.");
+                Log.LogInfo($"{sourceTag}: skipping key item {item.Id} because player already owns it.");
                 return true;
             }
 
@@ -526,42 +547,23 @@ public class LaikaMod : BaseUnityPlugin
             // If the upgrade item needs extra progression flags, apply them now.
             if (addResult)
             {
-                ApplyUpgradeProgressionFlags(item, sourceTag);
+                ApplyKeyItemProgressionFlags(item, sourceTag);
             }
 
             // Key items/upgrades may not show up in the normal HasItem() check.
             // If AddItem() returned true, trust the game's internal key item handling.
-            Log.LogInfo($"{sourceTag}: assuming success from AddItem result for upgrade/key item {item.Id}");
+            Log.LogInfo($"{sourceTag}: assuming success from AddItem result for key item {item.Id}");
 
             return addResult;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while granting upgrade/key item {item.Id}:\n{ex}");
+            Log.LogError($"{sourceTag}: exception while granting key item {item.Id}:\n{ex}");
             return false;
         }
     }
 
-    // Applies extra progression flags needed for certain upgrades to actually become usable.
-    // Some upgrade items are not fully functional from AddItem(...) alone.
-    internal static void ApplyUpgradeProgressionFlags(PendingItem item, string sourceTag)
-    {
-        // Dash needs the G_DASH_UNLOCKED progression flag in addition to the item itself.
-        if (item.Id == "I_E_DASH")
-        {
-            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_DASH_UNLOCKED", true, false);
-            Log.LogInfo($"{sourceTag}: set progression flag G_DASH_UNLOCKED for Dash.");
-        }
-
-        // Hook needs the G_HOOK_UNLOCKED progression flag in addition to the item itself.
-        else if (item.Id == "I_E_HOOK")
-        {
-            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_HOOK_UNLOCKED", true, false);
-            Log.LogInfo($"{sourceTag}: set progression flag G_HOOK_UNLOCKED for Hook.");
-        }
-    }
-
-    // Grants a map/traversal unlock through ProgressionData.
+    // Grants a map unlock through ProgressionData.
     // Renato's map popup and unlock flow use IDs like M_A_W06.
     internal static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
     {
@@ -571,7 +573,7 @@ public class LaikaMod : BaseUnityPlugin
 
         if (progressionManager == null)
         {
-            Log.LogWarning($"{sourceTag}: Map unlock grant failed, ProgressionManager is null.");
+            Log.LogWarning($"{sourceTag}: map unlock grant failed, ProgressionManager is null.");
             return false;
         }
 
@@ -591,6 +593,39 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
+    // ===== Progression / display-name helpers =====
+    // Applies extra progression flags needed for certain upgrades to actually become usable.
+    // Some upgrade items are not fully functional from AddItem(...) alone.
+    internal static void ApplyKeyItemProgressionFlags(PendingItem item, string sourceTag)
+    {
+        // Dash needs the G_DASH_UNLOCKED progression flag in addition to the item itself.
+        if (item.Id == "I_E_DASH")
+        {
+            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_DASH_UNLOCKED", true, false);
+            Log.LogInfo($"{sourceTag}: set progression flag G_DASH_UNLOCKED for Dash.");
+        }
+
+        // Hook needs the G_HOOK_UNLOCKED progression flag in addition to the item itself.
+        else if (item.Id == "I_E_HOOK")
+        {
+            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_HOOK_UNLOCKED", true, false);
+            Log.LogInfo($"{sourceTag}: set progression flag G_HOOK_UNLOCKED for Hook.");
+        }
+    }
+
+    // Helper that maps internal map IDs to readable display names.
+    // Expand this as more map area IDs are confirmed.
+    internal static string GetMapUnlockDisplayName(string mapAreaId)
+    {
+        switch (mapAreaId)
+        {
+            case "M_A_CAMP": return "Map Piece: Where We Live";
+            case "M_A_W06": return "Map Piece: Where Our Bikes Growl";
+            default: return $"Map Piece ({mapAreaId})";
+        }
+    }
+
+    // ===== Harmony patches =====
     [HarmonyPatch(typeof(WeaponsOverlay), "InitializeWeaponsData")]
     public class WeaponsOverlayPatch
     {
@@ -614,14 +649,10 @@ public class LaikaMod : BaseUnityPlugin
                 LogAllCassetteIds();
             }
 
-            ProcessPendingItemQueue("InitialItemGrant");
-
             // Process AP queue afterward.
             ProcessPendingItemQueue("InitialItemGrant");
         }
     }
-
-
 
     [HarmonyPatch(typeof(QuestLog), "TryCloseQuest")]
     public class QuestClosePatch
@@ -635,78 +666,81 @@ public class LaikaMod : BaseUnityPlugin
             Log.LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
         }
     }
-}
 
-// Logs Renato's map popup data when the buy-map popup opens.
-// This helps us discover the real runtime mapAreaID values used by UnlockMapArea(...).
-[HarmonyPatch(typeof(ShowBuyingMapPopup), "OnEnter")]
-public class ShowBuyingMapPopupPatch
-{
-    static void Prefix(ShowBuyingMapPopup __instance)
+    // Logs Renato's map popup data when the buy-map popup opens.
+    // This helps us discover the real runtime mapAreaID values used by UnlockMapArea(...).
+    [HarmonyPatch(typeof(ShowBuyingMapPopup), "OnEnter")]
+    public class ShowBuyingMapPopupPatch
     {
-        try
+        static void Prefix(ShowBuyingMapPopup __instance)
         {
-            // Safety check in case the FSM values are missing for some reason.
-            if (__instance == null)
+            try
             {
-                LaikaMod.Log.LogWarning("ShowBuyingMapPopupPatch: __instance was null.");
-                return;
+                // Safety check in case the FSM values are missing for some reason.
+                if (__instance == null)
+                {
+                    LaikaMod.Log.LogWarning("ShowBuyingMapPopupPatch: __instance was null.");
+                    return;
+                }
+
+                // Read the real PlayMaker values that Renato's popup is using.
+                string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
+                int mapAreaPrice = __instance.mapAreaPrice != null ? __instance.mapAreaPrice.Value : -1;
+
+                // Log both the area ID and the price so we can identify which map piece is which.
+                LaikaMod.Log.LogInfo($"RENATO MAP POPUP: mapAreaID={mapAreaId}, price={mapAreaPrice}");
             }
-
-            // Read the real PlayMaker values that Renato's popup is using.
-            string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
-            int mapAreaPrice = __instance.mapAreaPrice != null ? __instance.mapAreaPrice.Value : -1;
-
-            // Log both the area ID and the price so we can identify which map piece is which.
-            LaikaMod.Log.LogInfo($"RENATO MAP POPUP: mapAreaID={mapAreaId}, price={mapAreaPrice}");
+            catch (Exception ex)
+            {
+                LaikaMod.Log.LogError($"ShowBuyingMapPopupPatch: exception while logging Renato map popup:\n{ex}");
+            }
         }
-        catch (Exception ex)
+    }
+
+    // Tracks map unlock purchases/checks when Renato's map purchase actually succeeds.
+    // Logs the real map area ID when the game performs the map unlock.
+    [HarmonyPatch(typeof(UnlockMapArea), "OnEnter")]
+    public class UnlockMapAreaPatch
+    {
+        static void Prefix(UnlockMapArea __instance)
         {
-            LaikaMod.Log.LogError($"ShowBuyingMapPopupPatch: exception while logging Renato map popup:\n{ex}");
+            try
+            {
+                if (__instance == null)
+                {
+                    LaikaMod.Log.LogWarning("UnlockMapAreaPatch: __instance was null.");
+                    return;
+                }
+
+                string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
+
+                LaikaMod.Log.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
+
+                // Avoid duplicate check logs during the same session.
+                if (!LaikaMod.SentMapUnlockChecksThisSession.Contains(mapAreaId))
+                {
+                    LaikaMod.SentMapUnlockChecksThisSession.Add(mapAreaId);
+
+                    // Prototype send-side check logging.
+                    // Later replace this with actual Archipelago check sending.
+                    string mapName = LaikaMod.GetMapUnlockDisplayName(mapAreaId);
+                    LaikaMod.Log.LogInfo($"CHECK SENT: {mapName} ({mapAreaId})");
+                }
+                else
+                {
+                    string mapName = LaikaMod.GetMapUnlockDisplayName(mapAreaId);
+                    LaikaMod.Log.LogInfo($"MAP CHECK ALREADY SENT THIS SESSION: {mapName} ({mapAreaId})");
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.Log.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
+            }
         }
     }
 }
 
-// Tracks map unlock purchases/checks when Renato's map purchase actually succeeds.
-// Logs the real map area ID when the game performs the map unlock.
-[HarmonyPatch(typeof(UnlockMapArea), "OnEnter")]
-public class UnlockMapAreaPatch
-{
-    static void Prefix(UnlockMapArea __instance)
-    {
-        try
-        {
-            if (__instance == null)
-            {
-                LaikaMod.Log.LogWarning("UnlockMapAreaPatch: __instance was null.");
-                return;
-            }
-
-            string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
-
-            LaikaMod.Log.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
-
-            // Avoid duplicate check logs during the same session.
-            if (!LaikaMod.SentMapUnlockChecks.Contains(mapAreaId))
-            {
-                LaikaMod.SentMapUnlockChecks.Add(mapAreaId);
-
-                // Prototype send-side check logging.
-                // Later replace this with actual Archipelago check sending.
-                LaikaMod.Log.LogInfo($"CHECK SENT: map_unlock:{mapAreaId}");
-            }
-            else
-            {
-                LaikaMod.Log.LogInfo($"MAP CHECK ALREADY SENT THIS SESSION: map_unlock:{mapAreaId}");
-            }
-        }
-        catch (Exception ex)
-        {
-            LaikaMod.Log.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
-        }
-    }
-}
-
+// ===== Models / enums =====
 // High-level AP item categories.
 public enum ItemKind
 {
@@ -716,7 +750,7 @@ public enum ItemKind
     Ingredient,
     Collectible,
     PuppyTreat,
-    Upgrade,
+    KeyItem,
     MapUnlock,
     Unknown
 }
