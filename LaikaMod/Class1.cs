@@ -34,48 +34,32 @@ public class LaikaMod : BaseUnityPlugin
     // Prevents duplicate map-unlock check logs during the current session.
     internal static HashSet<string> SentMapUnlockChecksThisSession = new HashSet<string>();
 
+    // Temporary world options used for future YAML/config support.
+    // For now this is hardcoded, but later it can be loaded from a YAML file.
+    internal static APWorldOptions WorldOptions = new APWorldOptions();
+
+    // Development mode toggle.
+    // Enqueues development stress test items when set to true.
+    internal static bool EnableDevelopmentStressTest = false;
+
     // ===== Startup =====
     private void Awake()
     {
+        // Temporary hardcoded option for future YAML support.
+        // Change this to Crafting to test unique-material weapon unlocks instead of direct weapon grants.
+        WorldOptions.WeaponMode = WeaponGrantMode.Direct;
+
         // Save logger for static patches.
         Log = Logger;
 
         // Confirm plugin loaded.
-        Log.LogInfo("LaikaMod Awake() called. This is Prototype Version .01!");
+        Log.LogInfo($"Laika AP Prototype loaded. WeaponMode={WorldOptions.WeaponMode}, DevStress={EnableDevelopmentStressTest}");
 
-        //  ===== Known good Sanity test items/Stress Test =====
-        EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
-
-        // Map Unlock
-        EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
-
-        // Weapons.
-        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_ROCKETLAUNCHER", 1, "Rocket Launcher"));
-
-        // Progressive weapon upgrade.
-        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Progressive Sniper Rifle"));
-
-        // Ingredient.
-        EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine"));
-
-        // Collectible / cassettes.
-        EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_11", 1, "Cassette 11"));
-
-        // Puppy's Treats.
-        EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console (Puppy's Treat)"));
-
-        // Key item / traversal unlock
-        EnqueueItem(new PendingItem(ItemKind.KeyItem, "I_E_DASH", 1, "Nitrous Dash"));
-
-        //  ===== Items being tested =====
-        //Resource (Common)
-        EnqueueItem(new PendingItem(ItemKind.Material, "I_BASALT", 1, "Basalt"));
-
-        //Resource (Rare)
-        EnqueueItem(new PendingItem(ItemKind.Material, "I_METAL_GOOD", 1, "Refined Metal"));
-
-        //Resource (Unique)
-        EnqueueItem(new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)"));
+        // Development stress test items.
+        if (EnableDevelopmentStressTest)
+        {
+            EnqueueDevelopmentStressTestItems();
+        }
 
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
@@ -86,7 +70,7 @@ public class LaikaMod : BaseUnityPlugin
 
     // ===== Discovery / debug helpers =====
     // Logs every ingredient ID the game has loaded.
-    // This helps us discover REAL ingredient IDs for testing.
+    // This helps us discover real ingredient IDs for testing.
     internal static void LogAllIngredientIds()
     {
         // Grab the game's master item loader singleton.
@@ -127,7 +111,7 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // Logs every cassette ID the game has loaded.
-    // This helps us discover REAL cassette IDs for testing.
+    // This helps us discover real cassette IDs for testing.
     internal static void LogAllCassetteIds()
     {
         // Grab the game's cassette data loader singleton.
@@ -197,6 +181,23 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Queue processing =====
+    // Temporary stress test queue used during development.
+    // Kept separate from Awake() so startup logic stays easier to read.
+    internal static void EnqueueDevelopmentStressTestItems()
+    {
+        EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
+        EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
+        EnqueueItem(GetRocketLauncherUnlockItem());
+        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Progressive Sniper Rifle"));
+        EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine"));
+        EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_11", 1, "Cassette 11"));
+        EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console (Puppy's Treat)"));
+        EnqueueItem(new PendingItem(ItemKind.KeyItem, "I_E_DASH", 1, "Nitrous Dash"));
+        EnqueueItem(new PendingItem(ItemKind.Material, "I_BASALT", 1, "Basalt"));
+        EnqueueItem(new PendingItem(ItemKind.Material, "I_METAL_GOOD", 1, "Refined Metal"));
+        EnqueueItem(new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)"));
+    }
+
     // Adds a pending item to the queue.
     internal static void EnqueueItem(PendingItem item)
     {
@@ -644,7 +645,7 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // ===== Progression / display-name helpers =====
+    // ===== Progression helpers =====
     // Applies extra progression flags needed for certain upgrades to actually become usable.
     // Some upgrade items are not fully functional from AddItem(...) alone.
     internal static void ApplyKeyItemProgressionFlags(PendingItem item, string sourceTag)
@@ -664,6 +665,7 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
+    // ===== Display-name helpers =====
     // Helper that maps internal map IDs to readable display names.
     // Expand this as more map area IDs are confirmed.
     internal static string GetMapUnlockDisplayName(string mapAreaId)
@@ -674,6 +676,74 @@ public class LaikaMod : BaseUnityPlugin
             case "M_A_W06": return "Map Piece: Where Our Bikes Growl";
             default: return $"Map Piece ({mapAreaId})";
         }
+    }
+
+    // ===== Weapon mode helpers =====
+    // Returns the correct item definition for a major weapon unlock
+    // based on the configured weapon grant mode.
+    //
+    // Direct mode:
+    // Returns the weapon itself.
+    //
+    // Crafting mode:
+    // Returns the weapon's unique crafting material instead.
+    //
+    // Note:
+    // Crossbow does not currently have a clean one-to-one unique crafting material,
+    // so it should remain direct-only until a better crafting-mode design is decided.
+    internal static PendingItem GetWeaponUnlockItem(
+        string directWeaponId,
+        string directDisplayName,
+        string craftingMaterialId,
+        string craftingDisplayName)
+    {
+        if (WorldOptions.WeaponMode == WeaponGrantMode.Crafting)
+        {
+            return new PendingItem(ItemKind.Material, craftingMaterialId, 1, craftingDisplayName);
+        }
+
+        return new PendingItem(ItemKind.Weapon, directWeaponId, 1, directDisplayName);
+    }
+   
+    // Specific weapon unlock helpers that use the generic weapon-mode resolver.
+    internal static PendingItem GetRocketLauncherUnlockItem()
+    {
+        return GetWeaponUnlockItem(
+            "I_W_ROCKETLAUNCHER",
+            "Rocket Launcher",
+            "I_MATERIAL_ROCKETLAUNCHER",
+            "Missile (Rocket Launcher Material)"
+        );
+    }
+
+    internal static PendingItem GetShotgunUnlockItem()
+    {
+        return GetWeaponUnlockItem(
+            "I_W_SHOTGUN",
+            "Shotgun",
+            "I_MATERIAL_SHOTGUN",
+            "Rusty Spring (Shotgun Material)"
+        );
+    }
+
+    internal static PendingItem GetSniperUnlockItem()
+    {
+        return GetWeaponUnlockItem(
+            "I_W_SNIPER",
+            "Sniper Rifle",
+            "I_MATERIAL_SNIPER",
+            "Magnifying Glass (Sniper Rifle Material)"
+        );
+    }
+
+    internal static PendingItem GetMachineGunUnlockItem()
+    {
+        return GetWeaponUnlockItem(
+            "I_W_UZI",
+            "Machine Gun",
+            "I_MATERIAL_UZI",
+            "Titanium Plates (Machine Gun Material)"
+        );
     }
 
     // ===== Harmony patches =====
@@ -810,6 +880,30 @@ public enum ItemKind
     MapUnlock,
 
     Unknown
+}
+
+// Determines how major weapons should be granted in the future.
+//
+// Direct:
+// The player receives the weapon itself outright.
+// Example: Shotgun is granted as I_W_SHOTGUN.
+//
+// Crafting:
+// The player receives the unique crafting material instead.
+// Example: Shotgun unlock is represented by I_MATERIAL_SHOTGUN.
+public enum WeaponGrantMode
+{
+    Direct,
+    Crafting
+}
+
+// Stores future world-generation / slot options.
+// Later this can be filled from YAML or another external config source.
+public class APWorldOptions
+{
+    // Controls whether major weapons are granted directly
+    // or represented by their unique crafting materials instead.
+    public WeaponGrantMode WeaponMode { get; set; } = WeaponGrantMode.Direct;
 }
 
 // Represents one pending AP-style item waiting to be granted.
