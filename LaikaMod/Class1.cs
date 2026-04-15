@@ -4,6 +4,7 @@ using HarmonyLib;
 using Laika.Cassettes;
 using Laika.Economy;
 using Laika.Inventory;
+using Laika.Persistence;
 using Laika.Quests;
 using Laika.UI.InGame.Inventory;
 using System;
@@ -42,8 +43,7 @@ public class LaikaMod : BaseUnityPlugin
         EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
 
         // Current subsystem under investigation.
-        // Maya's Pendant is explicitly handled in AddKeyItem(...), so it is a great first real test.
-        EnqueueItem(new PendingItem(ItemKind.Upgrade, "I_MAYA_PENDANT", 1, "Maya's Pendant"));
+        EnqueueItem(new PendingItem(ItemKind.Upgrade, "I_E_HOOK", 1, "Hook"));
 
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
@@ -251,6 +251,9 @@ public class LaikaMod : BaseUnityPlugin
             case ItemKind.FastTravel:
                 return TryGrantFastTravel(item, sourceTag);
 
+            case ItemKind.WeaponUpgrade:
+                return TryGrantWeaponUpgrade(item, sourceTag);
+
             default:
                 Log.LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
                 return false;
@@ -290,6 +293,49 @@ public class LaikaMod : BaseUnityPlugin
         Log.LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for weapon {item.Id}");
 
         return ownedAfter;
+    }
+
+    // Grants one weapon upgrade level using the game's own weapon upgrade method.
+    internal static bool TryGrantWeaponUpgrade(PendingItem item, string sourceTag)
+    {
+        // Friendly log line for readability.
+        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+
+        // Grab the runtime weapons inventory singleton.
+        var weaponsInventory = Singleton<WeaponsInventory>.Instance;
+
+        // Safety check in case the manager is not ready yet.
+        if (weaponsInventory == null)
+        {
+            Log.LogWarning($"{sourceTag}: weapon upgrade grant failed, WeaponsInventory is null.");
+            return false;
+        }
+
+        try
+        {
+            // Make sure the player actually owns the weapon before trying to upgrade it.
+            bool alreadyOwned = weaponsInventory.HasWeapon(item.Id);
+            Log.LogInfo($"{sourceTag}: weapon upgrade target {item.Id}, alreadyOwned={alreadyOwned}");
+
+            // If the player does not own the weapon yet, do not consume the queue item.
+            if (!alreadyOwned)
+            {
+                Log.LogWarning($"{sourceTag}: cannot upgrade weapon {item.Id} because player does not own it yet.");
+                return false;
+            }
+
+            // Ask the game to upgrade the weapon by one level.
+            bool upgradeResult = weaponsInventory.UpgradeWeapon(item.Id);
+            Log.LogInfo($"{sourceTag}: UpgradeWeapon({item.Id}) returned {upgradeResult}");
+
+            // Trust the game's own result here.
+            return upgradeResult;
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"{sourceTag}: exception while upgrading weapon {item.Id}:\n{ex}");
+            return false;
+        }
     }
 
     // Real currency handler using EconomyManager.
@@ -443,6 +489,12 @@ public class LaikaMod : BaseUnityPlugin
             bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
             Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
+            // If the upgrade item needs extra progression flags, apply them now.
+            if (addResult)
+            {
+                ApplyUpgradeProgressionFlags(item, sourceTag);
+            }
+
             // Key items/upgrades may not show up in the normal HasItem() check.
             // If AddItem() returned true, trust the game's internal key item handling.
             Log.LogInfo($"{sourceTag}: assuming success from AddItem result for upgrade/key item {item.Id}");
@@ -453,6 +505,25 @@ public class LaikaMod : BaseUnityPlugin
         {
             Log.LogError($"{sourceTag}: exception while granting upgrade/key item {item.Id}:\n{ex}");
             return false;
+        }
+    }
+
+    // Applies extra progression flags needed for certain upgrades to actually become usable.
+    // Some upgrade items are not fully functional from AddItem(...) alone.
+    internal static void ApplyUpgradeProgressionFlags(PendingItem item, string sourceTag)
+    {
+        // Dash needs the G_DASH_UNLOCKED progression flag in addition to the item itself.
+        if (item.Id == "I_E_DASH")
+        {
+            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_DASH_UNLOCKED", true, false);
+            Log.LogInfo($"{sourceTag}: set progression flag G_DASH_UNLOCKED for Dash.");
+        }
+
+        // Hook needs the G_HOOK_UNLOCKED progression flag in addition to the item itself.
+        else if (item.Id == "I_E_HOOK")
+        {
+            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_HOOK_UNLOCKED", true, false);
+            Log.LogInfo($"{sourceTag}: set progression flag G_HOOK_UNLOCKED for Hook.");
         }
     }
 
@@ -514,6 +585,7 @@ public class LaikaMod : BaseUnityPlugin
 public enum ItemKind
 {
     Weapon,
+    WeaponUpgrade,
     Currency,
     Ingredient,
     Collectible,
