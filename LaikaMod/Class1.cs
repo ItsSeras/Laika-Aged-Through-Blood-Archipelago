@@ -43,30 +43,40 @@ public class LaikaMod : BaseUnityPlugin
         // Confirm plugin loaded.
         Log.LogInfo("LaikaMod Awake() called. This is Prototype Version .01!");
 
-        // Known-good sanity test.
-        // Known-good sanity test.
+        //  ===== Known good Sanity test items/Stress Test =====
         EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
 
-        // Controlled map unlock test.
+        // Map Unlock
         EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
 
-        // Weapon test.
+        // Weapons.
         EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_ROCKETLAUNCHER", 1, "Rocket Launcher"));
 
-        // Progressive weapon upgrade test.
+        // Progressive weapon upgrade.
         EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Progressive Sniper Rifle"));
 
-        // Ingredient test.
+        // Ingredient.
         EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine"));
 
-        // Collectible / cassette test.
+        // Collectible / cassettes.
         EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_11", 1, "Cassette 11"));
 
-        // Puppy's Treat test.
+        // Puppy's Treats.
         EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console (Puppy's Treat)"));
 
-        // Key item / traversal unlock test.
+        // Key item / traversal unlock
         EnqueueItem(new PendingItem(ItemKind.KeyItem, "I_E_DASH", 1, "Nitrous Dash"));
+
+        //  ===== Items being tested =====
+        //Resource (Common)
+        EnqueueItem(new PendingItem(ItemKind.Material, "I_BASALT", 1, "Basalt"));
+
+        //Resource (Rare)
+        EnqueueItem(new PendingItem(ItemKind.Material, "I_METAL_GOOD", 1, "Refined Metal"));
+
+        //Resource (Unique)
+        EnqueueItem(new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)"));
+
         // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
         harmony.PatchAll();
@@ -258,17 +268,20 @@ public class LaikaMod : BaseUnityPlugin
 
         switch (item.Kind)
         {
+            case ItemKind.Currency:
+                return TryGrantCurrency(item, sourceTag);
+
             case ItemKind.Weapon:
                 return TryGrantWeapon(item, sourceTag);
 
             case ItemKind.WeaponUpgrade:
                 return TryGrantWeaponUpgrade(item, sourceTag);
 
-            case ItemKind.Currency:
-                return TryGrantCurrency(item, sourceTag);
-
             case ItemKind.Ingredient:
                 return TryGrantIngredient(item, sourceTag);
+
+            case ItemKind.Material:
+                return TryGrantMaterial(item, sourceTag);
 
             case ItemKind.Collectible:
                 return TryGrantCollectible(item, sourceTag);
@@ -285,6 +298,43 @@ public class LaikaMod : BaseUnityPlugin
             default:
                 Log.LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
                 return false;
+        }
+    }
+
+    // Grants Viscera through EconomyManager.
+    internal static bool TryGrantCurrency(PendingItem item, string sourceTag)
+    {
+        // Friendly log line for player-facing readability.
+        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+
+        var economy = Singleton<EconomyManager>.Instance;
+
+        if (economy == null)
+        {
+            Log.LogWarning($"{sourceTag}: currency grant failed, EconomyManager is null.");
+            return false;
+        }
+
+        try
+        {
+            // Read current money before adding.
+            int before = economy.Money;
+            Log.LogInfo($"{sourceTag}: currency before grant = {before}");
+
+            // Add the requested amount.
+            economy.AddMoney(item.Amount);
+
+            // Read current money after adding.
+            int after = economy.Money;
+            Log.LogInfo($"{sourceTag}: currency after grant = {after}");
+
+            // Success if the money increased.
+            return after > before;
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"{sourceTag}: exception while granting currency:\n{ex}");
+            return false;
         }
     }
 
@@ -366,43 +416,6 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Grants Viscera through EconomyManager.
-    internal static bool TryGrantCurrency(PendingItem item, string sourceTag)
-    {
-        // Friendly log line for player-facing readability.
-        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
-
-        var economy = Singleton<EconomyManager>.Instance;
-
-        if (economy == null)
-        {
-            Log.LogWarning($"{sourceTag}: currency grant failed, EconomyManager is null.");
-            return false;
-        }
-
-        try
-        {
-            // Read current money before adding.
-            int before = economy.Money;
-            Log.LogInfo($"{sourceTag}: currency before grant = {before}");
-
-            // Add the requested amount.
-            economy.AddMoney(item.Amount);
-
-            // Read current money after adding.
-            int after = economy.Money;
-            Log.LogInfo($"{sourceTag}: currency after grant = {after}");
-
-            // Success if the money increased.
-            return after > before;
-        }
-        catch (Exception ex)
-        {
-            Log.LogError($"{sourceTag}: exception while granting currency:\n{ex}");
-            return false;
-        }
-    }
-
     // Grants ingredients through InventoryManager using the item's internal ID.
     internal static bool TryGrantIngredient(PendingItem item, string sourceTag)
     {
@@ -438,31 +451,42 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Grants a "Puppy's Treat" key item.
-    internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
+    // Grants crafting materials through InventoryManager using the item's internal ID.
+    internal static bool TryGrantMaterial(PendingItem item, string sourceTag)
     {
-        Log.LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
+        // Friendly log line for readability.
+        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         var inventory = Singleton<InventoryManager>.Instance;
 
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: puppy treat grant failed, InventoryManager is null.");
+            Log.LogWarning($"{sourceTag}: material grant failed, InventoryManager is null.");
             return false;
         }
 
-        bool alreadyOwned = inventory.HasItem(item.Id);
+        try
+        {
+            // Read amount before grant.
+            int before = inventory.GetItemAmount(item.Id);
+            Log.LogInfo($"{sourceTag}: material {item.Id} before grant = {before}");
 
-        Log.LogInfo($"{sourceTag}: puppy treat {item.Id}, alreadyOwned={alreadyOwned}");
+            // Try to add the material by item id.
+            bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
+            Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
-        if (alreadyOwned)
-            return true;
+            // Read amount after grant.
+            int after = inventory.GetItemAmount(item.Id);
+            Log.LogInfo($"{sourceTag}: material {item.Id} after grant = {after}");
 
-        bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
-
-        Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
-
-        return addResult;
+            // Success if amount increased.
+            return after > before;
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"{sourceTag}: exception while granting material {item.Id}:\n{ex}");
+            return false;
+        }
     }
 
     // Grants a cassette / collectible using the game's cassette manager.
@@ -507,6 +531,33 @@ public class LaikaMod : BaseUnityPlugin
             Log.LogError($"{sourceTag}: exception while granting cassette {item.Id}:\n{ex}");
             return false;
         }
+    }
+
+    // Grants a "Puppy's Treat" key item.
+    internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
+    {
+        Log.LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
+
+        var inventory = Singleton<InventoryManager>.Instance;
+
+        if (inventory == null)
+        {
+            Log.LogWarning($"{sourceTag}: puppy treat grant failed, InventoryManager is null.");
+            return false;
+        }
+
+        bool alreadyOwned = inventory.HasItem(item.Id);
+
+        Log.LogInfo($"{sourceTag}: puppy treat {item.Id}, alreadyOwned={alreadyOwned}");
+
+        if (alreadyOwned)
+            return true;
+
+        bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
+
+        Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+
+        return addResult;
     }
 
     // Grants a key item through the game's inventory system.
@@ -744,14 +795,20 @@ public class LaikaMod : BaseUnityPlugin
 // High-level AP item categories.
 public enum ItemKind
 {
+    Currency,
+
     Weapon,
     WeaponUpgrade,
-    Currency,
+
     Ingredient,
+    Material,
+
     Collectible,
     PuppyTreat,
+
     KeyItem,
     MapUnlock,
+
     Unknown
 }
 
