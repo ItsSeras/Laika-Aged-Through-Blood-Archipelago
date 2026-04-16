@@ -34,6 +34,16 @@ public class LaikaMod : BaseUnityPlugin
     // Prevents duplicate map-unlock check logs during the current session.
     internal static HashSet<string> SentMapUnlockChecksThisSession = new HashSet<string>();
 
+    // Tracks deaths during the current AP session only.
+    internal static int LocalDeathsThisSession = 0;
+
+    // Tracks deaths since the last DeathLink would send.
+    internal static int DeathsSinceLastDeathLink = 0;
+
+    // One-shot suppression counter for inbound DeathLink kills.
+    // When set to 1, the next detected death will not count toward outbound DeathLink logic.
+    internal static int SuppressedDeathLinksRemaining = 0;
+
     // Temporary world options used for future YAML/config support.
     // For now this is hardcoded, but later it can be loaded from a YAML file.
     internal static APWorldOptions WorldOptions = new APWorldOptions();
@@ -49,11 +59,24 @@ public class LaikaMod : BaseUnityPlugin
         // Change this to Crafting to test unique-material weapon unlocks instead of direct weapon grants.
         WorldOptions.WeaponMode = WeaponGrantMode.Direct;
 
+        // Temporary hardcoded DeathLink options for future YAML support.
+        // For now this only controls local logging behavior.
+        WorldOptions.DeathLinkEnabled = true;
+        WorldOptions.DeathAmnestyEnabled = true;
+        WorldOptions.DeathAmnestyCount = 3;
+
         // Save logger for static patches.
         Log = Logger;
 
         // Confirm plugin loaded.
-        Log.LogInfo($"Laika AP Prototype loaded. WeaponMode={WorldOptions.WeaponMode}, DevStress={EnableDevelopmentStressTest}");
+        Log.LogInfo(
+            $"Laika AP Prototype loaded. " +
+            $"WeaponMode={WorldOptions.WeaponMode}, " +
+            $"DevStress={EnableDevelopmentStressTest}, " +
+            $"DeathLink={WorldOptions.DeathLinkEnabled}, " +
+            $"DeathAmnesty={WorldOptions.DeathAmnestyEnabled}, " +
+            $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}"
+        );
 
         // Development stress test items.
         if (EnableDevelopmentStressTest)
@@ -746,6 +769,88 @@ public class LaikaMod : BaseUnityPlugin
         );
     }
 
+    // ===== DeathLink helpers =====
+    // Kept for safety in case other game flows call the explicit RiderHead.Kill(bool, bool) overload.
+    // Handles AP-local death counting after a real player death is detected.
+    internal static void OnPlayerDeathDetected(string sourceTag, bool? useBlood = null, bool? moneySack = null)
+    {
+        try
+        {
+            // If this death was caused by a future incoming DeathLink,
+            // do not count it toward outbound DeathLink logic.
+            if (SuppressedDeathLinksRemaining > 0)
+            {
+                SuppressedDeathLinksRemaining--;
+
+                Log.LogInfo(
+                    $"{sourceTag} | " +
+                    $"Incoming DeathLink suppression consumed. " +
+                    $"RemainingSuppressedDeaths={SuppressedDeathLinksRemaining}"
+                );
+
+                return;
+            }
+
+            // Increment AP-local counters only.
+            // Do not use the game's total "deaths" stat for death amnesty.
+            LocalDeathsThisSession++;
+            DeathsSinceLastDeathLink++;
+
+            Log.LogInfo(
+                $"{sourceTag} | " +
+                $"SessionDeaths={LocalDeathsThisSession}, " +
+                $"DeathsSinceLastLink={DeathsSinceLastDeathLink}, " +
+                $"useBlood={(useBlood.HasValue ? useBlood.Value.ToString() : "<default>")}, " +
+                $"moneySack={(moneySack.HasValue ? moneySack.Value.ToString() : "<default>")}"
+            );
+
+            // Evaluate what DeathLink would do for this death.
+            EvaluateDeathLinkAfterLocalDeath(sourceTag);
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"OnPlayerDeathDetected exception:\n{ex}");
+        }
+    }
+
+    // Evaluates whether the current local death should count toward DeathLink
+    // and logs what would happen.
+    // For now this is log-only scaffolding until real AP networking is added.
+    internal static void EvaluateDeathLinkAfterLocalDeath(string sourceTag)
+    {
+        // If DeathLink is disabled entirely, do nothing.
+        if (!WorldOptions.DeathLinkEnabled)
+        {
+            Log.LogInfo($"{sourceTag}: DeathLink disabled. No outbound DeathLink would be sent.");
+            return;
+        }
+
+        // If death amnesty is disabled, every valid local death would send immediately.
+        if (!WorldOptions.DeathAmnestyEnabled)
+        {
+            Log.LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty disabled).");
+            return;
+        }
+
+        // Safety clamp in case a bad config sets the threshold too low.
+        int requiredDeaths = Math.Max(1, WorldOptions.DeathAmnestyCount);
+
+        Log.LogInfo(
+            $"{sourceTag}: Death Amnesty Progress = {DeathsSinceLastDeathLink} / {requiredDeaths}"
+        );
+
+        // When enough deaths are reached, a DeathLink would send.
+        if (DeathsSinceLastDeathLink >= requiredDeaths)
+        {
+            Log.LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty threshold reached).");
+
+            // Reset the amnesty counter after a "send".
+            DeathsSinceLastDeathLink = 0;
+
+            Log.LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after simulated send.");
+        }
+    }
+
     // ===== Harmony patches =====
     [HarmonyPatch(typeof(WeaponsOverlay), "InitializeWeaponsData")]
     public class WeaponsOverlayPatch
@@ -859,6 +964,26 @@ public class LaikaMod : BaseUnityPlugin
             }
         }
     }
+
+    // Detects player death when the parameterless RiderHead.Kill() overload is used.
+    [HarmonyPatch(typeof(global::RiderHead), "Kill", new Type[] { })]
+    public class PlayerDeathPatch_NoArgs
+    {
+        static void Prefix()
+        {
+            LaikaMod.OnPlayerDeathDetected("PLAYER DEATH DETECTED (Kill())");
+        }
+    }
+
+    // Detects player death when the RiderHead.Kill(bool useBlood, bool moneySack) overload is used.
+    [HarmonyPatch(typeof(global::RiderHead), "Kill", new Type[] { typeof(bool), typeof(bool) })]
+    public class PlayerDeathPatch_WithArgs
+    {
+        static void Prefix(bool useBlood, bool moneySack)
+        {
+            LaikaMod.OnPlayerDeathDetected("PLAYER DEATH DETECTED (Kill(bool,bool))", useBlood, moneySack);
+        }
+    }
 }
 
 // ===== Models / enums =====
@@ -904,6 +1029,17 @@ public class APWorldOptions
     // Controls whether major weapons are granted directly
     // or represented by their unique crafting materials instead.
     public WeaponGrantMode WeaponMode { get; set; } = WeaponGrantMode.Direct;
+
+    // Enables or disables DeathLink behavior entirely.
+    // For now this only affects local logging/scaffolding.
+    public bool DeathLinkEnabled { get; set; } = false;
+
+    // Enables death amnesty behavior.
+    // When enabled, local deaths only "send" a DeathLink after enough deaths accumulate.
+    public bool DeathAmnestyEnabled { get; set; } = false;
+
+    // Number of local deaths required before a DeathLink would send when amnesty is enabled.
+    public int DeathAmnestyCount { get; set; } = 1;
 }
 
 // Represents one pending AP-style item waiting to be granted.
