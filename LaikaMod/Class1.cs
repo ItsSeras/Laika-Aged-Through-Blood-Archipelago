@@ -26,6 +26,7 @@ public class LaikaMod : BaseUnityPlugin
     // Prevent nested queue processing when UI refreshes trigger more hooks.
     internal static bool IsProcessingQueue = false;
 
+    // NOTE: Ingredient & Cassette logging is currently inactive, but kept for future item-id discovery logging.
     // Prevents ingredient IDs from being logged more than once.
     // Without this, every UI refresh would spam the console repeatedly.
     internal static bool IngredientIdsLogged = false;
@@ -124,7 +125,8 @@ public class LaikaMod : BaseUnityPlugin
         AddOverlayLine("[ERROR] " + message);
     }
 
-    // Adds a line to the in-game developer overlay buffer.
+    // Adds a new recent activity line, shows the recent-log panel,
+    // and resets the auto-hide timer through the persistent overlay controller.
     internal static void AddOverlayLine(string line)
     {
         OverlayLines.Enqueue(line);
@@ -135,7 +137,6 @@ public class LaikaMod : BaseUnityPlugin
         }
 
         ShowRecentLogOverlay = true;
-        LastRecentLogActivityTime = Time.unscaledTime;
 
         if (ActiveDevOverlayController != null)
         {
@@ -265,8 +266,7 @@ public class LaikaMod : BaseUnityPlugin
 
     // Recent-log box visibility is separate from the always-visible status HUD.
     internal static bool ShowRecentLogOverlay = false;
-    internal static float LastRecentLogActivityTime = 0f;
-    internal static float RecentLogAutoHideDelaySeconds = 2f;
+    internal static float RecentLogAutoHideDelaySeconds = 10f;
 
     // Creates the developer overlay canvas if it does not already exist.
     internal static void EnsureDevOverlayCanvas()
@@ -359,6 +359,8 @@ public class LaikaMod : BaseUnityPlugin
         Log.LogInfo("Dev overlay canvas created.");
     }
 
+    // Redraws both overlay panels based on the current shared overlay state.
+    // This method does not own timing; it only reflects the latest state to the UI.
     // Refreshes the overlay text and visibility.
     internal static void RefreshDevOverlay()
     {
@@ -387,7 +389,8 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Ensures a persistent runtime overlay controller exists.
+    // This parameter is only used as a safe creation hook.
+    // The controller itself is created on its own persistent object.
     internal static void EnsureRuntimeDevOverlay(WeaponsOverlay weaponsOverlay)
     {
         if (weaponsOverlay == null)
@@ -566,7 +569,8 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Working weapon grant handler.
+    // Ownership-based grant handlers.
+    // These usually treat already-owned items as success so they do not remain stuck in the queue.
     internal static bool TryGrantWeapon(PendingItem item, string sourceTag)
     {
         var inventory = Singleton<WeaponsInventory>.Instance;
@@ -761,7 +765,8 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Grants a "Puppy's Treat" key item.
+    // Puppy treats are tracked through the normal inventory system.
+    // If already owned, treat the grant as success so the item does not stay stuck in the queue.
     internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
     {
         LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
@@ -1073,6 +1078,7 @@ public class LaikaMod : BaseUnityPlugin
                 // LogAllIngredientIds();
             }
 
+            // Only log cassette IDs once per launch.
             if (!CassetteIdsLogged)
             {
                 CassetteIdsLogged = true;
@@ -1189,11 +1195,13 @@ public class LaikaMod : BaseUnityPlugin
             LaikaMod.OnPlayerDeathDetected("PLAYER DEATH DETECTED (Kill(bool,bool))", useBlood, moneySack);
         }
     }
+
+    // Update only exists to ensure one-time initialization confirmation.
+    // Recent log visibility is driven by AddOverlayLine(...) + Invoke-based auto-hide.
     public class DevOverlayController : MonoBehaviour
     {
         private bool initialized = false;
         private bool updateLoggedOnce = false;
-        private bool inputPollingLoggedOnce = false;
 
         void Start()
         {
@@ -1217,52 +1225,17 @@ public class LaikaMod : BaseUnityPlugin
                 updateLoggedOnce = true;
                 LaikaMod.Log.LogInfo("DevOverlayController Update() is running.");
             }
-
-            if (!inputPollingLoggedOnce)
-            {
-                inputPollingLoggedOnce = true;
-                LaikaMod.Log.LogInfo("DevOverlayController input polling is active. Test keys: Shift+9 toggle, Shift+0 clear.");
-            }
-
-            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Alpha9))
-            {
-                LaikaMod.ShowRecentLogOverlay = !LaikaMod.ShowRecentLogOverlay;
-
-                if (LaikaMod.ShowRecentLogOverlay)
-                {
-                    ResetRecentLogAutoHideTimer();
-                }
-                else
-                {
-                    CancelInvoke(nameof(HideRecentLogs));
-                }
-
-                LaikaMod.Log.LogInfo(
-                    $"Recent log overlay toggled by keypress: {(LaikaMod.ShowRecentLogOverlay ? "ON" : "OFF")}"
-                );
-
-                LaikaMod.RefreshDevOverlay();
-            }
-
-            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Alpha0))
-            {
-                LaikaMod.OverlayLines.Clear();
-                LaikaMod.ShowRecentLogOverlay = false;
-                CancelInvoke(nameof(HideRecentLogs));
-
-                LaikaMod.Log.LogInfo("Dev overlay log cleared by keypress.");
-                LaikaMod.RefreshDevOverlay();
-            }
-
-            LaikaMod.RefreshDevOverlay();
         }
 
+        // Cancels any pending hide callback and schedules a new one.
+        // This makes each new recent-log event extend the panel's visibility window.
         public void ResetRecentLogAutoHideTimer()
         {
             CancelInvoke(nameof(HideRecentLogs));
             Invoke(nameof(HideRecentLogs), LaikaMod.RecentLogAutoHideDelaySeconds);
         }
 
+        // Called by Invoke(...) after RecentLogAutoHideDelaySeconds of inactivity.
         private void HideRecentLogs()
         {
             LaikaMod.Log.LogInfo("Recent log overlay auto-hidden.");
@@ -1280,7 +1253,6 @@ public class LaikaMod : BaseUnityPlugin
             initialized = true;
 
             LaikaMod.ShowRecentLogOverlay = false;
-            LaikaMod.LastRecentLogActivityTime = Time.unscaledTime;
 
             LaikaMod.RefreshDevOverlay();
             LaikaMod.Log.LogInfo("DevOverlayController initialized runtime overlay.");
