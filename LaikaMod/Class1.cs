@@ -5,12 +5,14 @@ using Laika.Cassettes;
 using Laika.Economy;
 using Laika.Inventory;
 using Laika.Persistence;
+using Laika.PlayMaker.FsmActions;
 using Laika.Quests;
 using Laika.UI.InGame.Inventory;
 using System;
 using System.Collections.Generic;
 using System.Text;
-using Laika.PlayMaker.FsmActions;
+using UnityEngine;
+using UnityEngine.UI;
 
 [BepInPlugin("com.seras.laikaapprototype", "Laika AP Prototype", "1.0.0")]
 public class LaikaMod : BaseUnityPlugin
@@ -52,6 +54,14 @@ public class LaikaMod : BaseUnityPlugin
     // Enqueues development stress test items when set to true.
     internal static bool EnableDevelopmentStressTest = false;
 
+    // Canvas-based dev overlay objects.
+    internal static GameObject DevOverlayCanvasObject;
+    internal static Text DevOverlayStatusText;
+    internal static Text DevOverlayRecentLogText;
+
+    internal static GameObject DevOverlayControllerObject;
+    internal static DevOverlayController ActiveDevOverlayController;
+
     // ===== Startup =====
     private void Awake()
     {
@@ -61,12 +71,15 @@ public class LaikaMod : BaseUnityPlugin
 
         // Temporary hardcoded DeathLink options for future YAML support.
         // For now this only controls local logging behavior.
-        WorldOptions.DeathLinkEnabled = true;
-        WorldOptions.DeathAmnestyEnabled = true;
+        WorldOptions.DeathLinkEnabled = false;
+        WorldOptions.DeathAmnestyEnabled = false;
         WorldOptions.DeathAmnestyCount = 3;
 
         // Save logger for static patches.
         Log = Logger;
+
+        // Make absolutely sure the plugin component is enabled for Update() / OnGUI().
+        enabled = true;
 
         // Confirm plugin loaded.
         Log.LogInfo(
@@ -92,6 +105,46 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Discovery / debug helpers =====
+    // Logs a message to both BepInEx and the in-game developer overlay.
+    internal static void LogInfo(string message)
+    {
+        Log.LogInfo(message);
+        AddOverlayLine("[INFO] " + message);
+    }
+
+    internal static void LogWarning(string message)
+    {
+        Log.LogWarning(message);
+        AddOverlayLine("[WARN] " + message);
+    }
+
+    internal static void LogError(string message)
+    {
+        Log.LogError(message);
+        AddOverlayLine("[ERROR] " + message);
+    }
+
+    // Adds a line to the in-game developer overlay buffer.
+    internal static void AddOverlayLine(string line)
+    {
+        OverlayLines.Enqueue(line);
+
+        while (OverlayLines.Count > MaxOverlayLines)
+        {
+            OverlayLines.Dequeue();
+        }
+
+        ShowRecentLogOverlay = true;
+        LastRecentLogActivityTime = Time.unscaledTime;
+
+        if (ActiveDevOverlayController != null)
+        {
+            ActiveDevOverlayController.ResetRecentLogAutoHideTimer();
+        }
+
+        RefreshDevOverlay();
+    }
+
     // Logs every ingredient ID the game has loaded.
     // This helps us discover real ingredient IDs for testing.
     internal static void LogAllIngredientIds()
@@ -102,7 +155,7 @@ public class LaikaMod : BaseUnityPlugin
         // Safety check in case loader somehow isn't ready yet.
         if (loader == null)
         {
-            Log.LogWarning("ItemDataLoader is null.");
+            LogWarning("ItemDataLoader is null.");
             return;
         }
 
@@ -112,12 +165,12 @@ public class LaikaMod : BaseUnityPlugin
         // Another safety check.
         if (ingredients == null)
         {
-            Log.LogWarning("GetAllIngredientDatas returned null.");
+            LogWarning("GetAllIngredientDatas returned null.");
             return;
         }
 
         // Print how many ingredients exist total.
-        Log.LogInfo($"INGREDIENT LIST START: count={ingredients.Count}");
+        LogInfo($"INGREDIENT LIST START: count={ingredients.Count}");
 
         // Loop through every ingredient.
         foreach (var ingredient in ingredients)
@@ -127,10 +180,10 @@ public class LaikaMod : BaseUnityPlugin
                 continue;
 
             // Print the ingredient's internal ID.
-            Log.LogInfo($"INGREDIENT ID: {ingredient.id}");
+            LogInfo($"INGREDIENT ID: {ingredient.id}");
         }
 
-        Log.LogInfo("INGREDIENT LIST END");
+        LogInfo("INGREDIENT LIST END");
     }
 
     // Logs every cassette ID the game has loaded.
@@ -143,7 +196,7 @@ public class LaikaMod : BaseUnityPlugin
         // Safety check in case loader is not ready yet.
         if (loader == null)
         {
-            Log.LogWarning("CassettesDataLoader is null.");
+            LogWarning("CassettesDataLoader is null.");
             return;
         }
 
@@ -153,12 +206,12 @@ public class LaikaMod : BaseUnityPlugin
         // Another safety check.
         if (cassetteIds == null)
         {
-            Log.LogWarning("GetCassetteIds returned null.");
+            LogWarning("GetCassettesIds returned null.");
             return;
         }
 
         // Print how many cassettes exist total.
-        Log.LogInfo($"CASSETTE LIST START: count={cassetteIds.Count}");
+        LogInfo($"CASSETTE LIST START: count={cassetteIds.Count}");
 
         // Loop through every cassette ID.
         foreach (var cassetteId in cassetteIds)
@@ -166,10 +219,10 @@ public class LaikaMod : BaseUnityPlugin
             if (string.IsNullOrEmpty(cassetteId))
                 continue;
 
-            Log.LogInfo($"CASSETTE ID: {cassetteId}");
+            LogInfo($"CASSETTE ID: {cassetteId}");
         }
 
-        Log.LogInfo("CASSETTE LIST END");
+        LogInfo("CASSETTE LIST END");
     }
 
     // Logs the current visible weapon inventory for debugging before/after queue processing.
@@ -179,13 +232,13 @@ public class LaikaMod : BaseUnityPlugin
 
         if (inventory == null)
         {
-            Log.LogWarning($"{label}: WeaponsInventory is null.");
+            LogWarning($"{label}: WeaponsInventory is null.");
             return;
         }
 
         if (inventory.Weapons == null)
         {
-            Log.LogWarning($"{label}: Weapons list is null.");
+            LogWarning($"{label}: Weapons list is null.");
             return;
         }
 
@@ -200,7 +253,158 @@ public class LaikaMod : BaseUnityPlugin
             sb.Append($" | {weapon.Id}");
         }
 
-        Log.LogInfo(sb.ToString());
+        LogInfo(sb.ToString());
+    }
+
+    // ===== Dev overlay state =====
+    // Stores recent on-screen debug lines for the in-game developer overlay.
+    internal static Queue<string> OverlayLines = new Queue<string>();
+
+    // Maximum number of lines to keep in the overlay at once.
+    internal static int MaxOverlayLines = 10;
+
+    // Recent-log box visibility is separate from the always-visible status HUD.
+    internal static bool ShowRecentLogOverlay = false;
+    internal static float LastRecentLogActivityTime = 0f;
+    internal static float RecentLogAutoHideDelaySeconds = 2f;
+
+    // Creates the developer overlay canvas if it does not already exist.
+    internal static void EnsureDevOverlayCanvas()
+    {
+        if (DevOverlayCanvasObject != null)
+            return;
+
+        Font builtInFont = Resources.GetBuiltinResource<Font>("Arial.ttf");
+        Log.LogInfo($"Dev overlay font loaded: {(builtInFont != null)}");
+
+        DevOverlayCanvasObject = new GameObject("LaikaAPDevOverlayCanvas");
+        DontDestroyOnLoad(DevOverlayCanvasObject);
+
+        Canvas canvas = DevOverlayCanvasObject.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 32767;
+        canvas.pixelPerfect = false;
+        canvas.targetDisplay = 0;
+
+        CanvasScaler scaler = DevOverlayCanvasObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+
+        DevOverlayCanvasObject.AddComponent<GraphicRaycaster>();
+
+        // ===== Permanent status panel =====
+        GameObject statusPanel = new GameObject("OverlayStatusPanel");
+        statusPanel.transform.SetParent(DevOverlayCanvasObject.transform, false);
+
+        Image statusBg = statusPanel.AddComponent<Image>();
+        statusBg.color = new Color(0f, 0f, 0f, 0.65f);
+
+        RectTransform statusPanelRect = statusPanel.GetComponent<RectTransform>();
+        statusPanelRect.anchorMin = new Vector2(0f, 0f);
+        statusPanelRect.anchorMax = new Vector2(0f, 0f);
+        statusPanelRect.pivot = new Vector2(0f, 0f);
+        statusPanelRect.anchoredPosition = new Vector2(20f, 300f);
+        statusPanelRect.sizeDelta = new Vector2(320f, 150f);
+
+        GameObject statusTextObj = new GameObject("OverlayStatusText");
+        statusTextObj.transform.SetParent(statusPanel.transform, false);
+
+        DevOverlayStatusText = statusTextObj.AddComponent<Text>();
+        DevOverlayStatusText.font = builtInFont;
+        DevOverlayStatusText.fontSize = 16;
+        DevOverlayStatusText.color = Color.white;
+        DevOverlayStatusText.alignment = TextAnchor.UpperLeft;
+        DevOverlayStatusText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        DevOverlayStatusText.verticalOverflow = VerticalWrapMode.Overflow;
+
+        RectTransform statusTextRect = statusTextObj.GetComponent<RectTransform>();
+        statusTextRect.anchorMin = new Vector2(0f, 0f);
+        statusTextRect.anchorMax = new Vector2(1f, 1f);
+        statusTextRect.offsetMin = new Vector2(10f, 10f);
+        statusTextRect.offsetMax = new Vector2(-10f, -10f);
+
+        // ===== Recent log panel =====
+        GameObject logPanel = new GameObject("OverlayRecentLogPanel");
+        logPanel.transform.SetParent(DevOverlayCanvasObject.transform, false);
+
+        Image logBg = logPanel.AddComponent<Image>();
+        logBg.color = new Color(0f, 0f, 0f, 0.65f);
+
+        RectTransform logPanelRect = logPanel.GetComponent<RectTransform>();
+        logPanelRect.anchorMin = new Vector2(0f, 0f);
+        logPanelRect.anchorMax = new Vector2(0f, 0f);
+        logPanelRect.pivot = new Vector2(0f, 0f);
+        logPanelRect.anchoredPosition = new Vector2(20f, 20f);
+        logPanelRect.sizeDelta = new Vector2(700f, 240f);
+
+        GameObject logTextObj = new GameObject("OverlayRecentLogText");
+        logTextObj.transform.SetParent(logPanel.transform, false);
+
+        DevOverlayRecentLogText = logTextObj.AddComponent<Text>();
+        DevOverlayRecentLogText.font = builtInFont;
+        DevOverlayRecentLogText.fontSize = 12;
+        DevOverlayRecentLogText.color = Color.white;
+        DevOverlayRecentLogText.alignment = TextAnchor.UpperLeft;
+        DevOverlayRecentLogText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        DevOverlayRecentLogText.verticalOverflow = VerticalWrapMode.Overflow;
+
+        RectTransform logTextRect = logTextObj.GetComponent<RectTransform>();
+        logTextRect.anchorMin = new Vector2(0f, 0f);
+        logTextRect.anchorMax = new Vector2(1f, 1f);
+        logTextRect.offsetMin = new Vector2(12f, 12f);
+        logTextRect.offsetMax = new Vector2(-12f, -12f);
+
+        Canvas.ForceUpdateCanvases();
+        Log.LogInfo("Dev overlay canvas created.");
+    }
+
+    // Refreshes the overlay text and visibility.
+    internal static void RefreshDevOverlay()
+    {
+        if (DevOverlayCanvasObject == null || DevOverlayStatusText == null || DevOverlayRecentLogText == null)
+            return;
+
+        DevOverlayStatusText.text =
+            "Laika AP Dev Overlay\n\n" +
+            $"Queue={PendingItemQueue.Count}\n" +
+            $"SessionDeaths={LocalDeathsThisSession}\n" +
+            $"DeathsSinceLastLink={DeathsSinceLastDeathLink}\n" +
+            $"DeathLink={WorldOptions.DeathLinkEnabled}\n" +
+            $"DeathAmnesty={WorldOptions.DeathAmnestyEnabled} ({WorldOptions.DeathAmnestyCount})";
+
+        DevOverlayRecentLogText.transform.parent.gameObject.SetActive(ShowRecentLogOverlay);
+
+        if (ShowRecentLogOverlay)
+        {
+            DevOverlayRecentLogText.text =
+                "Recent Logs:\n\n" +
+                string.Join("\n", OverlayLines.ToArray());
+        }
+        else
+        {
+            DevOverlayRecentLogText.text = string.Empty;
+        }
+    }
+
+    // Ensures a persistent runtime overlay controller exists.
+    internal static void EnsureRuntimeDevOverlay(WeaponsOverlay weaponsOverlay)
+    {
+        if (weaponsOverlay == null)
+        {
+            LogWarning("EnsureRuntimeDevOverlay: WeaponsOverlay was null.");
+            return;
+        }
+
+        if (ActiveDevOverlayController != null)
+            return;
+
+        DevOverlayControllerObject = new GameObject("LaikaAPDevOverlayController");
+        DontDestroyOnLoad(DevOverlayControllerObject);
+
+        ActiveDevOverlayController = DevOverlayControllerObject.AddComponent<DevOverlayController>();
+
+        Log.LogInfo("Created persistent DevOverlayController object.");
     }
 
     // ===== Queue processing =====
@@ -225,7 +429,7 @@ public class LaikaMod : BaseUnityPlugin
     internal static void EnqueueItem(PendingItem item)
     {
         PendingItemQueue.Enqueue(item);
-        Log.LogInfo($"QUEUE: added pending item -> {item}");
+        LogInfo($"QUEUE: added pending item -> {item}");
     }
 
     // Main queue processor. Called when game systems are in a good state.
@@ -233,7 +437,7 @@ public class LaikaMod : BaseUnityPlugin
     {
         if (IsProcessingQueue)
         {
-            Log.LogInfo($"{sourceTag}: queue processing already in progress, skipping nested call.");
+            LogInfo($"{sourceTag}: queue processing already in progress, skipping nested call.");
             return;
         }
 
@@ -247,7 +451,7 @@ public class LaikaMod : BaseUnityPlugin
 
         try
         {
-            Log.LogInfo($"{sourceTag}: starting queue processing. Count={PendingItemQueue.Count}");
+            LogInfo($"{sourceTag}: starting queue processing. Count={PendingItemQueue.Count}");
             LogWeaponInventorySnapshot($"{sourceTag} BEFORE");
 
             Queue<PendingItem> remainingQueue = new Queue<PendingItem>();
@@ -262,13 +466,13 @@ public class LaikaMod : BaseUnityPlugin
 
                     if (!granted)
                     {
-                        Log.LogWarning($"{sourceTag}: item not granted, re-queueing -> {item}");
+                        LogWarning($"{sourceTag}: item not granted, re-queueing -> {item}");
                         remainingQueue.Enqueue(item);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Log.LogError($"{sourceTag}: exception while processing {item}:\n{ex}");
+                    LogError($"{sourceTag}: exception while processing {item}:\n{ex}");
                     remainingQueue.Enqueue(item);
                 }
             }
@@ -276,7 +480,7 @@ public class LaikaMod : BaseUnityPlugin
             PendingItemQueue = remainingQueue;
 
             LogWeaponInventorySnapshot($"{sourceTag} AFTER");
-            Log.LogInfo($"{sourceTag}: queue processing finished. Remaining={PendingItemQueue.Count}");
+            LogInfo($"{sourceTag}: queue processing finished. Remaining={PendingItemQueue.Count}");
         }
         finally
         {
@@ -288,7 +492,7 @@ public class LaikaMod : BaseUnityPlugin
     // Routes an item to the correct grant handler.
     internal static bool TryGrantPendingItem(PendingItem item, string sourceTag)
     {
-        Log.LogInfo($"{sourceTag}: processing {item}");
+        LogInfo($"{sourceTag}: processing {item}");
 
         switch (item.Kind)
         {
@@ -320,7 +524,7 @@ public class LaikaMod : BaseUnityPlugin
                 return TryGrantMapUnlock(item, sourceTag);
 
             default:
-                Log.LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
+                LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
                 return false;
         }
     }
@@ -329,13 +533,13 @@ public class LaikaMod : BaseUnityPlugin
     internal static bool TryGrantCurrency(PendingItem item, string sourceTag)
     {
         // Friendly log line for player-facing readability.
-        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+        LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         var economy = Singleton<EconomyManager>.Instance;
 
         if (economy == null)
         {
-            Log.LogWarning($"{sourceTag}: currency grant failed, EconomyManager is null.");
+            LogWarning($"{sourceTag}: currency grant failed, EconomyManager is null.");
             return false;
         }
 
@@ -343,21 +547,21 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Read current money before adding.
             int before = economy.Money;
-            Log.LogInfo($"{sourceTag}: currency before grant = {before}");
+            LogInfo($"{sourceTag}: currency before grant = {before}");
 
             // Add the requested amount.
             economy.AddMoney(item.Amount);
 
             // Read current money after adding.
             int after = economy.Money;
-            Log.LogInfo($"{sourceTag}: currency after grant = {after}");
+            LogInfo($"{sourceTag}: currency after grant = {after}");
 
             // Success if the money increased.
             return after > before;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while granting currency:\n{ex}");
+            LogError($"{sourceTag}: exception while granting currency:\n{ex}");
             return false;
         }
     }
@@ -369,30 +573,30 @@ public class LaikaMod : BaseUnityPlugin
 
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: weapon grant failed, WeaponsInventory is null.");
+            LogWarning($"{sourceTag}: weapon grant failed, WeaponsInventory is null.");
             return false;
         }
 
         if (inventory.Weapons == null)
         {
-            Log.LogWarning($"{sourceTag}: weapon grant failed, Weapons list is null.");
+            LogWarning($"{sourceTag}: weapon grant failed, Weapons list is null.");
             return false;
         }
 
         bool alreadyOwned = inventory.HasWeapon(item.Id);
-        Log.LogInfo($"{sourceTag}: weapon {item.Id}, alreadyOwned={alreadyOwned}");
+        LogInfo($"{sourceTag}: weapon {item.Id}, alreadyOwned={alreadyOwned}");
 
         if (alreadyOwned)
         {
-            Log.LogInfo($"{sourceTag}: skipping weapon {item.Id} because player already owns it.");
+            LogInfo($"{sourceTag}: skipping weapon {item.Id} because player already owns it.");
             return true;
         }
 
         bool addResult = inventory.AddWeapon(item.Id);
-        Log.LogInfo($"{sourceTag}: AddWeapon({item.Id}) returned {addResult}");
+        LogInfo($"{sourceTag}: AddWeapon({item.Id}) returned {addResult}");
 
         bool ownedAfter = inventory.HasWeapon(item.Id);
-        Log.LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for weapon {item.Id}");
+        LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for weapon {item.Id}");
 
         return ownedAfter;
     }
@@ -401,7 +605,7 @@ public class LaikaMod : BaseUnityPlugin
     internal static bool TryGrantWeaponUpgrade(PendingItem item, string sourceTag)
     {
         // Friendly log line for readability.
-        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+        LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         // Grab the runtime weapons inventory singleton.
         var weaponsInventory = Singleton<WeaponsInventory>.Instance;
@@ -409,7 +613,7 @@ public class LaikaMod : BaseUnityPlugin
         // Safety check in case the manager is not ready yet.
         if (weaponsInventory == null)
         {
-            Log.LogWarning($"{sourceTag}: weapon upgrade grant failed, WeaponsInventory is null.");
+            LogWarning($"{sourceTag}: weapon upgrade grant failed, WeaponsInventory is null.");
             return false;
         }
 
@@ -417,25 +621,25 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Make sure the player actually owns the weapon before trying to upgrade it.
             bool alreadyOwned = weaponsInventory.HasWeapon(item.Id);
-            Log.LogInfo($"{sourceTag}: weapon upgrade target {item.Id}, alreadyOwned={alreadyOwned}");
+            LogInfo($"{sourceTag}: weapon upgrade target {item.Id}, alreadyOwned={alreadyOwned}");
 
             // If the player does not own the weapon yet, do not consume the queue item.
             if (!alreadyOwned)
             {
-                Log.LogWarning($"{sourceTag}: cannot upgrade weapon {item.Id} because player does not own it yet.");
+                LogWarning($"{sourceTag}: cannot upgrade weapon {item.Id} because player does not own it yet.");
                 return false;
             }
 
             // Ask the game to upgrade the weapon by one level.
             bool upgradeResult = weaponsInventory.UpgradeWeapon(item.Id);
-            Log.LogInfo($"{sourceTag}: UpgradeWeapon({item.Id}) returned {upgradeResult}");
+            LogInfo($"{sourceTag}: UpgradeWeapon({item.Id}) returned {upgradeResult}");
 
             // Trust the game's own result here.
             return upgradeResult;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while upgrading weapon {item.Id}:\n{ex}");
+            LogError($"{sourceTag}: exception while upgrading weapon {item.Id}:\n{ex}");
             return false;
         }
     }
@@ -447,7 +651,7 @@ public class LaikaMod : BaseUnityPlugin
 
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: ingredient grant failed, InventoryManager is null.");
+            LogWarning($"{sourceTag}: ingredient grant failed, InventoryManager is null.");
             return false;
         }
 
@@ -455,22 +659,22 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Read amount before grant.
             int before = inventory.GetItemAmount(item.Id);
-            Log.LogInfo($"{sourceTag}: ingredient {item.Id} before grant = {before}");
+            LogInfo($"{sourceTag}: ingredient {item.Id} before grant = {before}");
 
             // Try to add the ingredient by item id.
             bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
-            Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+            LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
             // Read amount after grant.
             int after = inventory.GetItemAmount(item.Id);
-            Log.LogInfo($"{sourceTag}: ingredient {item.Id} after grant = {after}");
+            LogInfo($"{sourceTag}: ingredient {item.Id} after grant = {after}");
 
             // Success if amount increased.
             return after > before;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while granting ingredient {item.Id}:\n{ex}");
+            LogError($"{sourceTag}: exception while granting ingredient {item.Id}:\n{ex}");
             return false;
         }
     }
@@ -479,13 +683,13 @@ public class LaikaMod : BaseUnityPlugin
     internal static bool TryGrantMaterial(PendingItem item, string sourceTag)
     {
         // Friendly log line for readability.
-        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+        LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         var inventory = Singleton<InventoryManager>.Instance;
 
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: material grant failed, InventoryManager is null.");
+            LogWarning($"{sourceTag}: material grant failed, InventoryManager is null.");
             return false;
         }
 
@@ -493,22 +697,22 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Read amount before grant.
             int before = inventory.GetItemAmount(item.Id);
-            Log.LogInfo($"{sourceTag}: material {item.Id} before grant = {before}");
+            LogInfo($"{sourceTag}: material {item.Id} before grant = {before}");
 
             // Try to add the material by item id.
             bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
-            Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+            LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
             // Read amount after grant.
             int after = inventory.GetItemAmount(item.Id);
-            Log.LogInfo($"{sourceTag}: material {item.Id} after grant = {after}");
+            LogInfo($"{sourceTag}: material {item.Id} after grant = {after}");
 
             // Success if amount increased.
             return after > before;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while granting material {item.Id}:\n{ex}");
+            LogError($"{sourceTag}: exception while granting material {item.Id}:\n{ex}");
             return false;
         }
     }
@@ -522,7 +726,7 @@ public class LaikaMod : BaseUnityPlugin
         // Safety check in case the manager is not ready yet.
         if (cassettesManager == null)
         {
-            Log.LogWarning($"{sourceTag}: collectible grant failed, CassettesManager is null.");
+            LogWarning($"{sourceTag}: collectible grant failed, CassettesManager is null.");
             return false;
         }
 
@@ -530,29 +734,29 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Check whether the player already owns this cassette.
             bool alreadyOwned = cassettesManager.HasCassette(item.Id);
-            Log.LogInfo($"{sourceTag}: cassette {item.Id}, alreadyOwned={alreadyOwned}");
+            LogInfo($"{sourceTag}: cassette {item.Id}, alreadyOwned={alreadyOwned}");
 
             // If already owned, treat it as success so it doesn't stay in the queue.
             if (alreadyOwned)
             {
-                Log.LogInfo($"{sourceTag}: skipping cassette {item.Id} because player already owns it.");
+                LogInfo($"{sourceTag}: skipping cassette {item.Id} because player already owns it.");
                 return true;
             }
 
             // Try to add the cassette by its internal ID.
             bool addResult = cassettesManager.AddCassetteToInventory(item.Id, null, false);
-            Log.LogInfo($"{sourceTag}: AddCassetteToInventory({item.Id}) returned {addResult}");
+            LogInfo($"{sourceTag}: AddCassetteToInventory({item.Id}) returned {addResult}");
 
             // Check again after trying to add it.
             bool ownedAfter = cassettesManager.HasCassette(item.Id);
-            Log.LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for cassette {item.Id}");
+            LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for cassette {item.Id}");
 
             // Success if the player now owns it.
             return ownedAfter;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while granting cassette {item.Id}:\n{ex}");
+            LogError($"{sourceTag}: exception while granting cassette {item.Id}:\n{ex}");
             return false;
         }
     }
@@ -560,26 +764,26 @@ public class LaikaMod : BaseUnityPlugin
     // Grants a "Puppy's Treat" key item.
     internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
     {
-        Log.LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
+        LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
 
         var inventory = Singleton<InventoryManager>.Instance;
 
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: puppy treat grant failed, InventoryManager is null.");
+            LogWarning($"{sourceTag}: puppy treat grant failed, InventoryManager is null.");
             return false;
         }
 
         bool alreadyOwned = inventory.HasItem(item.Id);
 
-        Log.LogInfo($"{sourceTag}: puppy treat {item.Id}, alreadyOwned={alreadyOwned}");
+        LogInfo($"{sourceTag}: puppy treat {item.Id}, alreadyOwned={alreadyOwned}");
 
         if (alreadyOwned)
             return true;
 
         bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
 
-        Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+        LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
         return addResult;
     }
@@ -589,7 +793,7 @@ public class LaikaMod : BaseUnityPlugin
     internal static bool TryGrantKeyItem(PendingItem item, string sourceTag)
     {
         // Friendly log line so we can read logs more easily.
-        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+        LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         // Grab the runtime inventory manager singleton.
         var inventory = Singleton<InventoryManager>.Instance;
@@ -597,7 +801,7 @@ public class LaikaMod : BaseUnityPlugin
         // Safety check in case inventory is not ready yet.
         if (inventory == null)
         {
-            Log.LogWarning($"{sourceTag}: key item grant failed, InventoryManager is null.");
+            LogWarning($"{sourceTag}: key item grant failed, InventoryManager is null.");
             return false;
         }
 
@@ -605,19 +809,19 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Check whether the player already has this item before granting it.
             bool alreadyOwned = inventory.HasItem(item.Id);
-            Log.LogInfo($"{sourceTag}: key item {item.Id}, alreadyOwned={alreadyOwned}");
+            LogInfo($"{sourceTag}: key item {item.Id}, alreadyOwned={alreadyOwned}");
 
             // If already owned, treat it as success so it does not stay in the queue.
             if (alreadyOwned)
             {
-                Log.LogInfo($"{sourceTag}: skipping key item {item.Id} because player already owns it.");
+                LogInfo($"{sourceTag}: skipping key item {item.Id} because player already owns it.");
                 return true;
             }
 
             // Try to add it through InventoryManager.
             // If the item is marked as a key item internally, the game will route it through AddKeyItem(...).
             bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
-            Log.LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+            LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
             // If the upgrade item needs extra progression flags, apply them now.
             if (addResult)
@@ -627,13 +831,13 @@ public class LaikaMod : BaseUnityPlugin
 
             // Key items/upgrades may not show up in the normal HasItem() check.
             // If AddItem() returned true, trust the game's internal key item handling.
-            Log.LogInfo($"{sourceTag}: assuming success from AddItem result for key item {item.Id}");
+            LogInfo($"{sourceTag}: assuming success from AddItem result for key item {item.Id}");
 
             return addResult;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while granting key item {item.Id}:\n{ex}");
+            LogError($"{sourceTag}: exception while granting key item {item.Id}:\n{ex}");
             return false;
         }
     }
@@ -642,13 +846,13 @@ public class LaikaMod : BaseUnityPlugin
     // Renato's map popup and unlock flow use IDs like M_A_W06.
     internal static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
     {
-        Log.LogInfo($"{sourceTag}: granting {item.DisplayName}");
+        LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         var progressionManager = MonoSingleton<ProgressionManager>.Instance;
 
         if (progressionManager == null)
         {
-            Log.LogWarning($"{sourceTag}: map unlock grant failed, ProgressionManager is null.");
+            LogWarning($"{sourceTag}: map unlock grant failed, ProgressionManager is null.");
             return false;
         }
 
@@ -656,14 +860,14 @@ public class LaikaMod : BaseUnityPlugin
         {
             // Ask the game to unlock the target map area directly.
             progressionManager.ProgressionData.UnlockMapArea(item.Id);
-            Log.LogInfo($"{sourceTag}: UnlockMapArea({item.Id}) called successfully.");
+            LogInfo($"{sourceTag}: UnlockMapArea({item.Id}) called successfully.");
 
             // For now, trust the game's internal unlock flow.
             return true;
         }
         catch (Exception ex)
         {
-            Log.LogError($"{sourceTag}: exception while unlocking map area {item.Id}:\n{ex}");
+            LogError($"{sourceTag}: exception while unlocking map area {item.Id}:\n{ex}");
             return false;
         }
     }
@@ -677,14 +881,14 @@ public class LaikaMod : BaseUnityPlugin
         if (item.Id == "I_E_DASH")
         {
             MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_DASH_UNLOCKED", true, false);
-            Log.LogInfo($"{sourceTag}: set progression flag G_DASH_UNLOCKED for Dash.");
+            LogInfo($"{sourceTag}: set progression flag G_DASH_UNLOCKED for Dash.");
         }
 
         // Hook needs the G_HOOK_UNLOCKED progression flag in addition to the item itself.
         else if (item.Id == "I_E_HOOK")
         {
             MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_HOOK_UNLOCKED", true, false);
-            Log.LogInfo($"{sourceTag}: set progression flag G_HOOK_UNLOCKED for Hook.");
+            LogInfo($"{sourceTag}: set progression flag G_HOOK_UNLOCKED for Hook.");
         }
     }
 
@@ -782,7 +986,7 @@ public class LaikaMod : BaseUnityPlugin
             {
                 SuppressedDeathLinksRemaining--;
 
-                Log.LogInfo(
+                LogInfo(
                     $"{sourceTag} | " +
                     $"Incoming DeathLink suppression consumed. " +
                     $"RemainingSuppressedDeaths={SuppressedDeathLinksRemaining}"
@@ -796,12 +1000,12 @@ public class LaikaMod : BaseUnityPlugin
             LocalDeathsThisSession++;
             DeathsSinceLastDeathLink++;
 
-            Log.LogInfo(
+            LogInfo(
                 $"{sourceTag} | " +
-                $"SessionDeaths={LocalDeathsThisSession}, " +
-                $"DeathsSinceLastLink={DeathsSinceLastDeathLink}, " +
-                $"useBlood={(useBlood.HasValue ? useBlood.Value.ToString() : "<default>")}, " +
-                $"moneySack={(moneySack.HasValue ? moneySack.Value.ToString() : "<default>")}"
+                $"Session={LocalDeathsThisSession}, " +
+                $"SinceLink={DeathsSinceLastDeathLink}, " +
+                $"blood={(useBlood.HasValue ? useBlood.Value.ToString() : "def")}, " +
+                $"sack={(moneySack.HasValue ? moneySack.Value.ToString() : "def")}"
             );
 
             // Evaluate what DeathLink would do for this death.
@@ -809,7 +1013,7 @@ public class LaikaMod : BaseUnityPlugin
         }
         catch (Exception ex)
         {
-            Log.LogError($"OnPlayerDeathDetected exception:\n{ex}");
+            LogError($"OnPlayerDeathDetected exception:\n{ex}");
         }
     }
 
@@ -821,33 +1025,33 @@ public class LaikaMod : BaseUnityPlugin
         // If DeathLink is disabled entirely, do nothing.
         if (!WorldOptions.DeathLinkEnabled)
         {
-            Log.LogInfo($"{sourceTag}: DeathLink disabled. No outbound DeathLink would be sent.");
+            LogInfo($"{sourceTag}: DeathLink disabled. No outbound DeathLink would be sent.");
             return;
         }
 
         // If death amnesty is disabled, every valid local death would send immediately.
         if (!WorldOptions.DeathAmnestyEnabled)
         {
-            Log.LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty disabled).");
+            LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty disabled).");
             return;
         }
 
         // Safety clamp in case a bad config sets the threshold too low.
         int requiredDeaths = Math.Max(1, WorldOptions.DeathAmnestyCount);
 
-        Log.LogInfo(
+        LogInfo(
             $"{sourceTag}: Death Amnesty Progress = {DeathsSinceLastDeathLink} / {requiredDeaths}"
         );
 
         // When enough deaths are reached, a DeathLink would send.
         if (DeathsSinceLastDeathLink >= requiredDeaths)
         {
-            Log.LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty threshold reached).");
+            LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty threshold reached).");
 
             // Reset the amnesty counter after a "send".
             DeathsSinceLastDeathLink = 0;
 
-            Log.LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after simulated send.");
+            LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after simulated send.");
         }
     }
 
@@ -855,24 +1059,25 @@ public class LaikaMod : BaseUnityPlugin
     [HarmonyPatch(typeof(WeaponsOverlay), "InitializeWeaponsData")]
     public class WeaponsOverlayPatch
     {
-        static void Postfix()
+        static void Postfix(WeaponsOverlay __instance)
         {
             Log.LogInfo("WeaponsOverlay.InitializeWeaponsData postfix triggered.");
+
+            EnsureRuntimeDevOverlay(__instance);
 
             // Only log ingredient IDs once per launch.
             if (!IngredientIdsLogged)
             {
                 IngredientIdsLogged = true;
-
-                LogAllIngredientIds();
+                // Temporarily disabled during overlay auto-hide/input testing.
+                // LogAllIngredientIds();
             }
 
-            // Only log cassette IDs once per launch.
             if (!CassetteIdsLogged)
             {
                 CassetteIdsLogged = true;
-
-                LogAllCassetteIds();
+                // Temporarily disabled during overlay auto-hide/input testing.
+                // LogAllCassetteIds();
             }
 
             // Process AP queue afterward.
@@ -889,7 +1094,7 @@ public class LaikaMod : BaseUnityPlugin
             if (!__result)
                 return;
 
-            Log.LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
+            LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
         }
     }
 
@@ -905,7 +1110,7 @@ public class LaikaMod : BaseUnityPlugin
                 // Safety check in case the FSM values are missing for some reason.
                 if (__instance == null)
                 {
-                    LaikaMod.Log.LogWarning("ShowBuyingMapPopupPatch: __instance was null.");
+                    LaikaMod.LogWarning("ShowBuyingMapPopupPatch: __instance was null.");
                     return;
                 }
 
@@ -914,11 +1119,11 @@ public class LaikaMod : BaseUnityPlugin
                 int mapAreaPrice = __instance.mapAreaPrice != null ? __instance.mapAreaPrice.Value : -1;
 
                 // Log both the area ID and the price so we can identify which map piece is which.
-                LaikaMod.Log.LogInfo($"RENATO MAP POPUP: mapAreaID={mapAreaId}, price={mapAreaPrice}");
+                LaikaMod.LogInfo($"RENATO MAP POPUP: mapAreaID={mapAreaId}, price={mapAreaPrice}");
             }
             catch (Exception ex)
             {
-                LaikaMod.Log.LogError($"ShowBuyingMapPopupPatch: exception while logging Renato map popup:\n{ex}");
+                LaikaMod.LogError($"ShowBuyingMapPopupPatch: exception while logging Renato map popup:\n{ex}");
             }
         }
     }
@@ -934,13 +1139,13 @@ public class LaikaMod : BaseUnityPlugin
             {
                 if (__instance == null)
                 {
-                    LaikaMod.Log.LogWarning("UnlockMapAreaPatch: __instance was null.");
+                    LaikaMod.LogWarning("UnlockMapAreaPatch: __instance was null.");
                     return;
                 }
 
                 string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
 
-                LaikaMod.Log.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
+                LaikaMod.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
 
                 // Avoid duplicate check logs during the same session.
                 if (!LaikaMod.SentMapUnlockChecksThisSession.Contains(mapAreaId))
@@ -950,17 +1155,17 @@ public class LaikaMod : BaseUnityPlugin
                     // Prototype send-side check logging.
                     // Later replace this with actual Archipelago check sending.
                     string mapName = LaikaMod.GetMapUnlockDisplayName(mapAreaId);
-                    LaikaMod.Log.LogInfo($"CHECK SENT: {mapName} ({mapAreaId})");
+                    LaikaMod.LogInfo($"CHECK SENT: {mapName} ({mapAreaId})");
                 }
                 else
                 {
                     string mapName = LaikaMod.GetMapUnlockDisplayName(mapAreaId);
-                    LaikaMod.Log.LogInfo($"MAP CHECK ALREADY SENT THIS SESSION: {mapName} ({mapAreaId})");
+                    LaikaMod.LogInfo($"MAP CHECK ALREADY SENT THIS SESSION: {mapName} ({mapAreaId})");
                 }
             }
             catch (Exception ex)
             {
-                LaikaMod.Log.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
+                LaikaMod.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
             }
         }
     }
@@ -982,6 +1187,103 @@ public class LaikaMod : BaseUnityPlugin
         static void Prefix(bool useBlood, bool moneySack)
         {
             LaikaMod.OnPlayerDeathDetected("PLAYER DEATH DETECTED (Kill(bool,bool))", useBlood, moneySack);
+        }
+    }
+    public class DevOverlayController : MonoBehaviour
+    {
+        private bool initialized = false;
+        private bool updateLoggedOnce = false;
+        private bool inputPollingLoggedOnce = false;
+
+        void Start()
+        {
+            LaikaMod.Log.LogInfo("DevOverlayController Start() fired.");
+            InitializeOverlay();
+        }
+
+        void OnEnable()
+        {
+            LaikaMod.Log.LogInfo("DevOverlayController OnEnable() fired.");
+            InitializeOverlay();
+        }
+
+        void Update()
+        {
+            if (!initialized)
+                InitializeOverlay();
+
+            if (!updateLoggedOnce)
+            {
+                updateLoggedOnce = true;
+                LaikaMod.Log.LogInfo("DevOverlayController Update() is running.");
+            }
+
+            if (!inputPollingLoggedOnce)
+            {
+                inputPollingLoggedOnce = true;
+                LaikaMod.Log.LogInfo("DevOverlayController input polling is active. Test keys: Shift+9 toggle, Shift+0 clear.");
+            }
+
+            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Alpha9))
+            {
+                LaikaMod.ShowRecentLogOverlay = !LaikaMod.ShowRecentLogOverlay;
+
+                if (LaikaMod.ShowRecentLogOverlay)
+                {
+                    ResetRecentLogAutoHideTimer();
+                }
+                else
+                {
+                    CancelInvoke(nameof(HideRecentLogs));
+                }
+
+                LaikaMod.Log.LogInfo(
+                    $"Recent log overlay toggled by keypress: {(LaikaMod.ShowRecentLogOverlay ? "ON" : "OFF")}"
+                );
+
+                LaikaMod.RefreshDevOverlay();
+            }
+
+            if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.Alpha0))
+            {
+                LaikaMod.OverlayLines.Clear();
+                LaikaMod.ShowRecentLogOverlay = false;
+                CancelInvoke(nameof(HideRecentLogs));
+
+                LaikaMod.Log.LogInfo("Dev overlay log cleared by keypress.");
+                LaikaMod.RefreshDevOverlay();
+            }
+
+            LaikaMod.RefreshDevOverlay();
+        }
+
+        public void ResetRecentLogAutoHideTimer()
+        {
+            CancelInvoke(nameof(HideRecentLogs));
+            Invoke(nameof(HideRecentLogs), LaikaMod.RecentLogAutoHideDelaySeconds);
+        }
+
+        private void HideRecentLogs()
+        {
+            LaikaMod.Log.LogInfo("Recent log overlay auto-hidden.");
+            LaikaMod.ShowRecentLogOverlay = false;
+            LaikaMod.RefreshDevOverlay();
+        }
+
+        private void InitializeOverlay()
+        {
+            if (initialized)
+                return;
+
+            LaikaMod.EnsureDevOverlayCanvas();
+
+            initialized = true;
+
+            LaikaMod.ShowRecentLogOverlay = false;
+            LaikaMod.LastRecentLogActivityTime = Time.unscaledTime;
+
+            LaikaMod.RefreshDevOverlay();
+            LaikaMod.Log.LogInfo("DevOverlayController initialized runtime overlay.");
         }
     }
 }
