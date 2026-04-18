@@ -969,7 +969,69 @@ public class LaikaMod : BaseUnityPlugin
                     "Quest",
                     true
                 )
-            }
+            },
+            {
+                "B_BOSS_00_DEFEATED",
+                new APLocationDefinition(
+                    120001L,
+                    "Boss Defeated: A Hundred Hungry Beaks",
+                    "B_BOSS_00_DEFEATED",
+                    "Boss",
+                    true
+                )
+            },
+            {
+                "B_BOSS_01_DEFEATED",
+                new APLocationDefinition(
+                    120002L,
+                    "Boss Defeated: A Long Lost Woodcrawler",
+                    "B_BOSS_01_DEFEATED",
+                    "Boss",
+                    true
+                )
+            },
+            {
+                "B_BOSS_ROSCO_DEFEATED",
+                new APLocationDefinition(
+                    120003L,
+                    "Boss Defeated: A Caterpiller Made of Sadness",
+                    "B_BOSS_ROSCO_DEFEATED",
+                    "Boss",
+                    true
+                )
+            },
+            {
+                "B_BOSS_02_DEFEATED",
+                new APLocationDefinition(
+                    120004L,
+                    "Boss Defeated: A Gargantuan Swimcrab",
+                    "B_BOSS_02_DEFEATED",
+                    "Boss",
+                    true
+                )
+            },
+            {
+                "B_BOSS_03_DEFEATED",
+                new APLocationDefinition(
+                    120005L,
+                    "Boss Defeated: Pope Melva VIII",
+                    "B_BOSS_03_DEFEATED",
+                    "Boss",
+                    true
+                )
+            },
+            {
+                "BOSS_04_DEFEATED",
+                new APLocationDefinition(
+                    120006L,
+                    "Boss Defeated: Two-Beak God",
+                    "BOSS_04_DEFEATED",
+                    "Boss",
+                    true
+                )
+            },
+
+
         };
 
     // Saves persistent AP session state to disk.
@@ -2189,6 +2251,96 @@ public class LaikaMod : BaseUnityPlugin
             {
                 LaikaMod.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
             }
+        }
+    }
+
+    // Tracks boss clears through progression achievement keys.
+    // Boss kill completion is persisted by the game as achievement-style flags.
+    [HarmonyPatch(typeof(ProgressionData), "SetAchievement", new Type[] { typeof(string), typeof(bool), typeof(bool) })]
+    public class BossAchievementPatch
+    {
+        static void Prefix(string name, bool value, bool reset)
+        {
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            if (!value)
+                return;
+
+            if (name != "B_BOSS_00_DEFEATED" &&
+                name != "B_BOSS_01_DEFEATED" &&
+                name != "B_BOSS_ROSCO_DEFEATED" &&
+                name != "B_BOSS_02_DEFEATED" &&
+                name != "B_BOSS_03_DEFEATED" &&
+                name != "BOSS_04_DEFEATED")
+            {
+                return;
+            }
+
+            LaikaMod.LogInfo($"BOSS CLEAR DETECTED: name={name}, value={value}, reset={reset}");
+
+            APLocationDefinition locationDefinition;
+            if (!LaikaMod.TryGetLocationDefinition(name, out locationDefinition))
+            {
+                LaikaMod.LogWarning($"BossAchievementPatch: no AP location definition found for name={name}");
+                return;
+            }
+
+            LaikaMod.TrySendLocationCheck(locationDefinition, "BossAchievementPatch");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_00), "OnEndingVideoEnd")]
+    public class Boss00VerifyPatch
+    {
+        static void Prefix()
+        {
+            LaikaMod.LogInfo("BOSS VERIFY: Boss_00.OnEndingVideoEnd fired.");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_01_Manager), "PrepareToKill")]
+    public class Boss01VerifyPatch
+    {
+        static void Prefix()
+        {
+            LaikaMod.LogInfo("BOSS VERIFY: Boss_01_Manager.PrepareToKill fired.");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_02), "OnEndingSequenceEnds")]
+    public class Boss02VerifyPatch
+    {
+        static void Prefix()
+        {
+            LaikaMod.LogInfo("BOSS VERIFY: Boss_02.OnEndingSequenceEnds fired.");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_02_LighthouseManager), "DefeatBoss")]
+    public class Boss02LighthouseVerifyPatch
+    {
+        static void Prefix()
+        {
+            LaikaMod.LogInfo("BOSS VERIFY: Boss_02_LighthouseManager.DefeatBoss fired.");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_03), "Defeated")]
+    public class Boss03VerifyPatch
+    {
+        static void Prefix()
+        {
+            LaikaMod.LogInfo("BOSS VERIFY: Boss_03.Defeated fired.");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_04), "Kill")]
+    public class Boss04VerifyPatch
+    {
+        static void Prefix()
+        {
+            LaikaMod.LogInfo("BOSS VERIFY: Boss_04.Kill fired.");
         }
     }
 
