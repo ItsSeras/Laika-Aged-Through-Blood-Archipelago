@@ -10,6 +10,7 @@ using Laika.Quests;
 using Laika.UI.InGame.Inventory;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
@@ -33,9 +34,6 @@ public class LaikaMod : BaseUnityPlugin
 
     // Prevents cassette IDs from logging repeatedly.
     internal static bool CassetteIdsLogged = false;
-
-    // Prevents duplicate map-unlock check logs during the current session.
-    internal static HashSet<string> SentMapUnlockChecksThisSession = new HashSet<string>();
 
     // Tracks deaths during the current AP session only.
     internal static int LocalDeathsThisSession = 0;
@@ -79,6 +77,8 @@ public class LaikaMod : BaseUnityPlugin
         // Save logger for static patches.
         Log = Logger;
 
+        LoadSessionState();
+
         // Make absolutely sure the plugin component is enabled for Update() / OnGUI().
         enabled = true;
 
@@ -105,7 +105,1002 @@ public class LaikaMod : BaseUnityPlugin
         Log.LogInfo("Harmony patches applied.");
     }
 
-    // ===== Discovery / debug helpers =====
+    // Loads persistent AP session state from disk.
+    // If no file exists yet, defaults are kept.
+    internal static void LoadSessionState()
+    {
+        try
+        {
+            SessionState = new APSessionState();
+
+            if (!File.Exists(SessionStateFilePath))
+            {
+                Log.LogInfo("AP session state file not found. Using defaults.");
+                return;
+            }
+
+            string[] lines = File.ReadAllLines(SessionStateFilePath);
+
+            foreach (string rawLine in lines)
+            {
+                if (string.IsNullOrWhiteSpace(rawLine))
+                    continue;
+
+                string line = rawLine.Trim();
+
+                if (line.StartsWith("last_index="))
+                {
+                    int parsedValue;
+                    if (int.TryParse(line.Substring("last_index=".Length), out parsedValue))
+                    {
+                        SessionState.LastProcessedReceivedItemIndex = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("goal_reported="))
+                {
+                    bool parsedValue;
+                    if (bool.TryParse(line.Substring("goal_reported=".Length), out parsedValue))
+                    {
+                        SessionState.GoalReported = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("server_address="))
+                {
+                    SessionState.Connection.ServerAddress = line.Substring("server_address=".Length);
+                }
+                else if (line.StartsWith("server_port="))
+                {
+                    int parsedValue;
+                    if (int.TryParse(line.Substring("server_port=".Length), out parsedValue))
+                    {
+                        SessionState.Connection.ServerPort = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("slot_name="))
+                {
+                    SessionState.Connection.SlotName = line.Substring("slot_name=".Length);
+                }
+                else if (line.StartsWith("team="))
+                {
+                    int parsedValue;
+                    if (int.TryParse(line.Substring("team=".Length), out parsedValue))
+                    {
+                        SessionState.Connection.Team = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("slot="))
+                {
+                    int parsedValue;
+                    if (int.TryParse(line.Substring("slot=".Length), out parsedValue))
+                    {
+                        SessionState.Connection.Slot = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("is_connected="))
+                {
+                    bool parsedValue;
+                    if (bool.TryParse(line.Substring("is_connected=".Length), out parsedValue))
+                    {
+                        SessionState.Connection.IsConnected = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("is_authenticated="))
+                {
+                    bool parsedValue;
+                    if (bool.TryParse(line.Substring("is_authenticated=".Length), out parsedValue))
+                    {
+                        SessionState.Connection.IsAuthenticated = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("sent_location="))
+                {
+                    long parsedValue;
+                    if (long.TryParse(line.Substring("sent_location=".Length), out parsedValue))
+                    {
+                        SessionState.SentLocationIds.Add(parsedValue);
+                    }
+                }
+            }
+
+            Log.LogInfo(
+                $"AP session state loaded. " +
+                $"LastReceivedIndex={SessionState.LastProcessedReceivedItemIndex}, " +
+                $"SentChecks={SessionState.SentLocationIds.Count}, " +
+                $"GoalReported={SessionState.GoalReported}"
+            );
+        }
+        catch (Exception ex)
+        {
+            SessionState = new APSessionState();
+            Log.LogError($"Failed to load AP session state:\n{ex}");
+        }
+    }
+
+    // Persistent local AP session state.
+    // This stores client-side sync information so reconnects/resyncs are possible later.
+    internal static APSessionState SessionState = new APSessionState();
+
+    // Local path for AP session state persistence.
+    // For now this uses a simple text file in the BepInEx config folder.
+    internal static string SessionStateFilePath =
+        Path.Combine(Paths.ConfigPath, "laika_ap_session_state.txt");
+
+    // Canonical AP location registry.
+    // Map unlock and quest names should be maintained here as the single source of truth.
+    internal static Dictionary<string, APLocationDefinition> LocationDefinitionsByInternalId =
+        new Dictionary<string, APLocationDefinition>()
+        {
+            {
+                "M_A_W06",
+                new APLocationDefinition(
+                    100002L,
+                    "Map Piece: Where Our Bikes Growl",
+                    "M_A_W06",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W01_BOTTOM",
+                new APLocationDefinition(
+                    100003L,
+                    "Map Piece: Where All Was Lost (Bottom)",
+                    "M_A_W01_BOTTOM",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W01_TOP",
+                new APLocationDefinition(
+                    100004L,
+                    "Map Piece: Where All Was Lost (Top)",
+                    "M_A_W01_TOP",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W02",
+                new APLocationDefinition(
+                    100005L,
+                    "Map Piece: Where Doom Fell",
+                    "M_A_W02",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W03_LEFT",
+                new APLocationDefinition(
+                    100006L,
+                    "Map Piece: Where Rust Weaves (Left)",
+                    "M_A_W03_LEFT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W03_CENTER",
+                new APLocationDefinition(
+                    100007L,
+                    "Map Piece: Where Rust Weaves (Center)",
+                    "M_A_W03_CENTER",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W03_RIGHT",
+                new APLocationDefinition(
+                    100008L,
+                    "Map Piece: Where Rust Weaves (Right)",
+                    "M_A_W03_RIGHT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W04_BOTTOM",
+                new APLocationDefinition(
+                    100009L,
+                    "Map Piece: Where Iron Caresses the Sky (Bottom)",
+                    "M_A_W04_BOTTOM",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W04_TOP",
+                new APLocationDefinition(
+                    100010L,
+                    "Map Piece: Where Iron Caresses the Sky (Top)",
+                    "M_A_W04_TOP",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W05_LEFT",
+                new APLocationDefinition(
+                    100011L,
+                    "Map Piece: Where the Waves Die (Left)",
+                    "M_A_W05_LEFT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W05_RIGHT",
+                new APLocationDefinition(
+                    100012L,
+                    "Map Piece: Where the Waves Die (Right)",
+                    "M_A_W05_RIGHT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W07_BOTTOM",
+                new APLocationDefinition(
+                    100013L,
+                    "Map Piece: Where Our Ancestors Rest (Bottom)",
+                    "M_A_W07_BOTTOM",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W07_TOP",
+                new APLocationDefinition(
+                    100014L,
+                    "Map Piece: Where Our Ancestors Rest (Top)",
+                    "M_A_W07_TOP",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W08_LEFT",
+                new APLocationDefinition(
+                    100015L,
+                    "Map Piece: Where Birds Came From (Left)",
+                    "M_A_W08_LEFT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_W08_RIGHT",
+                new APLocationDefinition(
+                    100016L,
+                    "Map Piece: Where Birds Came From (Right)",
+                    "M_A_W08_RIGHT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D00_LEFT",
+                new APLocationDefinition(
+                    100017L,
+                    "Map Piece: Where Birds Lurk (Left)",
+                    "M_A_D00_LEFT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D00_RIGHT",
+                new APLocationDefinition(
+                    100018L,
+                    "Map Piece: Where Birds Lurk (Right)",
+                    "M_A_D00_RIGHT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D01_LEFT",
+                new APLocationDefinition(
+                    100019L,
+                    "Map Piece: Where Rock Bleeds (Left)",
+                    "M_A_D01_LEFT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D01_CENTER",
+                new APLocationDefinition(
+                    100020L,
+                    "Map Piece: Where Rock Bleeds (Center)",
+                    "M_A_D01_CENTER",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D01_RIGHT",
+                new APLocationDefinition(
+                    100021L,
+                    "Map Piece: Where Rock Bleeds (Right)",
+                    "M_A_D01_RIGHT",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D02_BORDERS",
+                new APLocationDefinition(
+                    100022L,
+                    "Map Piece: Where Water Glistened (Borders)",
+                    "M_A_D02_BORDERS",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D02_SHIP1",
+                new APLocationDefinition(
+                    100023L,
+                    "Map Piece: Where Water Glistened (1st Ship)",
+                    "M_A_D02_SHIP1",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D02_SHIP2",
+                new APLocationDefinition(
+                    100024L,
+                    "Map Piece: Where Water Glistened (2nd Ship)",
+                    "M_A_D02_SHIP2",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D02_SHIP3",
+                new APLocationDefinition(
+                    100025L,
+                    "Map Piece: Where Water Glistened (3rd Ship)",
+                    "M_A_D02_SHIP3",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D02_SHIP4",
+                new APLocationDefinition(
+                    100026L,
+                    "Map Piece: Where Water Glistened (4th Ship)",
+                    "M_A_D02_SHIP4",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D03",
+                new APLocationDefinition(
+                    100027L,
+                    "Map Piece: The Big Tree",
+                    "M_A_D03",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D04_CENTER",
+                new APLocationDefinition(
+                    100028L,
+                    "Map Piece: Floating City (Control Area)",
+                    "M_A_D04_CENTER",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D04_TOWN",
+                new APLocationDefinition(
+                    100029L,
+                    "Map Piece: Floating City (Old Town)",
+                    "M_A_D04_TOWN",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D04_ZEPPELIN",
+                new APLocationDefinition(
+                    100030L,
+                    "Map Piece: Floating City (Hangar)",
+                    "M_A_D04_ZEPPELIN",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D04_FACTORY",
+                new APLocationDefinition(
+                    100031L,
+                    "Map Piece: Floating City (Factory)",
+                    "M_A_D04_FACTORY",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "M_A_D04_FACILITIES",
+                new APLocationDefinition(
+                    100032L,
+                    "Map Piece: Floating City (City Facilities)",
+                    "M_A_D04_FACILITIES",
+                    "MapUnlock",
+                    true
+                )
+            },
+            {
+                "Q_D_0_Tutorial",
+                new APLocationDefinition(
+                    110001L,
+                    "Quest Complete: Rage and Sorrow",
+                    "Q_D_0_Tutorial",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_OldWarfare",
+                new APLocationDefinition(
+                    110002L,
+                    "Quest Complete: Old Warfare",
+                    "Q_D_S_OldWarfare",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_TutorialHook",
+                new APLocationDefinition(
+                    110003L,
+                    "Quest Complete: The Bonehead's Hook",
+                    "Q_D_S_TutorialHook",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_TutorialDash",
+                new APLocationDefinition(
+                    110004L,
+                    "Quest Complete: Floating",
+                    "Q_D_S_TutorialDash",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Flower",
+                new APLocationDefinition(
+                    110005L,
+                    "Quest Complete: A Heart for Poochie",
+                    "Q_D_S_Flower",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_1_Mines",
+                new APLocationDefinition(
+                    110006L,
+                    "Quest Complete: Diplomacy",
+                    "Q_D_1_Mines",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_2_Lighthouse",
+                new APLocationDefinition(
+                    110007L,
+                    "Quest Complete: Radio Silence",
+                    "Q_D_2_Lighthouse",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_3_TheBigTree",
+                new APLocationDefinition(
+                    110008L,
+                    "Quest Complete: The Big Tree",
+                    "Q_D_3_TheBigTree",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_K_Kidnapping",
+                new APLocationDefinition(
+                    110009L,
+                    "Quest Complete: Childless",
+                    "Q_D_K_Kidnapping",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_PoochiesCorpse",
+                new APLocationDefinition(
+                    110010L,
+                    "Quest Complete: Closure",
+                    "Q_D_S_PoochiesCorpse",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_4_FloatingCity",
+                new APLocationDefinition(
+                    110011L,
+                    "Quest Complete: Hell High",
+                    "Q_D_4_FloatingCity",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_SacredPlace",
+                new APLocationDefinition(
+                    110012L,
+                    "Quest Complete: Shake Off the Dead Leaves",
+                    "Q_D_S_SacredPlace",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Lights",
+                new APLocationDefinition(
+                    110013L,
+                    "Quest Complete: Stargazing",
+                    "Q_D_S_Lights",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Remnants",
+                new APLocationDefinition(
+                    110014L,
+                    "Quest Complete: The Remnants",
+                    "Q_D_S_Remnants",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_NewSheriff",
+                new APLocationDefinition(
+                    110015L,
+                    "Quest Complete: A New Sheriff in Town",
+                    "Q_D_S_NewSheriff",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Tombstone",
+                new APLocationDefinition(
+                    110016L,
+                    "Quest Complete: A Little Tomb Stone",
+                    "Q_D_S_Tombstone",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_FirstPeriod",
+                new APLocationDefinition(
+                    110017L,
+                    "Quest Complete: First Blood",
+                    "Q_D_S_FirstPeriod",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_EntomBrother",
+                new APLocationDefinition(
+                    110018L,
+                    "Quest Complete: Life of the Party",
+                    "Q_D_S_EntomBrother",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_BoneFlour",
+                new APLocationDefinition(
+                    110019L,
+                    "Quest Complete: Bone Flour",
+                    "Q_D_S_BoneFlour",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_CamillasJoint",
+                new APLocationDefinition(
+                    110020L,
+                    "Quest Complete: A Break for Camilla",
+                    "Q_D_S_CamillasJoint",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_OldCamp",
+                new APLocationDefinition(
+                    110021L,
+                    "Quest Complete: From Mother to Daughter",
+                    "Q_D_S_OldCamp",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Prophecy",
+                new APLocationDefinition(
+                    110022L,
+                    "Quest Complete: The Prophecy",
+                    "Q_D_S_Prophecy",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_LastMeal",
+                new APLocationDefinition(
+                    110023L,
+                    "Quest Complete: Last Meal",
+                    "Q_D_S_LastMeal",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_DyingBird",
+                new APLocationDefinition(
+                    110024L,
+                    "Quest Complete: For the Cash",
+                    "Q_D_S_DyingBird",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Immortal",
+                new APLocationDefinition(
+                    110025L,
+                    "Quest Complete: Death on Demand",
+                    "Q_D_S_Immortal",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_DeadTree",
+                new APLocationDefinition(
+                    110026L,
+                    "Quest Complete: Family Tree",
+                    "Q_D_S_DeadTree",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_GhostRevenge",
+                new APLocationDefinition(
+                    110027L,
+                    "Quest Complete: Fade Out",
+                    "Q_D_S_GhostRevenge",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Rapist",
+                new APLocationDefinition(
+                    110028L,
+                    "Quest Complete: Just a little girl",
+                    "Q_D_S_Rapist",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_PlantSeed",
+                new APLocationDefinition(
+                    110029L,
+                    "Quest Complete: We'll Never Know",
+                    "Q_D_S_PlantSeed",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Gasoline",
+                new APLocationDefinition(
+                    110030L,
+                    "Quest Complete: High Spirits",
+                    "Q_D_S_Gasoline",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_Seashell",
+                new APLocationDefinition(
+                    110031L,
+                    "Quest Complete: Water Whispers",
+                    "Q_D_S_Seashell",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_NightmaresOne",
+                new APLocationDefinition(
+                    110032L,
+                    "Quest Complete: Worse than Nightmares",
+                    "Q_D_S_NightmaresOne",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_NightmaresTwo",
+                new APLocationDefinition(
+                    110033L,
+                    "Quest Complete: Worse than Hives",
+                    "Q_D_S_NightmaresTwo",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_S_NightmaresThree",
+                new APLocationDefinition(
+                    110034L,
+                    "Quest Complete: Worse than Stomach Flu",
+                    "Q_D_S_NightmaresThree",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_A_MusiciansDrums",
+                new APLocationDefinition(
+                    110035L,
+                    "Quest Complete: Fogg's Only Wish",
+                    "Q_D_A_MusiciansDrums",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_A_MusiciansErhu",
+                new APLocationDefinition(
+                    110036L,
+                    "Quest Complete: The Last Erhu",
+                    "Q_D_A_MusiciansErhu",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_A_MusiciansFlute",
+                new APLocationDefinition(
+                    110037L,
+                    "Quest Complete: Clean Your Beak",
+                    "Q_D_A_MusiciansFlute",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_A_MusiciansGuitar",
+                new APLocationDefinition(
+                    110038L,
+                    "Quest Complete: Desperately in Need of Music",
+                    "Q_D_A_MusiciansGuitar",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_A_MusiciansPiano",
+                new APLocationDefinition(
+                    110039L,
+                    "Quest Complete: Sober Up",
+                    "Q_D_A_MusiciansPiano",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_A_MusiciansVoice",
+                new APLocationDefinition(
+                    110040L,
+                    "Quest Complete: Oooo Ooo Oo O Ooo",
+                    "Q_D_A_MusiciansVoice",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_F_PuppysBirth",
+                new APLocationDefinition(
+                    110041L,
+                    "Quest Complete: Where We Used to Live",
+                    "Q_D_F_PuppysBirth",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_F_YoungLaika",
+                new APLocationDefinition(
+                    110042L,
+                    "Quest Complete: Target Practice",
+                    "Q_D_F_YoungLaika",
+                    "Quest",
+                    true
+                )
+            },
+            {
+                "Q_D_F_DaughterDies",
+                new APLocationDefinition(
+                    110043L,
+                    "Quest Complete: Ava",
+                    "Q_D_F_DaughterDies",
+                    "Quest",
+                    true
+                )
+            }
+        };
+
+    // Saves persistent AP session state to disk.
+    internal static void SaveSessionState()
+    {
+        try
+        {
+            List<string> lines = new List<string>();
+
+            lines.Add("last_index=" + SessionState.LastProcessedReceivedItemIndex);
+            lines.Add("goal_reported=" + SessionState.GoalReported);
+            lines.Add("server_address=" + SessionState.Connection.ServerAddress);
+            lines.Add("server_port=" + SessionState.Connection.ServerPort);
+            lines.Add("slot_name=" + SessionState.Connection.SlotName);
+            lines.Add("team=" + SessionState.Connection.Team);
+            lines.Add("slot=" + SessionState.Connection.Slot);
+            lines.Add("is_connected=" + SessionState.Connection.IsConnected);
+            lines.Add("is_authenticated=" + SessionState.Connection.IsAuthenticated);
+
+            foreach (long locationId in SessionState.SentLocationIds)
+            {
+                lines.Add("sent_location=" + locationId);
+            }
+
+            File.WriteAllLines(SessionStateFilePath, lines.ToArray());
+
+            Log.LogInfo(
+                $"AP session state saved. " +
+                $"LastReceivedIndex={SessionState.LastProcessedReceivedItemIndex}, " +
+                $"SentChecks={SessionState.SentLocationIds.Count}, " +
+                $"GoalReported={SessionState.GoalReported}"
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"Failed to save AP session state:\n{ex}");
+        }
+    }
+
+    // Marks a location as sent locally so reconnect/resync logic can reuse this data later.
+    internal static void MarkLocationCheckedAndSent(long locationId)
+    {
+        if (SessionState.SentLocationIds.Add(locationId))
+        {
+            SaveSessionState();
+            LogInfo($"AP STATE: marked location as sent -> {locationId}");
+        }
+    }
+
+    // Returns true if the location was already marked as sent locally.
+    internal static bool HasLocationBeenSent(long locationId)
+    {
+        return SessionState.SentLocationIds.Contains(locationId);
+    }
+
+    // Stores the last processed ReceivedItems index from Archipelago.
+    internal static void UpdateLastProcessedReceivedItemIndex(int index)
+    {
+        if (index < 0)
+            return;
+
+        SessionState.LastProcessedReceivedItemIndex = index;
+        SaveSessionState();
+
+        LogInfo($"AP STATE: updated last processed received item index -> {index}");
+    }
+
+    // Marks the AP goal as reported locally so the client does not spam StatusUpdate later.
+    internal static void MarkGoalReported()
+    {
+        if (SessionState.GoalReported)
+            return;
+
+        SessionState.GoalReported = true;
+        SaveSessionState();
+
+        LogInfo("AP STATE: goal marked as reported.");
+    }
+
+    // Clears connection-only state without wiping persistent progression tracking.
+    internal static void ResetRuntimeConnectionState()
+    {
+        SessionState.Connection = new APConnectionInfo();
+
+        Log.LogInfo("AP runtime connection state reset.");
+    }
+
+    public class APLocationDefinition
+    {
+        // Stable Archipelago location id for this check.
+        public long LocationId { get; private set; }
+
+        // Player-facing AP location/check name.
+        public string DisplayName { get; private set; }
+
+        // Internal Laika identifier used to match runtime events or save flags.
+        public string InternalId { get; private set; }
+
+        // What kind of in-game thing this location represents.
+        // Example: map unlock, quest completion, boss clear, shop purchase.
+        public string Category { get; private set; }
+
+        // Whether this check should be recoverable later from save/progression state.
+        public bool RecoverableFromSave { get; private set; }
+
+        public APLocationDefinition(
+            long locationId,
+            string displayName,
+            string internalId,
+            string category,
+            bool recoverableFromSave)
+        {
+            LocationId = locationId;
+            DisplayName = displayName;
+            InternalId = internalId;
+            Category = category;
+            RecoverableFromSave = recoverableFromSave;
+        }
+
+        public override string ToString()
+        {
+            return
+                $"LocationId={LocationId}, " +
+                $"DisplayName={DisplayName}, " +
+                $"InternalId={InternalId}, " +
+                $"Category={Category}, " +
+                $"RecoverableFromSave={RecoverableFromSave}";
+        }
+    }
+
+    // ===== Logging helpers =====
     // Logs a message to both BepInEx and the in-game developer overlay.
     internal static void LogInfo(string message)
     {
@@ -411,21 +1406,10 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Queue processing =====
-    // Temporary stress test queue used during development.
-    // Kept separate from Awake() so startup logic stays easier to read.
+    // Optional development hook for manually enqueueing test items.
     internal static void EnqueueDevelopmentStressTestItems()
     {
-        EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 250, "250 Viscera"));
-        EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
-        EnqueueItem(GetRocketLauncherUnlockItem());
-        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Progressive Sniper Rifle"));
-        EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine"));
-        EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_11", 1, "Cassette 11"));
-        EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console (Puppy's Treat)"));
-        EnqueueItem(new PendingItem(ItemKind.KeyItem, "I_E_DASH", 1, "Nitrous Dash"));
-        EnqueueItem(new PendingItem(ItemKind.Material, "I_BASALT", 1, "Basalt"));
-        EnqueueItem(new PendingItem(ItemKind.Material, "I_METAL_GOOD", 1, "Refined Metal"));
-        EnqueueItem(new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)"));
+        // Intentionally left empty for now.
     }
 
     // Adds a pending item to the queue.
@@ -828,7 +1812,6 @@ public class LaikaMod : BaseUnityPlugin
             bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
             LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
 
-            // If the upgrade item needs extra progression flags, apply them now.
             if (addResult)
             {
                 ApplyKeyItemProgressionFlags(item, sourceTag);
@@ -878,8 +1861,8 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Progression helpers =====
-    // Applies extra progression flags needed for certain upgrades to actually become usable.
-    // Some upgrade items are not fully functional from AddItem(...) alone.
+    // Applies extra progression flags required when AP grants key items early.
+    // Expand this if more vanilla quest chains break from early item delivery.
     internal static void ApplyKeyItemProgressionFlags(PendingItem item, string sourceTag)
     {
         // Dash needs the G_DASH_UNLOCKED progression flag in addition to the item itself.
@@ -898,16 +1881,43 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Display-name helpers =====
-    // Helper that maps internal map IDs to readable display names.
-    // Expand this as more map area IDs are confirmed.
-    internal static string GetMapUnlockDisplayName(string mapAreaId)
+    // Resolves a known AP location definition by internal Laika identifier.
+    internal static bool TryGetLocationDefinition(string internalId, out APLocationDefinition definition)
     {
-        switch (mapAreaId)
+        if (string.IsNullOrEmpty(internalId))
         {
-            case "M_A_CAMP": return "Map Piece: Where We Live";
-            case "M_A_W06": return "Map Piece: Where Our Bikes Growl";
-            default: return $"Map Piece ({mapAreaId})";
+            definition = null;
+            return false;
         }
+
+        return LocationDefinitionsByInternalId.TryGetValue(internalId, out definition);
+    }
+
+    // Centralized check-send path for all AP-style locations.
+    // This is the one place that should handle duplicate suppression and persistent sent-state.
+    internal static void TrySendLocationCheck(APLocationDefinition definition, string sourceTag)
+    {
+        if (definition == null)
+        {
+            LogWarning($"{sourceTag}: TrySendLocationCheck received null definition.");
+            return;
+        }
+
+        if (HasLocationBeenSent(definition.LocationId))
+        {
+            LogInfo(
+                $"{sourceTag}: LOCATION CHECK ALREADY SENT -> " +
+                $"{definition.DisplayName} ({definition.LocationId})"
+            );
+            return;
+        }
+
+        MarkLocationCheckedAndSent(definition.LocationId);
+
+        LogInfo(
+            $"{sourceTag}: CHECK SENT -> " +
+            $"{definition.DisplayName} ({definition.LocationId})"
+        );
     }
 
     // ===== Weapon mode helpers =====
@@ -1085,11 +2095,11 @@ public class LaikaMod : BaseUnityPlugin
                 // Temporarily disabled during overlay auto-hide/input testing.
                 // LogAllCassetteIds();
             }
-
             // Process AP queue afterward.
             ProcessPendingItemQueue("InitialItemGrant");
         }
     }
+
 
     [HarmonyPatch(typeof(QuestLog), "TryCloseQuest")]
     public class QuestClosePatch
@@ -1100,12 +2110,21 @@ public class LaikaMod : BaseUnityPlugin
             if (!__result)
                 return;
 
-            LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
+            LaikaMod.LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
+
+            APLocationDefinition locationDefinition;
+            if (!LaikaMod.TryGetLocationDefinition(questId, out locationDefinition))
+            {
+                LaikaMod.LogWarning($"QuestClosePatch: no AP location definition found for questId={questId}");
+                return;
+            }
+
+            LaikaMod.TrySendLocationCheck(locationDefinition, "QuestClosePatch");
         }
     }
 
     // Logs Renato's map popup data when the buy-map popup opens.
-    // This helps us discover the real runtime mapAreaID values used by UnlockMapArea(...).
+    // Useful for verifying mapAreaID and price against Renato's shop data.
     [HarmonyPatch(typeof(ShowBuyingMapPopup), "OnEnter")]
     public class ShowBuyingMapPopupPatch
     {
@@ -1134,8 +2153,8 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Tracks map unlock purchases/checks when Renato's map purchase actually succeeds.
-    // Logs the real map area ID when the game performs the map unlock.
+    // Tracks Renato map purchases as AP location checks.
+    // Resolves the unlocked mapAreaID through the AP location registry.
     [HarmonyPatch(typeof(UnlockMapArea), "OnEnter")]
     public class UnlockMapAreaPatch
     {
@@ -1149,25 +2168,22 @@ public class LaikaMod : BaseUnityPlugin
                     return;
                 }
 
+                // Read the raw internal mapAreaID for AP location resolution.
                 string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
 
+                // Log the raw map ID even if no AP location definition exists yet.
                 LaikaMod.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
 
-                // Avoid duplicate check logs during the same session.
-                if (!LaikaMod.SentMapUnlockChecksThisSession.Contains(mapAreaId))
+                APLocationDefinition locationDefinition;
+                if (!LaikaMod.TryGetLocationDefinition(mapAreaId, out locationDefinition))
                 {
-                    LaikaMod.SentMapUnlockChecksThisSession.Add(mapAreaId);
+                    LaikaMod.LogWarning(
+                        $"UnlockMapAreaPatch: no AP location definition found for mapAreaID={mapAreaId}"
+                    );
+                    return;
+                }
 
-                    // Prototype send-side check logging.
-                    // Later replace this with actual Archipelago check sending.
-                    string mapName = LaikaMod.GetMapUnlockDisplayName(mapAreaId);
-                    LaikaMod.LogInfo($"CHECK SENT: {mapName} ({mapAreaId})");
-                }
-                else
-                {
-                    string mapName = LaikaMod.GetMapUnlockDisplayName(mapAreaId);
-                    LaikaMod.LogInfo($"MAP CHECK ALREADY SENT THIS SESSION: {mapName} ({mapAreaId})");
-                }
+                LaikaMod.TrySendLocationCheck(locationDefinition, "UnlockMapAreaPatch");
             }
             catch (Exception ex)
             {
@@ -1314,6 +2330,45 @@ public class APWorldOptions
 
     // Number of local deaths required before a DeathLink would send when amnesty is enabled.
     public int DeathAmnestyCount { get; set; } = 1;
+}
+
+public class APSessionState
+{
+    // Last processed index from Archipelago ReceivedItems.
+    // Needed so the client can reject already-processed items on reconnect.
+    public int LastProcessedReceivedItemIndex { get; set; } = 0;
+
+    // AP location ids already sent by this client.
+    // This supports reconnect/resync and prevents duplicate sends.
+    public HashSet<long> SentLocationIds { get; set; } = new HashSet<long>();
+
+    // Whether this slot's goal completion has already been reported.
+    public bool GoalReported { get; set; } = false;
+
+    // Connection/session metadata.
+    public APConnectionInfo Connection { get; set; } = new APConnectionInfo();
+}
+
+public class APConnectionInfo
+{
+    // Last server address the client tried to use.
+    public string ServerAddress { get; set; } = string.Empty;
+
+    // Last server port the client tried to use.
+    public int ServerPort { get; set; } = 0;
+
+    // Last authenticated slot/player name.
+    public string SlotName { get; set; } = string.Empty;
+
+    // Team/slot identifiers once connected.
+    public int Team { get; set; } = 0;
+    public int Slot { get; set; } = 0;
+
+    // Whether the mod currently considers itself connected.
+    public bool IsConnected { get; set; } = false;
+
+    // Whether authentication completed successfully.
+    public bool IsAuthenticated { get; set; } = false;
 }
 
 // Represents one pending AP-style item waiting to be granted.
