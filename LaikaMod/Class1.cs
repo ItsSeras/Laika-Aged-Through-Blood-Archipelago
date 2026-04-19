@@ -15,6 +15,9 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
+using System.Linq;
+using System.Reflection;
+
 [BepInPlugin("com.seras.laikaapprototype", "Laika AP Prototype", "1.0.0")]
 public class LaikaMod : BaseUnityPlugin
 {
@@ -49,8 +52,8 @@ public class LaikaMod : BaseUnityPlugin
     // For now this is hardcoded, but later it can be loaded from a YAML file.
     internal static APWorldOptions WorldOptions = new APWorldOptions();
 
-    // Development mode toggle.
-    // Enqueues development stress test items when set to true.
+    // Development stress test toggle.
+    // I turn this on when I want to force a batch of received items through the queue without needing a live AP send.
     internal static bool EnableDevelopmentStressTest = false;
 
     // Canvas-based dev overlay objects.
@@ -91,6 +94,10 @@ public class LaikaMod : BaseUnityPlugin
             $"DeathAmnesty={WorldOptions.DeathAmnestyEnabled}, " +
             $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}"
         );
+
+        // Queue any items the player must start with for AP to make sense.
+        // Right now that mainly covers cases where vanilla assumes the player always has something.
+        EnqueueRequiredStartingItems();
 
         // Development stress test items.
         if (EnableDevelopmentStressTest)
@@ -1030,8 +1037,308 @@ public class LaikaMod : BaseUnityPlugin
                     true
                 )
             },
+            {
+                "I_CASSETTE_1",
+                new APLocationDefinition(
+                    130001L,
+                    "Cassette Tape: Bloody Sunset",
+                    "I_CASSETTE_1",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_2",
+                new APLocationDefinition(
+                    130002L,
+                    "Cassette Tape: Playing in the Sun",
+                    "I_CASSETTE_2",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_3",
+                new APLocationDefinition(
+                    130003L,
+                    "Cassette Tape: Lullaby of the Dead",
+                    "I_CASSETTE_3",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_4",
+                new APLocationDefinition(
+                    130004L,
+                    "Cassette Tape: Blue Limbo",
+                    "I_CASSETTE_4",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_D01",
+                new APLocationDefinition(
+                    130005L,
+                    "Cassette Tape: Trust Them",
+                    "I_CASSETTE_D01",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_D02",
+                new APLocationDefinition(
+                    130006L,
+                    "Cassette Tape: My Destiny",
+                    "I_CASSETTE_D02",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_D03",
+                new APLocationDefinition(
+                    130007L,
+                    "Cassette Tape: The End of the Road",
+                    "I_CASSETTE_D03",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_5",
+                new APLocationDefinition(
+                    130008L,
+                    "Cassette Tape: The Whisper",
+                    "I_CASSETTE_5",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_6",
+                new APLocationDefinition(
+                    130009L,
+                    "Cassette Tape: Heartglaze Hope",
+                    "I_CASSETTE_6",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_7",
+                new APLocationDefinition(
+                    130010L,
+                    "Cassette Tape: The Hero",
+                    "I_CASSETTE_7",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_8",
+                new APLocationDefinition(
+                    130011L,
+                    "Cassette Tape: Visions of Red",
+                    "I_CASSETTE_8",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_9",
+                new APLocationDefinition(
+                    130012L,
+                    "Cassette Tape: Through the Wind",
+                    "I_CASSETTE_9",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_10",
+                new APLocationDefinition(
+                    130013L,
+                    "Cassette Tape: Heartbeat from the Last Century",
+                    "I_CASSETTE_10",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_11",
+                new APLocationDefinition(
+                    130014L,
+                    "Cassette Tape: Coming Home",
+                    "I_CASSETTE_11",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_KIDNAPPING",
+                new APLocationDefinition(
+                    130015L,
+                    "Cassette Tape: Mother",
+                    "I_CASSETTE_KIDNAPPING",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_12",
+                new APLocationDefinition(
+                    130016L,
+                    "Cassette Tape: The Last Tear",
+                    "I_CASSETTE_12",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_13",
+                new APLocationDefinition(
+                    130017L,
+                    "Cassette Tape: The Final Hours",
+                    "I_CASSETTE_13",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_14",
+                new APLocationDefinition(
+                    130018L,
+                    "Cassette Tape: Overthinker",
+                    "I_CASSETTE_14",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_15",
+                new APLocationDefinition(
+                    130019L,
+                    "Cassette Tape: Recurring Dream",
+                    "I_CASSETTE_15",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_CASSETTE_16",
+                new APLocationDefinition(
+                    130020L,
+                    "Cassette Tape: Lonely Mountain",
+                    "I_CASSETTE_16",
+                    "Cassette",
+                    true
+                )
+            },
+            {
+                "I_TOY_BIKE",
+                new APLocationDefinition(
+                    140001L,
+                    "Puppy Gift: Toy Bike",
+                    "I_TOY_BIKE",
+                    "PuppyGift",
+                    true
+                )
+            },
+            {
+                "I_GAMEBOY",
+                new APLocationDefinition(
+                    140002L,
+                    "Puppy Gift: Handheld Console",
+                    "I_GAMEBOY",
+                    "PuppyGift",
+                    true
+                )
+            },
+            {
+                "I_PLANT_PUPPY",
+                new APLocationDefinition(
+                    140003L,
+                    "Puppy Gift: Tangerine Tree",
+                    "I_PLANT_PUPPY",
+                    "PuppyGift",
+                    true
+                )
+            },
+            {
+                "I_TOY_ANIMAL",
+                new APLocationDefinition(
+                    140004L,
+                    "Puppy Gift: Toy Animal",
+                    "I_TOY_ANIMAL",
+                    "PuppyGift",
+                    true
+                )
+            },
+            {
+                "I_BOOK_MOTHER",
+                new APLocationDefinition(
+                    140005L,
+                    "Puppy Gift: Great-Great-Grandma's Novella",
+                    "I_BOOK_MOTHER",
+                    "PuppyGift",
+                    true
+                )
+            },
+            {
+                "I_DREAMCATCHER",
+                new APLocationDefinition(
+                    140006L,
+                    "Puppy Gift: Dreamcatcher",
+                    "I_DREAMCATCHER",
+                    "PuppyGift",
+                    true
+                )
+            },
+            {
+                "I_UKULELE",
+                new APLocationDefinition(
+                    140007L,
+                    "Puppy Gift: Ukulele",
+                    "I_UKULELE",
+                    "PuppyGift",
+                    true
+                )
+            },
 
 
+        };
+
+    // Canonical collectible item registry.
+    // Use this for AP received-item display names.
+    // Do not use this as a location/check registry unless cassette checks are later
+    // sourced from boombox destruction, shop purchase, quest reward, or Jakob bundle logic.
+    internal static Dictionary<string, string> CollectibleDisplayNamesByInternalId =
+        new Dictionary<string, string>()
+        {
+            { "I_CASSETTE_1", "Cassette Tape: Bloody Sunset" },
+            { "I_CASSETTE_2", "Cassette Tape: Playing in the Sun" },
+            { "I_CASSETTE_3", "Cassette Tape: Lullaby of the Dead" },
+            { "I_CASSETTE_4", "Cassette Tape: Blue Limbo" },
+            { "I_CASSETTE_D01", "Cassette Tape: Trust Them" },
+            { "I_CASSETTE_D02", "Cassette Tape: My Destiny" },
+            { "I_CASSETTE_D03", "Cassette Tape: The End of the Road" },
+            { "I_CASSETTE_5", "Cassette Tape: The Whisper" },
+            { "I_CASSETTE_6", "Cassette Tape: Heartglaze Hope" },
+            { "I_CASSETTE_7", "Cassette Tape: The Hero" },
+            { "I_CASSETTE_8", "Cassette Tape: Visions of Red" },
+            { "I_CASSETTE_9", "Cassette Tape: Through the Wind" },
+            { "I_CASSETTE_10", "Cassette Tape: Heartbeat from the Last Century" },
+            { "I_CASSETTE_11", "Cassette Tape: Coming Home" },
+            { "I_CASSETTE_KIDNAPPING", "Cassette Tape: Mother" },
+            { "I_CASSETTE_12", "Cassette Tape: The Last Tear" },
+            { "I_CASSETTE_13", "Cassette Tape: The Final Hours" },
+            { "I_CASSETTE_14", "Cassette Tape: Overthinker" },
+            { "I_CASSETTE_15", "Cassette Tape: Recurring Dream" },
+            { "I_CASSETTE_16", "Cassette Tape: Lonely Mountain" },
+            { "I_COLLECTION_JAKOB", "Cassette Tape: Jakob's Music Collection" }
         };
 
     // Saves persistent AP session state to disk.
@@ -1468,10 +1775,74 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Queue processing =====
-    // Optional development hook for manually enqueueing test items.
+    // Development-only queue entries go here when I want to force-test item grants.
+    // These are commented examples for every ItemKind currently supported by the grant handler.
+    // I can uncomment one or more lines as needed instead of trying to remember the right format.
     internal static void EnqueueDevelopmentStressTestItems()
     {
-        // Intentionally left empty for now.
+        // ===== Currency =====
+        // Raw money/viscera grant.
+        // The Id is mostly just a label here since Currency routes through TryGrantCurrency(...).
+        // Amount is what really matters.
+        // EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 50000, "Viscera"));
+
+        // ===== Weapon =====
+        // Direct weapon ownership grant.
+        // Use this when I want the player to immediately own a full weapon.
+        // Example weapon ids I have confirmed:
+        // I_W_PISTOL, I_W_UZI, I_W_SHOTGUN, I_W_SNIPER, I_W_CROSSBOW, I_W_ROCKETLAUNCHER
+        // EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_UZI", 1, "Machine Gun"));
+
+        // ===== WeaponUpgrade =====
+        // Gives one upgrade level to a weapon the player already owns.
+        // This will fail safely if the player does not have the base weapon yet.
+        // Use the base weapon id here, not a separate "upgrade item" id.
+        // EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade"));
+
+        // ===== Ingredient =====
+        // Adds normal recipe/cooking ingredients through InventoryManager.
+        // Use this for consumable crafting/cooking inputs that stack by amount.
+        // Example confirmed ids:
+        // I_C_BEANS, I_C_CORN, I_C_WORMS, I_C_ONION, I_C_CHILLY, I_C_GHOSTPEPPER, I_C_LEMON, I_C_GARLIC
+        // I_C_MEAT, I_C_JACKFRUIT, I_C_SARDINE, I_C_COCO, I_C_COFFEE, I_C_WHISKEY, I_C_TOMATO
+        // EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 5, "Coffee Can"));
+
+        // ===== Material =====
+        // Adds crafting materials/resources through InventoryManager.
+        // Use this for stackable build/upgrade materials instead of unique progression items.
+        // Example confirmed ids:
+        // Common: I_BASALT, I_BONE, I_CALCIUM, I_METAL_BAD, I_SHALE, I_LEATHER_BAD, I_WOOD
+        // Rare: I_METAL_GOOD, I_SCRAPS_UPCYCLE, I_SCRAPS_RUSTY, I_CABLE, I_LEATHER_GOOD
+        // Unique: I_MATERIAL_SHOTGUN, I_MATERIAL_ROCKETLAUNCHER, I_MATERIAL_UZI, I_MATERIAL_SNIPER
+        // EnqueueItem(new PendingItem(ItemKind.Material, "I_METAL_GOOD", 10, "Refined Metal"));
+
+        // ===== Collectible =====
+        // Grants a cassette/collectible directly through the cassette manager.
+        // Use the cassette's internal id here.
+        // Example confirmed ids:
+        // I_CASSETTE_1 through I_CASSETTE_16, plus things like I_CASSETTE_D01, I_CASSETTE_D02, etc.
+        // EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_7", 1, "Cassette Tape: The Hero"));
+
+        // ===== PuppyTreat =====
+        // Grants one of Puppy's gifts through the Puppy gift path.
+        // This path also uses suppression so AP-received Puppy gifts do not falsely send local checks.
+        // Example confirmed ids:
+        // I_TOY_BIKE, I_GAMEBOY, I_PLANT_PUPPY, I_TOY_ANIMAL, I_BOOK_MOTHER, I_DREAMCATCHER, I_UKULELE
+        // EnqueueItem(new PendingItem(ItemKind.PuppyTreat, "I_DREAMCATCHER", 1, "Dreamcatcher"));
+
+        // ===== KeyItem =====
+        // Grants a unique progression/key item through InventoryManager.
+        // Some of these also need progression flags after grant, which ApplyKeyItemProgressionFlags(...) handles.
+        // Example confirmed ids:
+        // I_DASH, I_E_HOOK, I_MAYA_PENDANT
+        // EnqueueItem(new PendingItem(ItemKind.KeyItem, "I_DASH", 1, "Dash"));
+
+        // ===== MapUnlock =====
+        // Unlocks a map piece/area directly through ProgressionData.
+        // Use the internal map area id here.
+        // Example confirmed ids:
+        // M_A_W06, M_A_W07_TOP, M_A_W07_BOTTOM, etc.
+        // EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
     }
 
     // Adds a pending item to the queue.
@@ -1495,6 +1866,10 @@ public class LaikaMod : BaseUnityPlugin
             Log.LogInfo($"{sourceTag}: no pending items to process.");
             return;
         }
+
+        // Make sure parry/reflect is unlocked once the game managers are alive.
+        // Awake() is too early because ProgressionManager is still null there.
+        TryEnsureParryUnlockedOnce(sourceTag);
 
         IsProcessingQueue = true;
 
@@ -1538,7 +1913,8 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Grant handlers =====
-    // Routes an item to the correct grant handler.
+    // This is the main router for received items.
+    // Each ItemKind goes through its own grant path so I can keep the weird edge cases isolated.
     internal static bool TryGrantPendingItem(PendingItem item, string sourceTag)
     {
         LogInfo($"{sourceTag}: processing {item}");
@@ -1780,6 +2156,12 @@ public class LaikaMod : BaseUnityPlugin
             return false;
         }
 
+        if (item.Id == "I_COLLECTION_JAKOB")
+        {
+            LogWarning($"{sourceTag}: collectible {item.Id} is a bundle/progression reward, not a directly grantable cassette.");
+            return true;
+        }
+
         try
         {
             // Check whether the player already owns this cassette.
@@ -1801,6 +2183,12 @@ public class LaikaMod : BaseUnityPlugin
             bool ownedAfter = cassettesManager.HasCassette(item.Id);
             LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for cassette {item.Id}");
 
+            if (ownedAfter)
+            {
+                SuppressedCassetteChecks.Add(item.Id);
+                LogInfo($"{sourceTag}: cassette {item.Id} marked for one-shot check suppression.");
+            }
+
             // Success if the player now owns it.
             return ownedAfter;
         }
@@ -1811,12 +2199,15 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Puppy treats are tracked through the normal inventory system.
-    // If already owned, treat the grant as success so the item does not stay stuck in the queue.
+    // Puppy gifts are a little weird compared to normal inventory items.
+    // I resolve the ItemData first and try the ItemData overload, then fall back to the string overload.
+    // Suppression gets added first so AP-received gifts do not come back through the real source patch
+    // and count as locally found checks.
     internal static bool TryGrantPuppyTreat(PendingItem item, string sourceTag)
     {
         LogInfo($"{sourceTag}: granting puppy treat {item.DisplayName}");
 
+        // Grab the game's runtime inventory manager.
         var inventory = Singleton<InventoryManager>.Instance;
 
         if (inventory == null)
@@ -1825,18 +2216,86 @@ public class LaikaMod : BaseUnityPlugin
             return false;
         }
 
-        bool alreadyOwned = inventory.HasItem(item.Id);
+        // Grab the game's runtime item database so we can resolve the real ItemData object.
+        var itemLoader = Singleton<ItemDataLoader>.Instance;
 
+        if (itemLoader == null)
+        {
+            LogWarning($"{sourceTag}: puppy treat grant failed, ItemDataLoader is null.");
+            return false;
+        }
+
+        // Normalize once so suppression and location handling always use the same ID format.
+        string normalizedGiftId = NormalizePuppyGiftId(item.Id);
+
+        // If the player already owns the Puppy gift, treat that as success so it does not stay stuck in the queue.
+        bool alreadyOwned = inventory.HasItem(item.Id);
         LogInfo($"{sourceTag}: puppy treat {item.Id}, alreadyOwned={alreadyOwned}");
 
         if (alreadyOwned)
+        {
+            LogInfo($"{sourceTag}: skipping puppy gift {item.Id} because player already owns it.");
             return true;
+        }
 
-        bool addResult = inventory.AddItem(item.Id, item.Amount, null, false);
+        // Add suppression BEFORE any grant attempt so our Puppy source patch sees it in time.
+        SuppressedPuppyGiftChecks.Add(normalizedGiftId);
+        LogInfo($"{sourceTag}: puppy gift {normalizedGiftId} pre-marked for one-shot check suppression.");
 
-        LogInfo($"{sourceTag}: AddItem({item.Id}, {item.Amount}) returned {addResult}");
+        bool grantSucceeded = false;
 
-        return addResult;
+        try
+        {
+            // Resolve the game's real ItemData for this Puppy gift.
+            ItemData itemData = itemLoader.Find(item.Id);
+
+            if (itemData == null)
+            {
+                LogWarning($"{sourceTag}: puppy treat grant failed, ItemDataLoader.Find({item.Id}) returned null.");
+            }
+            else
+            {
+                // First try the generic AddItem(...) path using the resolved ItemData.
+                // Even though we cannot directly call AddKeyItem(...) from here,
+                // InventoryManager.AddItem(...) may still internally route certain Puppy gifts
+                // through the game's own key-item logic.
+                bool addItemFromDataResult = inventory.AddItem(itemData, item.Amount, null, false);
+                LogInfo($"{sourceTag}: AddItem(ItemData:{item.Id}, {item.Amount}) returned {addItemFromDataResult}");
+
+                grantSucceeded = addItemFromDataResult;
+            }
+
+            // If AddItem(ItemData, ...) did not work, fall back to the string-id version.
+            // Some items in Laika appear to behave differently depending on which overload is used.
+            if (!grantSucceeded)
+            {
+                bool addItemResult = inventory.AddItem(item.Id, item.Amount, null, false);
+                LogInfo($"{sourceTag}: fallback AddItem(string:{item.Id}, {item.Amount}) returned {addItemResult}");
+
+                grantSucceeded = addItemResult;
+            }
+
+            // If the game still says it failed, remove suppression so a future retry is clean.
+            if (!grantSucceeded)
+            {
+                SuppressedPuppyGiftChecks.Remove(normalizedGiftId);
+                LogWarning($"{sourceTag}: puppy gift {normalizedGiftId} grant failed, suppression removed.");
+                return false;
+            }
+
+            // Final ownership check for logging only.
+            bool ownedAfter = inventory.HasItem(item.Id);
+            LogInfo($"{sourceTag}: puppy treat {item.Id}, ownedAfter={ownedAfter}");
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // If anything throws, remove suppression so the queue can safely retry later.
+            SuppressedPuppyGiftChecks.Remove(normalizedGiftId);
+            LogError($"{sourceTag}: exception while granting puppy treat {item.Id}:\n{ex}");
+            return false;
+        }
     }
 
     // Grants a key item through the game's inventory system.
@@ -1892,8 +2351,8 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
-    // Grants a map unlock through ProgressionData.
-    // Renato's map popup and unlock flow use IDs like M_A_W06.
+    // Map pieces are just progression unlocks under the hood,
+    // so I can grant them straight through ProgressionData using the internal map ID.
     internal static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
     {
         LogInfo($"{sourceTag}: granting {item.DisplayName}");
@@ -1923,12 +2382,13 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Progression helpers =====
-    // Applies extra progression flags required when AP grants key items early.
-    // Expand this if more vanilla quest chains break from early item delivery.
+    // Some key items are not enough by themselves.
+    // Vanilla also flips progression flags when the player gets them, so I mirror that here
+    // when AP gives the item early.
     internal static void ApplyKeyItemProgressionFlags(PendingItem item, string sourceTag)
     {
         // Dash needs the G_DASH_UNLOCKED progression flag in addition to the item itself.
-        if (item.Id == "I_E_DASH")
+        if (item.Id == "I_DASH")
         {
             MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_DASH_UNLOCKED", true, false);
             LogInfo($"{sourceTag}: set progression flag G_DASH_UNLOCKED for Dash.");
@@ -1942,6 +2402,33 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
+    // Tracks whether we already forced the parry unlock this session.
+    // This prevents repeatedly writing the same progression flag.
+    internal static bool ParryUnlockEnsuredThisSession = false;
+
+    // Vanilla gives parry through the tutorial, so the player can never miss it there.
+    // In AP that is not guaranteed, so I force the progression flag once the game managers are actually alive.
+    // This only needs to happen once per launch.
+    internal static void TryEnsureParryUnlockedOnce(string sourceTag)
+    {
+        if (ParryUnlockEnsuredThisSession)
+            return;
+
+        var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+
+        if (progressionManager == null)
+        {
+            LogWarning($"{sourceTag}: could not unlock parry because ProgressionManager is null.");
+            return;
+        }
+
+        // This is the actual achievement checked by ParryShield.Update().
+        progressionManager.ProgressionData.SetAchievement("G_PARRY_UNLOCKED", true, false);
+        ParryUnlockEnsuredThisSession = true;
+
+        LogInfo($"{sourceTag}: set progression flag G_PARRY_UNLOCKED.");
+    }
+
     // ===== Display-name helpers =====
     // Resolves a known AP location definition by internal Laika identifier.
     internal static bool TryGetLocationDefinition(string internalId, out APLocationDefinition definition)
@@ -1953,6 +2440,24 @@ public class LaikaMod : BaseUnityPlugin
         }
 
         return LocationDefinitionsByInternalId.TryGetValue(internalId, out definition);
+    }
+
+    // Resolve a collectible's player-facing name from its internal game ID.
+    internal static bool TryGetCollectibleDisplayName(string internalId, out string displayName)
+    {
+        return CollectibleDisplayNamesByInternalId.TryGetValue(internalId, out displayName);
+    }
+
+    // Build a pending collectible item using the canonical cassette display-name registry.
+    internal static PendingItem CreateCollectiblePendingItem(string collectibleId, int amount = 1)
+    {
+        string displayName;
+        if (!TryGetCollectibleDisplayName(collectibleId, out displayName))
+        {
+            displayName = $"Cassette Tape ({collectibleId})";
+        }
+
+        return new PendingItem(ItemKind.Collectible, collectibleId, amount, displayName);
     }
 
     // Centralized check-send path for all AP-style locations.
@@ -1982,6 +2487,99 @@ public class LaikaMod : BaseUnityPlugin
         );
     }
 
+    // Centralized cassette check handler.
+    // This consumes one-shot suppression for AP-granted cassette items so that receiving
+    // a cassette does not accidentally count as finding its real in-world location.
+    internal static void TryHandleCassetteLocationCheck(string cassetteId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(cassetteId))
+        {
+            LogWarning($"{sourceTag}: cassetteId was null or empty.");
+            return;
+        }
+
+        if (SuppressedCassetteChecks.Remove(cassetteId))
+        {
+            LogInfo($"{sourceTag}: suppressed cassette check for AP-granted cassette {cassetteId}.");
+            return;
+        }
+
+        APLocationDefinition locationDefinition;
+        if (!TryGetLocationDefinition(cassetteId, out locationDefinition))
+        {
+            LogWarning($"{sourceTag}: no AP location definition found for cassetteId={cassetteId}");
+            return;
+        }
+
+        TrySendLocationCheck(locationDefinition, sourceTag);
+    }
+
+    internal static string NormalizePuppyGiftId(string giftId)
+    {
+        if (string.IsNullOrEmpty(giftId))
+            return giftId;
+
+        string normalized = giftId.Trim();
+
+        // Keep this here in case the game ever gives us something like I_TOY_BIKEgift.
+        if (normalized.EndsWith("gift", StringComparison.OrdinalIgnoreCase))
+        {
+            normalized = normalized.Substring(0, normalized.Length - 4);
+        }
+
+        return normalized;
+    }
+
+    internal static bool ConsumeSuppressedPuppyGiftCheck(string giftId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(giftId))
+            return false;
+
+        if (SuppressedPuppyGiftChecks.Remove(giftId))
+        {
+            LogInfo($"{sourceTag}: suppressed puppy gift check for AP-granted item {giftId}.");
+            return true;
+        }
+
+        return false;
+    }
+
+    // Handles a real Puppy gift source and turns it into an AP location check.
+    // If the gift came from AP instead of being found naturally, suppression eats it here
+    // so the player does not get a fake local check for an item they were only sent.
+    internal static void TryHandlePuppyGiftLocationCheck(string giftId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(giftId))
+        {
+            LogWarning($"{sourceTag}: puppy gift id was null or empty.");
+            return;
+        }
+
+        string normalizedGiftId = NormalizePuppyGiftId(giftId);
+
+        LogInfo($"{sourceTag}: puppy gift rawId={giftId}, normalizedId={normalizedGiftId}");
+
+        if (ConsumeSuppressedPuppyGiftCheck(normalizedGiftId, sourceTag))
+            return;
+
+        APLocationDefinition locationDefinition;
+        if (!TryGetLocationDefinition(normalizedGiftId, out locationDefinition))
+        {
+            LogWarning($"{sourceTag}: no AP location definition found for puppy gift id={normalizedGiftId}");
+            return;
+        }
+
+        if (locationDefinition.Category != "PuppyGift")
+        {
+            LogWarning(
+                $"{sourceTag}: resolved id {normalizedGiftId} but category was {locationDefinition.Category}, not PuppyGift."
+            );
+            return;
+        }
+
+        TrySendLocationCheck(locationDefinition, sourceTag);
+    }
+
     // ===== Weapon mode helpers =====
     // Returns the correct item definition for a major weapon unlock
     // based on the configured weapon grant mode.
@@ -2008,8 +2606,18 @@ public class LaikaMod : BaseUnityPlugin
 
         return new PendingItem(ItemKind.Weapon, directWeaponId, 1, directDisplayName);
     }
-   
+
     // Specific weapon unlock helpers that use the generic weapon-mode resolver.
+    
+    //Forces the player to start with a pistol. The player doesn't require
+    //it. However, if the player interacts with Jakob too early via a
+    //different weapon, then there is a chance the player will never
+    //acquire the pistol at all. This enforces it.
+    internal static void EnqueueRequiredStartingItems()
+    {
+        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_PISTOL", 1, "Pistol"));
+    }
+
     internal static PendingItem GetRocketLauncherUnlockItem()
     {
         return GetWeaponUnlockItem(
@@ -2132,6 +2740,16 @@ public class LaikaMod : BaseUnityPlugin
         }
     }
 
+    // One-shot suppression for cassette checks triggered by AP-granted cassette items.
+    // If a cassette is granted through the AP receive-item path, the next matching cassette event
+    // should be ignored instead of counted as a real location check.
+    internal static HashSet<string> SuppressedCassetteChecks = new HashSet<string>();
+
+    //Suppression for Puppy's Gifts/treats.
+    // If a Puppy Gift is granted through the AP receive-item path, the next matching Puppy Gift event
+    // should be ignored instead of counted as a real location check.
+    internal static HashSet<string> SuppressedPuppyGiftChecks = new HashSet<string>();
+
     // ===== Harmony patches =====
     [HarmonyPatch(typeof(WeaponsOverlay), "InitializeWeaponsData")]
     public class WeaponsOverlayPatch
@@ -2146,7 +2764,6 @@ public class LaikaMod : BaseUnityPlugin
             if (!IngredientIdsLogged)
             {
                 IngredientIdsLogged = true;
-                // Temporarily disabled during overlay auto-hide/input testing.
                 // LogAllIngredientIds();
             }
 
@@ -2154,10 +2771,10 @@ public class LaikaMod : BaseUnityPlugin
             if (!CassetteIdsLogged)
             {
                 CassetteIdsLogged = true;
-                // Temporarily disabled during overlay auto-hide/input testing.
                 // LogAllCassetteIds();
             }
-            // Process AP queue afterward.
+
+            // Process queued AP-style items once the game UI/inventory systems are ready.
             ProcessPendingItemQueue("InitialItemGrant");
         }
     }
@@ -2250,6 +2867,43 @@ public class LaikaMod : BaseUnityPlugin
             catch (Exception ex)
             {
                 LaikaMod.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CassettesManager), "AddCassetteToInventory", new Type[] { typeof(CassetteData), typeof(bool) })]
+    public class CassetteInventoryRealSourcePatch
+    {
+        static void Postfix(CassetteData cassette, bool silent, bool __result)
+        {
+            try
+            {
+                if (!__result)
+                    return;
+
+                if (cassette == null)
+                {
+                    LaikaMod.LogWarning("CassetteInventoryRealSourcePatch: cassette was null.");
+                    return;
+                }
+
+                string cassetteId = cassette.id;
+
+                if (string.IsNullOrEmpty(cassetteId))
+                {
+                    LaikaMod.LogWarning("CassetteInventoryRealSourcePatch: cassetteId was null or empty.");
+                    return;
+                }
+
+                LaikaMod.LogInfo(
+                    $"CASSETTE INVENTORY SOURCE DETECTED: id={cassetteId}, silent={silent}, result={__result}"
+                );
+
+                LaikaMod.TryHandleCassetteLocationCheck(cassetteId, "CassetteInventoryRealSourcePatch");
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"CassetteInventoryRealSourcePatch exception:\n{ex}");
             }
         }
     }
@@ -2361,6 +3015,66 @@ public class LaikaMod : BaseUnityPlugin
         static void Prefix(bool useBlood, bool moneySack)
         {
             LaikaMod.OnPlayerDeathDetected("PLAYER DEATH DETECTED (Kill(bool,bool))", useBlood, moneySack);
+        }
+    }
+
+    [HarmonyPatch(typeof(InventoryManager), "AddKeyItem", new Type[] { typeof(ItemData) })]
+    public class PuppyGiftKeyItemSourcePatch
+    {
+        static void Postfix(ItemData __0, bool __result)
+        {
+            try
+            {
+                // Ignore failed grants because they did not actually add the Puppy item.
+                if (!__result)
+                    return;
+
+                // Harmony positional argument __0 is the original ItemData parameter.
+                ItemData itemData = __0;
+
+                if (itemData == null)
+                {
+                    LaikaMod.LogWarning("PuppyGiftKeyItemSourcePatch: itemData was null.");
+                    return;
+                }
+
+                string itemId = itemData.id;
+
+                if (string.IsNullOrEmpty(itemId))
+                {
+                    LaikaMod.LogWarning("PuppyGiftKeyItemSourcePatch: itemId was null or empty.");
+                    return;
+                }
+
+                // Helpful debug log so we can confirm which Puppy items naturally route through AddKeyItem(...).
+                LaikaMod.LogInfo(
+                    $"KEY ITEM SOURCE DETECTED: id={itemId}, name={itemData.Name}, result={__result}"
+                );
+
+                // Only route known Puppy gift IDs into the AP Puppy location handler.
+                if (
+                    itemId == "I_TOY_BIKE" ||
+                    itemId == "I_GAMEBOY" ||
+                    itemId == "I_PLANT_PUPPY" ||
+                    itemId == "I_TOY_ANIMAL" ||
+                    itemId == "I_BOOK_MOTHER" ||
+                    itemId == "I_DREAMCATCHER" ||
+                    itemId == "I_UKULELE"
+                )
+                {
+                    // Debug log so we can prove the Puppy gift is actually being routed
+                    // into the AP Puppy location-check handler.
+                    LaikaMod.LogInfo(
+                        $"PuppyGiftKeyItemSourcePatch: routing puppy gift id {itemId} into TryHandlePuppyGiftLocationCheck."
+                    );
+
+                    LaikaMod.TryHandlePuppyGiftLocationCheck(itemId, "PuppyGiftKeyItemSourcePatch");
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"PuppyGiftKeyItemSourcePatch exception:\n{ex}");
+            }
         }
     }
 
