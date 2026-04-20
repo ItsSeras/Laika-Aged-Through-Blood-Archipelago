@@ -54,7 +54,7 @@ public class LaikaMod : BaseUnityPlugin
 
     // Development stress test toggle.
     // I turn this on when I want to force a batch of received items through the queue without needing a live AP send.
-    internal static bool EnableDevelopmentStressTest = false;
+    internal static bool EnableDevelopmentStressTest = true;
 
     // Canvas-based dev overlay objects.
     internal static GameObject DevOverlayCanvasObject;
@@ -1793,12 +1793,18 @@ public class LaikaMod : BaseUnityPlugin
         // Example weapon ids I have confirmed:
         // I_W_PISTOL, I_W_UZI, I_W_SHOTGUN, I_W_SNIPER, I_W_CROSSBOW, I_W_ROCKETLAUNCHER
         // EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_UZI", 1, "Machine Gun"));
+        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_UZI", 1, "Machine Gun"));
+        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_SHOTGUN", 1, "Shotgun"));
+        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_SNIPER", 1, "Sniper Rifle"));
 
         // ===== WeaponUpgrade =====
-        // Gives one upgrade level to a weapon the player already owns.
-        // This will fail safely if the player does not have the base weapon yet.
+        // Adds weapon upgrade steps from the weapon's current level.
+        // Example: a fresh weapon at displayed level 1 plus amount 3 should end at displayed level 4.
         // Use the base weapon id here, not a separate "upgrade item" id.
-        // EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade"));
+        // EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_PISTOL", 3, "Pistol Upgrade 3"));
+        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade 1"));
+        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_PISTOL", 2, "Pistol Upgrade 2"));
+        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 3, "Machine Gun Upgrade 3"));
 
         // ===== Ingredient =====
         // Adds normal recipe/cooking ingredients through InventoryManager.
@@ -2040,41 +2046,123 @@ public class LaikaMod : BaseUnityPlugin
         return ownedAfter;
     }
 
-    // Grants one weapon upgrade level using the game's own weapon upgrade method.
+    // Grants weapon upgrades as additional upgrade steps from the weapon's current level.
+    // Internal weapon levels are zero-based in Laika:
+    // internal 0 = displayed level 1
+    // internal 1 = displayed level 2
+    // internal 2 = displayed level 3
+    // internal 3 = displayed level 4
+    //
+    // That means if a fresh weapon is newly granted and starts at internal level 0,
+    // an AP upgrade amount of 3 should move it to internal level 3, which is displayed level 4.
     internal static bool TryGrantWeaponUpgrade(PendingItem item, string sourceTag)
     {
-        // Friendly log line for readability.
         LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
-        // Grab the runtime weapons inventory singleton.
         var weaponsInventory = Singleton<WeaponsInventory>.Instance;
-
-        // Safety check in case the manager is not ready yet.
         if (weaponsInventory == null)
         {
             LogWarning($"{sourceTag}: weapon upgrade grant failed, WeaponsInventory is null.");
             return false;
         }
 
+        var itemLoader = Singleton<ItemDataLoader>.Instance;
+        if (itemLoader == null)
+        {
+            LogWarning($"{sourceTag}: weapon upgrade grant failed, ItemDataLoader is null.");
+            return false;
+        }
+
         try
         {
-            // Make sure the player actually owns the weapon before trying to upgrade it.
             bool alreadyOwned = weaponsInventory.HasWeapon(item.Id);
             LogInfo($"{sourceTag}: weapon upgrade target {item.Id}, alreadyOwned={alreadyOwned}");
 
-            // If the player does not own the weapon yet, do not consume the queue item.
             if (!alreadyOwned)
             {
                 LogWarning($"{sourceTag}: cannot upgrade weapon {item.Id} because player does not own it yet.");
                 return false;
             }
 
-            // Ask the game to upgrade the weapon by one level.
-            bool upgradeResult = weaponsInventory.UpgradeWeapon(item.Id);
-            LogInfo($"{sourceTag}: UpgradeWeapon({item.Id}) returned {upgradeResult}");
+            ItemDataWeapon weaponData = itemLoader.FindWeapon(item.Id);
+            if (weaponData == null)
+            {
+                LogWarning($"{sourceTag}: weapon upgrade grant failed, FindWeapon({item.Id}) returned null.");
+                return false;
+            }
 
-            // Trust the game's own result here.
-            return upgradeResult;
+            WeaponInstance weaponInstance = weaponsInventory.GetWeaponInstance(weaponData);
+            if (weaponInstance == null)
+            {
+                LogWarning($"{sourceTag}: weapon upgrade grant failed, GetWeaponInstance({item.Id}) returned null.");
+                return false;
+            }
+
+            // Laika weapon levels are zero-based internally.
+            int currentInternalLevel = weaponInstance.Level;
+
+            // item.Amount means "how many upgrade steps to add from where the weapon is now".
+            int targetInternalLevel = currentInternalLevel + item.Amount;
+
+            // Laika weapons cap at displayed level 4, which is internal level 3.
+            // Clamp here so I never push a weapon past the game's valid level data.
+            int maxInternalLevel = 3;
+            if (targetInternalLevel > maxInternalLevel)
+            {
+                targetInternalLevel = maxInternalLevel;
+            }
+
+            LogInfo(
+                $"{sourceTag}: weapon {item.Id} currentInternalLevel={currentInternalLevel}, " +
+                $"targetInternalLevel={targetInternalLevel}, " +
+                $"currentDisplayedLevel={currentInternalLevel + 1}, " +
+                $"targetDisplayedLevel={targetInternalLevel + 1}"
+            );
+
+            if (currentInternalLevel >= targetInternalLevel)
+            {
+                LogInfo($"{sourceTag}: weapon {item.Id} is already at or above target level.");
+                return true;
+            }
+
+            while (currentInternalLevel < targetInternalLevel)
+            {
+                bool upgradeResult = weaponsInventory.UpgradeWeapon(item.Id);
+                LogInfo($"{sourceTag}: UpgradeWeapon({item.Id}) returned {upgradeResult}");
+
+                weaponInstance = weaponsInventory.GetWeaponInstance(weaponData);
+                if (weaponInstance == null)
+                {
+                    LogWarning($"{sourceTag}: weapon upgrade grant failed, weapon instance disappeared after upgrade.");
+                    return false;
+                }
+
+                int newInternalLevel = weaponInstance.Level;
+                LogInfo(
+                    $"{sourceTag}: weapon {item.Id} level after upgrade attempt = " +
+                    $"internal {newInternalLevel} / displayed {newInternalLevel + 1}"
+                );
+
+                if (newInternalLevel <= currentInternalLevel)
+                {
+                    LogWarning(
+                        $"{sourceTag}: weapon {item.Id} stopped upgrading before target level. " +
+                        $"CurrentInternal={newInternalLevel}, TargetInternal={targetInternalLevel}"
+                    );
+                    break;
+                }
+
+                currentInternalLevel = newInternalLevel;
+            }
+
+            bool reachedTarget = currentInternalLevel >= targetInternalLevel;
+            LogInfo(
+                $"{sourceTag}: weapon {item.Id} reachedTarget={reachedTarget}, " +
+                $"finalInternalLevel={currentInternalLevel}, " +
+                $"finalDisplayedLevel={currentInternalLevel + 1}"
+            );
+
+            return reachedTarget;
         }
         catch (Exception ex)
         {
