@@ -6,17 +6,17 @@ using Laika.Economy;
 using Laika.Inventory;
 using Laika.Persistence;
 using Laika.PlayMaker.FsmActions;
+using Laika.Quests.PlayMaker.FsmActions;
 using Laika.Quests;
+using Laika.Quests.Goals;
 using Laika.UI.InGame.Inventory;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
-
-using System.Linq;
-using System.Reflection;
 
 [BepInPlugin("com.seras.laikaapprototype", "Laika AP Prototype", "1.0.0")]
 public class LaikaMod : BaseUnityPlugin
@@ -371,7 +371,7 @@ public class LaikaMod : BaseUnityPlugin
                 "M_A_W08_LEFT",
                 new APLocationDefinition(
                     100015L,
-                    "Map Piece: Where Birds Came From (Left)",
+                    "Map Piece: Where Birds Came From (Left/Bottom)",
                     "M_A_W08_LEFT",
                     "MapUnlock",
                     true
@@ -381,7 +381,7 @@ public class LaikaMod : BaseUnityPlugin
                 "M_A_W08_RIGHT",
                 new APLocationDefinition(
                     100016L,
-                    "Map Piece: Where Birds Came From (Right)",
+                    "Map Piece: Where Birds Came From (Right/Top)",
                     "M_A_W08_RIGHT",
                     "MapUnlock",
                     true
@@ -1786,6 +1786,7 @@ public class LaikaMod : BaseUnityPlugin
         // Amount is what really matters.
         // EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA", 50000, "Viscera"));
 
+
         // ===== Weapon =====
         // Direct weapon ownership grant.
         // Use this when I want the player to immediately own a full weapon.
@@ -1852,7 +1853,9 @@ public class LaikaMod : BaseUnityPlugin
         LogInfo($"QUEUE: added pending item -> {item}");
     }
 
-    // Main queue processor. Called when game systems are in a good state.
+    // Main queue processor.
+    // This runs when the game is in a safe enough state to grant AP items and also acts as a fallback
+    // recovery point for quest softlocks on older saves.
     internal static void ProcessPendingItemQueue(string sourceTag)
     {
         if (IsProcessingQueue)
@@ -1860,6 +1863,11 @@ public class LaikaMod : BaseUnityPlugin
             LogInfo($"{sourceTag}: queue processing already in progress, skipping nested call.");
             return;
         }
+
+        // Some AP softlocks are not item grant failures.
+        // They happen because the player already owns the required item before the vanilla quest reaches
+        // the step that expects it. I only fix the blocked step here so the rest of the quest can continue normally.
+        TryReconcileKnownQuestSoftlocks(sourceTag);
 
         if (PendingItemQueue.Count == 0)
         {
@@ -2023,6 +2031,11 @@ public class LaikaMod : BaseUnityPlugin
 
         bool ownedAfter = inventory.HasWeapon(item.Id);
         LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for weapon {item.Id}");
+
+        if (ownedAfter && item.Id == "I_W_SHOTGUN")
+        {
+            LogImportantQuestSnapshots($"{sourceTag}: shotgun grant follow-up");
+        }
 
         return ownedAfter;
     }
@@ -2342,6 +2355,11 @@ public class LaikaMod : BaseUnityPlugin
             // If AddItem() returned true, trust the game's internal key item handling.
             LogInfo($"{sourceTag}: assuming success from AddItem result for key item {item.Id}");
 
+            if (addResult && item.Id == "I_E_HOOK")
+            {
+                LogImportantQuestSnapshots($"{sourceTag}: hook grant follow-up");
+            }
+
             return addResult;
         }
         catch (Exception ex)
@@ -2427,6 +2445,84 @@ public class LaikaMod : BaseUnityPlugin
         ParryUnlockEnsuredThisSession = true;
 
         LogInfo($"{sourceTag}: set progression flag G_PARRY_UNLOCKED.");
+    }
+
+    // Temporary quest-debug helpers.
+    // These are useful when I need to inspect active goal ids and progression state for a broken quest.
+    // They should stay out of normal runtime flow unless I am actively diagnosing a quest issue.
+    internal static void LogQuestGoals(string questId, string sourceTag)
+    {
+        try
+        {
+            QuestLog questLog = Singleton<QuestLog>.Instance;
+
+            if (questLog == null)
+            {
+                LogWarning($"{sourceTag}: could not log quest goals because QuestLog is null.");
+                return;
+            }
+
+            List<QuestInstance> activeQuests = questLog.GetActiveQuestsList();
+
+            if (activeQuests == null)
+            {
+                LogWarning($"{sourceTag}: could not log quest goals because active quest list was null.");
+                return;
+            }
+
+            QuestInstance quest = activeQuests.Find(x => x != null && x.QuestId == questId);
+
+            if (quest == null)
+            {
+                LogInfo($"{sourceTag}: quest {questId} is not active.");
+                return;
+            }
+
+            LogInfo($"{sourceTag}: QUEST SNAPSHOT START -> {questId}");
+
+            foreach (QuestGoal goal in quest.goals)
+            {
+                if (goal == null)
+                    continue;
+
+                LogInfo(
+                    $"{sourceTag}: " +
+                    $"quest={questId}, " +
+                    $"goalId={goal.GoalId}, " +
+                    $"goalType={goal.GetType().Name}, " +
+                    $"completed={goal.Completed}, " +
+                    $"current={goal.CurrentAmount}, " +
+                    $"required={goal.RequiredAmount}, " +
+                    $"description={goal.Description}"
+                );
+            }
+
+            QuestGoal currentGoal = quest.GetCurrentGoal();
+
+            if (currentGoal != null)
+            {
+                LogInfo(
+                    $"{sourceTag}: CURRENT GOAL -> " +
+                    $"quest={questId}, " +
+                    $"goalId={currentGoal.GoalId}, " +
+                    $"goalType={currentGoal.GetType().Name}, " +
+                    $"description={currentGoal.Description}"
+                );
+            }
+
+            LogInfo($"{sourceTag}: QUEST SNAPSHOT END -> {questId}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"{sourceTag}: exception while logging quest goals for {questId}:\n{ex}");
+        }
+    }
+
+    internal static void LogImportantQuestSnapshots(string sourceTag)
+    {
+        LogQuestGoals("Q_D_S_OldWarfare", sourceTag);
+        LogQuestGoals("Q_D_S_TutorialHook", sourceTag);
+        LogQuestGoals("Q_D_2_Lighthouse", sourceTag);
     }
 
     // ===== Display-name helpers =====
@@ -2578,6 +2674,139 @@ public class LaikaMod : BaseUnityPlugin
         }
 
         TrySendLocationCheck(locationDefinition, sourceTag);
+    }
+
+    // Looks for one active quest by id.
+    // I only care about active quests here because these softlocks happen mid-quest.
+    internal static QuestInstance FindActiveQuest(string questId)
+    {
+        QuestLog questLog = Singleton<QuestLog>.Instance;
+
+        if (questLog == null)
+            return null;
+
+        List<QuestInstance> activeQuests = questLog.GetActiveQuestsList();
+
+        if (activeQuests == null)
+            return null;
+
+        return activeQuests.Find(x => x != null && x.QuestId == questId);
+    }
+
+    // Some AP softlocks are not item grant failures.
+    // They happen because the player already owns the required item before the vanilla quest step becomes current.
+    // I reconcile those here by only completing the one blocked goal, not the whole quest.
+    internal static void TryReconcileKnownQuestSoftlocks(string sourceTag)
+    {
+        try
+        {
+            QuestLog questLog = Singleton<QuestLog>.Instance;
+
+            if (questLog == null)
+            {
+                LogWarning($"{sourceTag}: could not reconcile quest softlocks because QuestLog is null.");
+                return;
+            }
+
+            TryReconcileOldWarfareShotgunGoal(questLog, sourceTag);
+            TryReconcileTutorialHookGoal(questLog, sourceTag);
+        }
+        catch (Exception ex)
+        {
+            LogError($"{sourceTag}: exception while reconciling known quest softlocks:\n{ex}");
+        }
+    }
+
+    // Old Warfare can get stuck if AP gives the player the shotgun early.
+    // CraftShotgun is a GatherQuestGoal, so the normal TryCompleteQuestGoal / ForceComplete path
+    // does not advance it correctly here. Instead, I re-run the goal's own CheckGoal() logic
+    // once the player already owns the shotgun so the quest can move on to ShowShotgun normally.
+    internal static void TryReconcileOldWarfareShotgunGoal(QuestLog questLog, string sourceTag)
+    {
+        QuestInstance quest = FindActiveQuest("Q_D_S_OldWarfare");
+
+        if (quest == null)
+            return;
+
+        QuestGoal currentGoal = quest.GetCurrentGoal();
+
+        if (currentGoal == null)
+            return;
+
+        if (currentGoal.GoalId != "CraftShotgun")
+            return;
+
+        WeaponsInventory weaponsInventory = Singleton<WeaponsInventory>.Instance;
+
+        if (weaponsInventory == null)
+        {
+            LogWarning($"{sourceTag}: could not reconcile Old Warfare because WeaponsInventory is null.");
+            return;
+        }
+
+        if (!weaponsInventory.HasWeapon("I_W_SHOTGUN"))
+            return;
+
+        LogInfo($"{sourceTag}: reconciling Old Warfare softlock by re-checking CraftShotgun because the player already owns the shotgun.");
+        AddOverlayLine("[AP] Old Warfare updated because you already had the shotgun.");
+
+        try
+        {
+            // GatherQuestGoal does not implement ForceComplete(), so I need to call its own
+            // internal CheckGoal() path directly. That lets the quest use its normal gather-goal
+            // completion logic instead of me faking a quest close or skipping ahead too far.
+            MethodInfo checkGoalMethod = currentGoal.GetType().GetMethod(
+                "CheckGoal",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+
+            if (checkGoalMethod == null)
+            {
+                LogWarning($"{sourceTag}: could not find CheckGoal() on CraftShotgun goal.");
+                return;
+            }
+
+            checkGoalMethod.Invoke(currentGoal, null);
+        }
+        catch (Exception ex)
+        {
+            LogError($"{sourceTag}: exception while re-checking CraftShotgun:\n{ex}");
+        }
+    }
+
+    // Bonehead's Hook can get stuck if AP gives the player the hook before the quest reaches GetHook.
+    // In that case, the quest still waits on the first scripted goal even though the player already has the hook.
+    // I only complete GetHook so the rest of the quest can still play out normally.
+    internal static void TryReconcileTutorialHookGoal(QuestLog questLog, string sourceTag)
+    {
+        QuestInstance quest = FindActiveQuest("Q_D_S_TutorialHook");
+
+        if (quest == null)
+            return;
+
+        QuestGoal currentGoal = quest.GetCurrentGoal();
+
+        if (currentGoal == null)
+            return;
+
+        if (currentGoal.GoalId != "GetHook")
+            return;
+
+        InventoryManager inventory = Singleton<InventoryManager>.Instance;
+
+        if (inventory == null)
+        {
+            LogWarning($"{sourceTag}: could not reconcile TutorialHook because InventoryManager is null.");
+            return;
+        }
+
+        if (!inventory.HasItem("I_E_HOOK"))
+            return;
+
+        LogInfo($"{sourceTag}: reconciling Bonehead's Hook softlock by completing GetHook because the player already owns the hook.");
+        AddOverlayLine("[AP] Bonehead's Hook updated because you already had the hook.");
+
+        questLog.TryCompleteQuestGoal("Q_D_S_TutorialHook", "GetHook");
     }
 
     // ===== Weapon mode helpers =====
@@ -3074,6 +3303,44 @@ public class LaikaMod : BaseUnityPlugin
             catch (Exception ex)
             {
                 LaikaMod.LogError($"PuppyGiftKeyItemSourcePatch exception:\n{ex}");
+            }
+        }
+    }
+
+    // Some AP softlocks happen right when a quest gets added or advanced.
+    // I re-run the quest softlock reconciliation here so the fix can happen immediately
+    // instead of waiting for a later zone load or queue wake-up.
+    [HarmonyPatch(typeof(TryAddQuest), "OnEnter")]
+    public class TryAddQuestReconcilePatch
+    {
+        static void Postfix()
+        {
+            try
+            {
+                LaikaMod.TryReconcileKnownQuestSoftlocks("TryAddQuestReconcilePatch");
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"TryAddQuestReconcilePatch exception:\n{ex}");
+            }
+        }
+    }
+
+    // Some vanilla flows complete one goal and immediately move to the next.
+    // If AP already gave the required item, that newly current goal can softlock on the spot.
+    // Running the reconciliation here makes the fix happen much earlier.
+    [HarmonyPatch(typeof(TryCompleteQuestGoal), "OnEnter")]
+    public class TryCompleteQuestGoalReconcilePatch
+    {
+        static void Postfix()
+        {
+            try
+            {
+                LaikaMod.TryReconcileKnownQuestSoftlocks("TryCompleteQuestGoalReconcilePatch");
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"TryCompleteQuestGoalReconcilePatch exception:\n{ex}");
             }
         }
     }
