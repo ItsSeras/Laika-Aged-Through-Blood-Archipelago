@@ -1,0 +1,41 @@
+# Player name shown in the multiworld
+name: Seras
+
+# The APWorld game name must match the world exactly
+game: "Laika: Aged Through Blood"
+
+"Laika: Aged Through Blood":
+  # --- General Archipelago settings ---
+
+  # Progression balancing allows you to adjust how "stuck" you will get.
+  # Higher values try harder to keep important progression from being overly buried.
+
+  progression_balancing: 50
+
+  # "items" means the seed only expects you to be able to reach the required items/checks,
+  # not necessarily every single location in the game.
+
+  accessibility: items
+
+  # --- Laika-specific settings ---
+
+  # How major weapons are represented in the seed.
+  # "direct" = you receive the actual weapon from Archipelago.
+  # "crafting" = you receive that weapon's unique crafting material instead.
+  # Crossbow currently stays direct even in crafting mode.
+
+  weapon_mode: direct
+
+  # If true, your death can be sent to other connected players,
+  # and their deaths can affect you, once live networking is in place.
+
+  death_link: false
+
+  # If true, deaths do not immediately send a DeathLink.
+  # Instead, the game waits until you have died enough times to hit the threshold below.
+
+  death_amnesty: false
+
+  # Number of deaths required before a DeathLink is sent when death_amnesty is enabled.
+
+  death_amnesty_count: 5

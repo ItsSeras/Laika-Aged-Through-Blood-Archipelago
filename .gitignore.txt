@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+
+# Visual Studio / C#
+.vs/
+bin/
+obj/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Local test/output
+output/
+generated/
+logs/
+
+# Do not upload decompiled reference files
+reference/
+
+# Personal local config
+*.user
+*.suo

@@ -6,9 +6,9 @@ This project is actively being worked on and is ***NOT*** in any state to be use
 A *Laika: Aged Through Blood* mod for the [Archipelago multi-game randomizer system](https://archipelago.gg).
 
 # Status (as of April 2026)
-Our AP World successfully is able to generate! 
+Internal side for receiving checks is mostly complete in concept. 
 
-We have no way to connect to the world just yet, however, our APWorld does exist and can generate games!
+Sending checks and Archipelago networking is the next step planned for the future.
 
 # Contact
 For questions, feedback, or discussion related to the randomizer, please visit the "`Laika: Aged Through Blood`" thread in the [Archipelago Discord server](https://discord.com/channels/731205301247803413/1491947867345129522), or message me (`@itsseras`) directly on Discord.
@@ -21,9 +21,7 @@ Archipelago allows for various games to be randomized in a vast amount of ways. 
 For example, say you're playing *Laika: Aged Through Blood* and buy a map upgrade from Renato. That map upgrade could instead give a legendary item to a *Risk of Rain 2* player in their game. In the same vein, the Risk of Rain 2 player could open a chest and send a Sniper Rifle to you in your game. This allows for unique and dynamic gameplay styles and a wide variety of approaching games that were not possible prior. 
 
 # What This Specific Mod Changes
-The player starts out with a revolver and reflect mechanics out of the gate. Map purchases from Renato, cassette tapes, and even key items are randomized.
-
-Weapons and bike upgrades can be acquired through checks received
+PLACEHOLDER/NA
 
 # Installation
 PLACEHOLDER/NA

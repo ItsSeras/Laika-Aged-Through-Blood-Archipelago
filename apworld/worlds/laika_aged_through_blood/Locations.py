@@ -1,0 +1,135 @@
+# worlds/laika/Locations.py
+
+from BaseClasses import Location
+
+
+class LaikaLocation(Location):
+    game = "Laika: Aged Through Blood"
+
+
+LOCATION_TABLE = {
+    # Map Pieces
+    "Map Piece: Where Our Bikes Growl": 100002,
+    "Map Piece: Where All Was Lost (Bottom)": 100003,
+    "Map Piece: Where All Was Lost (Top)": 100004,
+    "Map Piece: Where Doom Fell": 100005,
+    "Map Piece: Where Rust Weaves (Left)": 100006,
+    "Map Piece: Where Rust Weaves (Center)": 100007,
+    "Map Piece: Where Rust Weaves (Right)": 100008,
+    "Map Piece: Where Iron Caresses the Sky (Bottom)": 100009,
+    "Map Piece: Where Iron Caresses the Sky (Top)": 100010,
+    "Map Piece: Where the Waves Die (Left)": 100011,
+    "Map Piece: Where the Waves Die (Right)": 100012,
+    "Map Piece: Where Our Ancestors Rest (Bottom)": 100013,
+    "Map Piece: Where Our Ancestors Rest (Top)": 100014,
+    "Map Piece: Where Birds Came From (Left/Bottom)": 100015,
+    "Map Piece: Where Birds Came From (Right/Top)": 100016,
+    "Map Piece: Where Birds Lurk (Left)": 100017,
+    "Map Piece: Where Birds Lurk (Right)": 100018,
+    "Map Piece: Where Rock Bleeds (Left)": 100019,
+    "Map Piece: Where Rock Bleeds (Center)": 100020,
+    "Map Piece: Where Rock Bleeds (Right)": 100021,
+    "Map Piece: Where Water Glistened (Borders)": 100022,
+    "Map Piece: Where Water Glistened (1st Ship)": 100023,
+    "Map Piece: Where Water Glistened (2nd Ship)": 100024,
+    "Map Piece: Where Water Glistened (3rd Ship)": 100025,
+    "Map Piece: Where Water Glistened (4th Ship)": 100026,
+    "Map Piece: The Big Tree": 100027,
+    "Map Piece: Floating City (Control Area)": 100028,
+    "Map Piece: Floating City (Old Town)": 100029,
+    "Map Piece: Floating City (Hangar)": 100030,
+    "Map Piece: Floating City (Factory)": 100031,
+    "Map Piece: Floating City (City Facilities)": 100032,
+
+    # Main Quests
+    "Quest Complete: Rage and Sorrow": 110001,
+    "Quest Complete: Old Warfare": 110002,
+    "Quest Complete: The Bonehead's Hook": 110003,
+    "Quest Complete: Floating": 110004,
+    "Quest Complete: A Heart for Poochie": 110005,
+    "Quest Complete: Diplomacy": 110006,
+    "Quest Complete: Radio Silence": 110007,
+    "Quest Complete: The Big Tree": 110008,
+    "Quest Complete: Childless": 110009,
+    "Quest Complete: Closure": 110010,
+    "Quest Complete: Hell High": 110011,
+
+    # Side Quests
+    "Quest Complete: Shake Off the Dead Leaves": 110012,
+    "Quest Complete: Stargazing": 110013,
+    "Quest Complete: The Remnants": 110014,
+    "Quest Complete: A New Sheriff in Town": 110015,
+    "Quest Complete: A Little Tomb Stone": 110016,
+    "Quest Complete: First Blood": 110017,
+    "Quest Complete: Life of the Party": 110018,
+    "Quest Complete: Bone Flour": 110019,
+    "Quest Complete: A Break for Camilla": 110020,
+    "Quest Complete: From Mother to Daughter": 110021,
+    "Quest Complete: The Prophecy": 110022,
+    "Quest Complete: Last Meal": 110023,
+    "Quest Complete: For the Cash": 110024,
+    "Quest Complete: Death on Demand": 110025,
+    "Quest Complete: Family Tree": 110026,
+    "Quest Complete: Fade Out": 110027,
+    "Quest Complete: Just a little girl": 110028,
+    "Quest Complete: We'll Never Know": 110029,
+    "Quest Complete: High Spirits": 110030,
+    "Quest Complete: Water Whispers": 110031,
+
+    # Nightmare Questline
+    "Quest Complete: Worse than Nightmares": 110032,
+    "Quest Complete: Worse than Hives": 110033,
+    "Quest Complete: Worse than Stomach Flu": 110034,
+
+    # Musicians Questline
+    "Quest Complete: Fogg's Only Wish": 110035,
+    "Quest Complete: The Last Erhu": 110036,
+    "Quest Complete: Clean Your Beak": 110037,
+    "Quest Complete: Desperately in Need of Music": 110038,
+    "Quest Complete: Sober Up": 110039,
+    "Quest Complete: Oooo Ooo Oo O Ooo": 110040,
+
+    # Flashback Questline
+    "Quest Complete: Where We Used to Live": 110041,
+    "Quest Complete: Target Practice": 110042,
+    "Quest Complete: Ava": 110043,
+
+    # Bosses
+    "Boss Defeated: A Hundred Hungry Beaks": 120001,
+    "Boss Defeated: A Long Lost Woodcrawler": 120002,
+    "Boss Defeated: A Caterpiller Made of Sadness": 120003,
+    "Boss Defeated: A Gargantuan Swimcrab": 120004,
+    "Boss Defeated: Pope Melva VIII": 120005,
+    "Boss Defeated: Two-Beak God": 120006,
+
+    # Cassettes
+    "Cassette Tape: Bloody Sunset": 130001,
+    "Cassette Tape: Playing in the Sun": 130002,
+    "Cassette Tape: Lullaby of the Dead": 130003,
+    "Cassette Tape: Blue Limbo": 130004,
+    "Cassette Tape: Trust Them": 130005,
+    "Cassette Tape: My Destiny": 130006,
+    "Cassette Tape: The End of the Road": 130007,
+    "Cassette Tape: The Whisper": 130008,
+    "Cassette Tape: Heartglaze Hope": 130009,
+    "Cassette Tape: The Hero": 130010,
+    "Cassette Tape: Visions of Red": 130011,
+    "Cassette Tape: Through the Wind": 130012,
+    "Cassette Tape: Heartbeat from the Last Century": 130013,
+    "Cassette Tape: Coming Home": 130014,
+    "Cassette Tape: Mother": 130015,
+    "Cassette Tape: The Last Tear": 130016,
+    "Cassette Tape: The Final Hours": 130017,
+    "Cassette Tape: Overthinker": 130018,
+    "Cassette Tape: Recurring Dream": 130019,
+    "Cassette Tape: Lonely Mountain": 130020,
+
+    # Puppy Gifts
+    "Puppy Gift: Toy Bike": 140001,
+    "Puppy Gift: Handheld Console": 140002,
+    "Puppy Gift: Tangerine Tree": 140003,
+    "Puppy Gift: Toy Animal": 140004,
+    "Puppy Gift: Great-Great-Grandma's Novella": 140005,
+    "Puppy Gift: Dreamcatcher": 140006,
+    "Puppy Gift: Ukulele": 140007,
+}

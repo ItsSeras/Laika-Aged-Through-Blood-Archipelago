@@ -48,8 +48,8 @@ public class LaikaMod : BaseUnityPlugin
     // When set to 1, the next detected death will not count toward outbound DeathLink logic.
     internal static int SuppressedDeathLinksRemaining = 0;
 
-    // Temporary world options used for future YAML/config support.
-    // For now this is hardcoded, but later it can be loaded from a YAML file.
+    // Runtime AP world options loaded from slot_data cache.
+    // Later this can be filled directly from a live AP Connected packet.
     internal static APWorldOptions WorldOptions = new APWorldOptions();
 
     // Development stress test toggle.
@@ -67,20 +67,15 @@ public class LaikaMod : BaseUnityPlugin
     // ===== Startup =====
     private void Awake()
     {
-        // Temporary hardcoded option for future YAML support.
-        // Change this to Crafting to test unique-material weapon unlocks instead of direct weapon grants.
-        WorldOptions.WeaponMode = WeaponGrantMode.Direct;
-
-        // Temporary hardcoded DeathLink options for future YAML support.
-        // For now this only controls local logging behavior.
-        WorldOptions.DeathLinkEnabled = false;
-        WorldOptions.DeathAmnestyEnabled = false;
-        WorldOptions.DeathAmnestyCount = 3;
-
         // Save logger for static patches.
         Log = Logger;
 
         LoadSessionState();
+
+        // Try to load APWorld options from local slot-data cache.
+        // If nothing exists yet, the defaults already defined on APWorldOptions stay in place.
+        LoadWorldOptionsFromLocalSlotData();
+
 
         // Make absolutely sure the plugin component is enabled for Update() / OnGUI().
         enabled = true;
@@ -222,6 +217,11 @@ public class LaikaMod : BaseUnityPlugin
             Log.LogError($"Failed to load AP session state:\n{ex}");
         }
     }
+
+    // Local cache for AP slot_data values pushed from the AP server.
+    // For now this is just a tiny text file so I can test option flow before full live networking is finished.
+    internal static string SlotDataFilePath =
+        Path.Combine(Paths.ConfigPath, "laika_ap_slot_data.txt");
 
     // Persistent local AP session state.
     // This stores client-side sync information so reconnects/resyncs are possible later.
@@ -1474,26 +1474,27 @@ public class LaikaMod : BaseUnityPlugin
     internal static void LogInfo(string message)
     {
         Log.LogInfo(message);
-        AddOverlayLine("[INFO] " + message);
     }
 
     internal static void LogWarning(string message)
     {
         Log.LogWarning(message);
-        AddOverlayLine("[WARN] " + message);
     }
 
     internal static void LogError(string message)
     {
         Log.LogError(message);
-        AddOverlayLine("[ERROR] " + message);
     }
 
-    // Adds a new recent activity line, shows the recent-log panel,
-    // and resets the auto-hide timer through the persistent overlay controller.
-    internal static void AddOverlayLine(string line)
+    // Adds a player-facing AP activity line to the recent overlay.
+    // This is intentionally separate from the normal debug logger so the recent overlay
+    // only shows useful AP gameplay events instead of internal spam.
+    internal static void AnnounceAPActivity(string message)
     {
-        OverlayLines.Enqueue(line);
+        if (string.IsNullOrWhiteSpace(message))
+            return;
+
+        OverlayLines.Enqueue(message);
 
         while (OverlayLines.Count > MaxOverlayLines)
         {
@@ -1622,15 +1623,15 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // ===== Dev overlay state =====
-    // Stores recent on-screen debug lines for the in-game developer overlay.
+    // Stores recent player-facing AP activity lines for the recent overlay.
     internal static Queue<string> OverlayLines = new Queue<string>();
 
     // Maximum number of lines to keep in the overlay at once.
-    internal static int MaxOverlayLines = 10;
+    internal static int MaxOverlayLines = 8;
 
     // Recent-log box visibility is separate from the always-visible status HUD.
     internal static bool ShowRecentLogOverlay = false;
-    internal static float RecentLogAutoHideDelaySeconds = 10f;
+    internal static float RecentLogAutoHideDelaySeconds = 14f;
 
     // Creates the developer overlay canvas if it does not already exist.
     internal static void EnsureDevOverlayCanvas()
@@ -1732,8 +1733,9 @@ public class LaikaMod : BaseUnityPlugin
             return;
 
         DevOverlayStatusText.text =
-            "Laika AP Dev Overlay\n\n" +
+            "Laika AP Status\n\n" +
             $"Queue={PendingItemQueue.Count}\n" +
+            $"WeaponMode={WorldOptions.WeaponMode}\n" +
             $"SessionDeaths={LocalDeathsThisSession}\n" +
             $"DeathsSinceLastLink={DeathsSinceLastDeathLink}\n" +
             $"DeathLink={WorldOptions.DeathLinkEnabled}\n" +
@@ -1744,7 +1746,7 @@ public class LaikaMod : BaseUnityPlugin
         if (ShowRecentLogOverlay)
         {
             DevOverlayRecentLogText.text =
-                "Recent Logs:\n\n" +
+                "Recent AP Activity:\n\n" +
                 string.Join("\n", OverlayLines.ToArray());
         }
         else
@@ -1793,18 +1795,12 @@ public class LaikaMod : BaseUnityPlugin
         // Example weapon ids I have confirmed:
         // I_W_PISTOL, I_W_UZI, I_W_SHOTGUN, I_W_SNIPER, I_W_CROSSBOW, I_W_ROCKETLAUNCHER
         // EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_UZI", 1, "Machine Gun"));
-        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_UZI", 1, "Machine Gun"));
-        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_SHOTGUN", 1, "Shotgun"));
-        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_SNIPER", 1, "Sniper Rifle"));
 
         // ===== WeaponUpgrade =====
         // Adds weapon upgrade steps from the weapon's current level.
         // Example: a fresh weapon at displayed level 1 plus amount 3 should end at displayed level 4.
         // Use the base weapon id here, not a separate "upgrade item" id.
         // EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_PISTOL", 3, "Pistol Upgrade 3"));
-        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade 1"));
-        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_PISTOL", 2, "Pistol Upgrade 2"));
-        EnqueueItem(new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 3, "Machine Gun Upgrade 3"));
 
         // ===== Ingredient =====
         // Adds normal recipe/cooking ingredients through InventoryManager.
@@ -1850,6 +1846,11 @@ public class LaikaMod : BaseUnityPlugin
         // Example confirmed ids:
         // M_A_W06, M_A_W07_TOP, M_A_W07_BOTTOM, etc.
         // EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
+
+        EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA_100", 0, "Viscera x100"));
+        EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 1, "Coffee Beans"));
+        EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_1", 1, "Cassette: Bloody Sunset"));
+        EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map: Where Our Bikes Growl"));
     }
 
     // Adds a pending item to the queue.
@@ -1902,7 +1903,11 @@ public class LaikaMod : BaseUnityPlugin
                 {
                     bool granted = TryGrantPendingItem(item, sourceTag);
 
-                    if (!granted)
+                    if (granted)
+                    {
+                        AnnounceAPActivity(BuildReceivedItemAnnouncement(item));
+                    }
+                    else
                     {
                         LogWarning($"{sourceTag}: item not granted, re-queueing -> {item}");
                         remainingQueue.Enqueue(item);
@@ -1969,9 +1974,10 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // Grants Viscera through EconomyManager.
+    // If the AP item has a positive Amount, use that directly.
+    // Otherwise, infer a fixed amount from the item's internal id.
     internal static bool TryGrantCurrency(PendingItem item, string sourceTag)
     {
-        // Friendly log line for player-facing readability.
         LogInfo($"{sourceTag}: granting {item.DisplayName}");
 
         var economy = Singleton<EconomyManager>.Instance;
@@ -1984,24 +1990,62 @@ public class LaikaMod : BaseUnityPlugin
 
         try
         {
-            // Read current money before adding.
+            int amountToGrant = ResolveCurrencyAmount(item);
+
+            if (amountToGrant <= 0)
+            {
+                LogWarning($"{sourceTag}: currency grant failed, resolved amount was {amountToGrant} for item {item.Id}");
+                return false;
+            }
+
             int before = economy.Money;
             LogInfo($"{sourceTag}: currency before grant = {before}");
 
-            // Add the requested amount.
-            economy.AddMoney(item.Amount);
+            economy.AddMoney(amountToGrant);
 
-            // Read current money after adding.
             int after = economy.Money;
             LogInfo($"{sourceTag}: currency after grant = {after}");
 
-            // Success if the money increased.
             return after > before;
         }
         catch (Exception ex)
         {
             LogError($"{sourceTag}: exception while granting currency:\n{ex}");
             return false;
+        }
+    }
+
+    // Resolves how much money a currency AP item should award.
+    // I let PendingItem.Amount win if it is already populated,
+    // otherwise I map known AP currency ids here.
+    internal static int ResolveCurrencyAmount(PendingItem item)
+    {
+        if (item == null)
+            return 0;
+
+        if (item.Amount > 0)
+            return item.Amount;
+
+        switch (item.Id)
+        {
+            case "VISCERA_10":
+                return 10;
+
+            case "VISCERA_25":
+                return 25;
+
+            case "VISCERA_50":
+                return 50;
+
+            case "VISCERA_100":
+                return 100;
+
+            default:
+                // Keep old generic VISCERA as a fallback while transitioning.
+                if (item.Id == "VISCERA")
+                    return 100;
+
+                return 0;
         }
     }
 
@@ -2669,6 +2713,19 @@ public class LaikaMod : BaseUnityPlugin
             $"{sourceTag}: CHECK SENT -> " +
             $"{definition.DisplayName} ({definition.LocationId})"
         );
+
+        AnnounceAPActivity($"[AP] Sent check: {definition.DisplayName}");
+    }
+
+    internal static string BuildReceivedItemAnnouncement(PendingItem item)
+    {
+        if (item == null)
+            return "[AP] Received: <null item>";
+
+        if (item.Amount > 1)
+            return $"[AP] Received: {item.DisplayName} x{item.Amount}";
+
+        return $"[AP] Received: {item.DisplayName}";
     }
 
     // Centralized cassette check handler.
@@ -2836,7 +2893,7 @@ public class LaikaMod : BaseUnityPlugin
             return;
 
         LogInfo($"{sourceTag}: reconciling Old Warfare softlock by re-checking CraftShotgun because the player already owns the shotgun.");
-        AddOverlayLine("[AP] Old Warfare updated because you already had the shotgun.");
+        AnnounceAPActivity("[AP] Old Warfare updated because you already had the shotgun.");
 
         try
         {
@@ -2892,7 +2949,7 @@ public class LaikaMod : BaseUnityPlugin
             return;
 
         LogInfo($"{sourceTag}: reconciling Bonehead's Hook softlock by completing GetHook because the player already owns the hook.");
-        AddOverlayLine("[AP] Bonehead's Hook updated because you already had the hook.");
+        AnnounceAPActivity("[AP] Bonehead's Hook updated because you already had the hook.");
 
         questLog.TryCompleteQuestGoal("Q_D_S_TutorialHook", "GetHook");
     }
@@ -3035,6 +3092,7 @@ public class LaikaMod : BaseUnityPlugin
         if (!WorldOptions.DeathAmnestyEnabled)
         {
             LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty disabled).");
+            AnnounceAPActivity("[AP] Death sent.");
             return;
         }
 
@@ -3043,17 +3101,100 @@ public class LaikaMod : BaseUnityPlugin
 
         LogInfo(
             $"{sourceTag}: Death Amnesty Progress = {DeathsSinceLastDeathLink} / {requiredDeaths}"
+
         );
+
+        AnnounceAPActivity($"[AP] Death count: {DeathsSinceLastDeathLink}/{requiredDeaths}");
 
         // When enough deaths are reached, a DeathLink would send.
         if (DeathsSinceLastDeathLink >= requiredDeaths)
         {
             LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty threshold reached).");
+            AnnounceAPActivity("[AP] Death sent.");
 
             // Reset the amnesty counter after a "send".
             DeathsSinceLastDeathLink = 0;
 
             LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after simulated send.");
+        }
+    }
+
+    // Loads APWorld slot_data values from a tiny local cache file.
+    // This is a stepping stone until live AP networking fills these values directly after Connect/Connected.
+    internal static void LoadWorldOptionsFromLocalSlotData()
+    {
+        try
+        {
+            // Keep the defaults already defined on APWorldOptions unless the file overrides them.
+            if (!File.Exists(SlotDataFilePath))
+            {
+                Log.LogInfo("AP slot_data file not found. Using APWorldOptions defaults.");
+                return;
+            }
+
+            string[] lines = File.ReadAllLines(SlotDataFilePath);
+
+            foreach (string rawLine in lines)
+            {
+                if (string.IsNullOrWhiteSpace(rawLine))
+                    continue;
+
+                string line = rawLine.Trim();
+
+                if (line.StartsWith("weapon_mode="))
+                {
+                    string value = line.Substring("weapon_mode=".Length).Trim().ToLowerInvariant();
+
+                    if (value == "direct")
+                    {
+                        WorldOptions.WeaponMode = WeaponGrantMode.Direct;
+                    }
+                    else if (value == "crafting")
+                    {
+                        WorldOptions.WeaponMode = WeaponGrantMode.Crafting;
+                    }
+                    else
+                    {
+                        LogWarning($"Unknown weapon_mode in slot_data: {value}");
+                    }
+                }
+                else if (line.StartsWith("death_link="))
+                {
+                    bool parsedValue;
+                    if (bool.TryParse(line.Substring("death_link=".Length), out parsedValue))
+                    {
+                        WorldOptions.DeathLinkEnabled = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("death_amnesty="))
+                {
+                    bool parsedValue;
+                    if (bool.TryParse(line.Substring("death_amnesty=".Length), out parsedValue))
+                    {
+                        WorldOptions.DeathAmnestyEnabled = parsedValue;
+                    }
+                }
+                else if (line.StartsWith("death_amnesty_count="))
+                {
+                    int parsedValue;
+                    if (int.TryParse(line.Substring("death_amnesty_count=".Length), out parsedValue))
+                    {
+                        WorldOptions.DeathAmnestyCount = Math.Max(1, parsedValue);
+                    }
+                }
+            }
+
+            Log.LogInfo(
+                "AP slot_data applied. " +
+                $"WeaponMode={WorldOptions.WeaponMode}, " +
+                $"DeathLink={WorldOptions.DeathLinkEnabled}, " +
+                $"DeathAmnesty={WorldOptions.DeathAmnestyEnabled}, " +
+                $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}"
+            );
+        }
+        catch (Exception ex)
+        {
+            Log.LogError($"Failed to load AP slot_data:\n{ex}");
         }
     }
 
@@ -3434,7 +3575,7 @@ public class LaikaMod : BaseUnityPlugin
     }
 
     // Update only exists to ensure one-time initialization confirmation.
-    // Recent log visibility is driven by AddOverlayLine(...) + Invoke-based auto-hide.
+    // Recent log visibility is driven by AnnounceAPActivity(...) + Invoke-based auto-hide.
     public class DevOverlayController : MonoBehaviour
     {
         private bool initialized = false;
