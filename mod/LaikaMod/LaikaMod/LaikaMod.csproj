@@ -17,7 +17,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>.\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -35,11 +35,17 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
+    <Reference Include="Archipelago.MultiClient.Net, Version=6.7.1.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\net45\Archipelago.MultiClient.Net.dll</HintPath>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\Laika Aged through Blood_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
       <HintPath>E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="PlayMaker">
       <HintPath>E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\Laika Aged through Blood_Data\Managed\PlayMaker.dll</HintPath>
@@ -79,14 +85,21 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ArchipelagoClientManager.cs" />
     <Compile Include="Class1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
     <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy /Y "$(TargetDir)LaikaMod.dll" "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins\"</PostBuildEvent>
+    <PostBuildEvent>if not exist "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins" mkdir "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins"
+copy /Y "$(TargetDir)LaikaMod.dll" "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins\"
+copy /Y "$(SolutionDir)packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Archipelago.MultiClient.Net.dll" "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins\"
+copy /Y "$(SolutionDir)packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Newtonsoft.Json.dll" "E:\Video Games\Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins\"</PostBuildEvent>
   </PropertyGroup>
 </Project>

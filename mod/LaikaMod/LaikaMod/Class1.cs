@@ -10,6 +10,7 @@ using Laika.Quests.PlayMaker.FsmActions;
 using Laika.Quests;
 using Laika.Quests.Goals;
 using Laika.UI.InGame.Inventory;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -18,7 +19,39 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 
-[BepInPlugin("com.seras.laikaapprototype", "Laika AP Prototype", "1.0.0")]
+[Serializable]
+public class APConnectionState
+{
+    public string Host = "archipelago.gg";
+    public int Port = 38281;
+    public string SlotName = "";
+    public string Password = "";
+
+    public bool IsConnected = false;
+    public bool IsAuthenticated = false;
+
+    public int Team = 0;
+    public int Slot = 0;
+}
+
+[Serializable]
+public class APSaveState
+{
+    public int SaveSlotIndex = 1;
+    public bool APEnabled = false;
+
+    public APConnectionState Connection = new APConnectionState();
+
+    public int LastProcessedReceivedItemIndex = 0;
+    public bool GoalReported = false;
+
+    public List<long> SentLocationIds = new List<long>();
+
+    public int SessionDeaths = 0;
+    public int DeathsSinceLastDeathLink = 0;
+}
+
+[BepInPlugin("com.seras.laikaapprototype", "Laika AP Alpha", "0.01")]
 public class LaikaMod : BaseUnityPlugin
 {
     // Shared logger for Harmony patches.
@@ -54,7 +87,7 @@ public class LaikaMod : BaseUnityPlugin
 
     // Development stress test toggle.
     // I turn this on when I want to force a batch of received items through the queue without needing a live AP send.
-    internal static bool EnableDevelopmentStressTest = true;
+    internal static bool EnableDevelopmentStressTest = false;
 
     // Canvas-based dev overlay objects.
     internal static GameObject DevOverlayCanvasObject;
@@ -64,18 +97,29 @@ public class LaikaMod : BaseUnityPlugin
     internal static GameObject DevOverlayControllerObject;
     internal static DevOverlayController ActiveDevOverlayController;
 
+    internal static bool HasAppliedLiveSlotData = false;
+
+    internal static int ActiveSaveSlotIndex = 1;
+    internal static APSaveState SessionState = new APSaveState();
+
     // ===== Startup =====
     private void Awake()
     {
         // Save logger for static patches.
         Log = Logger;
 
+        ActiveSaveSlotIndex = 1;
         LoadSessionState();
+
+        new ArchipelagoClientManager();
 
         // Try to load APWorld options from local slot-data cache.
         // If nothing exists yet, the defaults already defined on APWorldOptions stay in place.
-        LoadWorldOptionsFromLocalSlotData();
-
+        // Only fall back to local cached slot_data if live AP slot_data was not applied.
+        if (!HasAppliedLiveSlotData)
+        {
+            LoadWorldOptionsFromLocalSlotData();
+        }
 
         // Make absolutely sure the plugin component is enabled for Update() / OnGUI().
         enabled = true;
@@ -109,103 +153,82 @@ public class LaikaMod : BaseUnityPlugin
 
     // Loads persistent AP session state from disk.
     // If no file exists yet, defaults are kept.
-    internal static void LoadSessionState()
+    internal static void LoadSessionStateForSlot(int slotIndex)
     {
         try
         {
-            SessionState = new APSessionState();
+            string path = GetAPStatePathForSlot(slotIndex);
 
-            if (!File.Exists(SessionStateFilePath))
+            if (!File.Exists(path))
             {
-                Log.LogInfo("AP session state file not found. Using defaults.");
+                SessionState = new APSaveState
+                {
+                    SaveSlotIndex = slotIndex,
+                    APEnabled = false
+                };
+
+                LogInfo($"AP session state file not found for slot {slotIndex}. Created fresh state.");
                 return;
             }
 
-            string[] lines = File.ReadAllLines(SessionStateFilePath);
+            string json = File.ReadAllText(path);
+            SessionState = JsonConvert.DeserializeObject<APSaveState>(json);
 
-            foreach (string rawLine in lines)
+            if (SessionState == null)
             {
-                if (string.IsNullOrWhiteSpace(rawLine))
-                    continue;
-
-                string line = rawLine.Trim();
-
-                if (line.StartsWith("last_index="))
-                {
-                    int parsedValue;
-                    if (int.TryParse(line.Substring("last_index=".Length), out parsedValue))
-                    {
-                        SessionState.LastProcessedReceivedItemIndex = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("goal_reported="))
-                {
-                    bool parsedValue;
-                    if (bool.TryParse(line.Substring("goal_reported=".Length), out parsedValue))
-                    {
-                        SessionState.GoalReported = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("server_address="))
-                {
-                    SessionState.Connection.ServerAddress = line.Substring("server_address=".Length);
-                }
-                else if (line.StartsWith("server_port="))
-                {
-                    int parsedValue;
-                    if (int.TryParse(line.Substring("server_port=".Length), out parsedValue))
-                    {
-                        SessionState.Connection.ServerPort = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("slot_name="))
-                {
-                    SessionState.Connection.SlotName = line.Substring("slot_name=".Length);
-                }
-                else if (line.StartsWith("team="))
-                {
-                    int parsedValue;
-                    if (int.TryParse(line.Substring("team=".Length), out parsedValue))
-                    {
-                        SessionState.Connection.Team = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("slot="))
-                {
-                    int parsedValue;
-                    if (int.TryParse(line.Substring("slot=".Length), out parsedValue))
-                    {
-                        SessionState.Connection.Slot = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("is_connected="))
-                {
-                    bool parsedValue;
-                    if (bool.TryParse(line.Substring("is_connected=".Length), out parsedValue))
-                    {
-                        SessionState.Connection.IsConnected = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("is_authenticated="))
-                {
-                    bool parsedValue;
-                    if (bool.TryParse(line.Substring("is_authenticated=".Length), out parsedValue))
-                    {
-                        SessionState.Connection.IsAuthenticated = parsedValue;
-                    }
-                }
-                else if (line.StartsWith("sent_location="))
-                {
-                    long parsedValue;
-                    if (long.TryParse(line.Substring("sent_location=".Length), out parsedValue))
-                    {
-                        SessionState.SentLocationIds.Add(parsedValue);
-                    }
-                }
+                SessionState = new APSaveState();
             }
 
-            Log.LogInfo(
-                $"AP session state loaded. " +
+            SessionState.SaveSlotIndex = slotIndex;
+
+            if (SessionState.Connection == null)
+            {
+                SessionState.Connection = new APConnectionState();
+            }
+
+            if (SessionState.SentLocationIds == null)
+            {
+                SessionState.SentLocationIds = new List<long>();
+            }
+
+            LogInfo(
+                $"AP session state loaded for slot {slotIndex}. " +
+                $"LastReceivedIndex={SessionState.LastProcessedReceivedItemIndex}, " +
+                $"SentChecks={SessionState.SentLocationIds.Count}, " +
+                $"GoalReported={SessionState.GoalReported}, " +
+                $"APEnabled={SessionState.APEnabled}"
+            );
+        }
+        catch (Exception ex)
+        {
+            LogError($"Failed to load AP session state for slot {slotIndex}:\n{ex}");
+
+            SessionState = new APSaveState
+            {
+                SaveSlotIndex = slotIndex,
+                APEnabled = false
+            };
+        }
+    }
+
+    internal static void SaveSessionStateForSlot(int slotIndex)
+    {
+        try
+        {
+            if (SessionState == null)
+            {
+                SessionState = new APSaveState();
+            }
+
+            SessionState.SaveSlotIndex = slotIndex;
+
+            string path = GetAPStatePathForSlot(slotIndex);
+            string json = JsonConvert.SerializeObject(SessionState, Formatting.Indented);
+
+            File.WriteAllText(path, json);
+
+            LogInfo(
+                $"AP session state saved for slot {slotIndex}. " +
                 $"LastReceivedIndex={SessionState.LastProcessedReceivedItemIndex}, " +
                 $"SentChecks={SessionState.SentLocationIds.Count}, " +
                 $"GoalReported={SessionState.GoalReported}"
@@ -213,24 +236,90 @@ public class LaikaMod : BaseUnityPlugin
         }
         catch (Exception ex)
         {
-            SessionState = new APSessionState();
-            Log.LogError($"Failed to load AP session state:\n{ex}");
+            LogError($"Failed to save AP session state for slot {slotIndex}:\n{ex}");
         }
+    }
+
+    internal static void LoadSessionState()
+    {
+        LoadSessionStateForSlot(ActiveSaveSlotIndex);
+    }
+
+    internal static void SaveSessionState()
+    {
+        SaveSessionStateForSlot(ActiveSaveSlotIndex);
+    }
+
+    internal static string GetAPStateFolder()
+    {
+        string folder = Path.Combine(Paths.ConfigPath, "LaikaAP");
+        Directory.CreateDirectory(folder);
+        return folder;
+    }
+
+    internal static string GetAPStatePathForSlot(int slotIndex)
+    {
+        return Path.Combine(GetAPStateFolder(), $"slot{slotIndex}.json");
+    }
+
+    internal static void ConnectActiveSlotIfConfigured()
+    {
+        if (ArchipelagoClientManager.Instance == null)
+        {
+            LogWarning("AP connect requested, but ArchipelagoClientManager is missing.");
+            return;
+        }
+
+        if (SessionState == null)
+        {
+            LogWarning("AP connect requested, but SessionState is null.");
+            return;
+        }
+
+        if (!SessionState.APEnabled)
+        {
+            LogWarning($"AP connect requested for slot {ActiveSaveSlotIndex}, but AP is not enabled for this slot.");
+            AnnounceAPActivity("[AP] Active slot is not AP-enabled.");
+            return;
+        }
+
+        if (SessionState.Connection == null)
+        {
+            LogWarning($"AP connect requested for slot {ActiveSaveSlotIndex}, but Connection is null.");
+            AnnounceAPActivity("[AP] Active slot has no connection data.");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SessionState.Connection.Host) ||
+            string.IsNullOrWhiteSpace(SessionState.Connection.SlotName) ||
+            SessionState.Connection.Port <= 0)
+        {
+            LogWarning($"AP connect requested for slot {ActiveSaveSlotIndex}, but connection settings are incomplete.");
+            AnnounceAPActivity("[AP] Active slot connection settings are incomplete.");
+            return;
+        }
+
+        LogInfo(
+            $"AP connect requested for slot {ActiveSaveSlotIndex}: " +
+            $"{SessionState.Connection.Host}:{SessionState.Connection.Port} as {SessionState.Connection.SlotName}"
+        );
+
+        AnnounceAPActivity(
+            $"[AP] Connecting slot {ActiveSaveSlotIndex}: " +
+            $"{SessionState.Connection.Host}:{SessionState.Connection.Port}"
+        );
+
+        ArchipelagoClientManager.Instance.Connect(
+            SessionState.Connection.Host,
+            SessionState.Connection.Port,
+            SessionState.Connection.SlotName
+        );
     }
 
     // Local cache for AP slot_data values pushed from the AP server.
     // For now this is just a tiny text file so I can test option flow before full live networking is finished.
     internal static string SlotDataFilePath =
         Path.Combine(Paths.ConfigPath, "laika_ap_slot_data.txt");
-
-    // Persistent local AP session state.
-    // This stores client-side sync information so reconnects/resyncs are possible later.
-    internal static APSessionState SessionState = new APSessionState();
-
-    // Local path for AP session state persistence.
-    // For now this uses a simple text file in the BepInEx config folder.
-    internal static string SessionStateFilePath =
-        Path.Combine(Paths.ConfigPath, "laika_ap_session_state.txt");
 
     // Canonical AP location registry.
     // Map unlock and quest names should be maintained here as the single source of truth.
@@ -1311,6 +1400,129 @@ public class LaikaMod : BaseUnityPlugin
 
         };
 
+    internal static Dictionary<long, Func<PendingItem>> ItemFactoriesByApId =
+        new Dictionary<long, Func<PendingItem>>()
+        {
+        // ===== Key items =====
+        { 1000L, () => new PendingItem(ItemKind.KeyItem, "I_DASH", 1, "Dash (Bike Upgrade)") },
+        { 1001L, () => new PendingItem(ItemKind.KeyItem, "I_E_HOOK", 1, "Hook (Bike Upgrade)") },
+        { 1002L, () => new PendingItem(ItemKind.KeyItem, "I_MAYA_PENDANT", 1, "Maya's Pendant (Bike Upgrade)") },
+
+        // ===== Weapons / weapon-mode-aware unlocks =====
+        { 1100L, () => GetShotgunUnlockItem() },
+        { 1101L, () => GetSniperUnlockItem() },
+        { 1102L, () => GetMachineGunUnlockItem() },
+        { 1103L, () => GetRocketLauncherUnlockItem() },
+
+        // Crossbow is still direct for now
+        { 1104L, () => new PendingItem(ItemKind.Weapon, "I_W_CROSSBOW", 1, "Crossbow (Weapon)") },
+
+        // ===== Crafting-mode weapon materials =====
+        { 1150L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)") },
+        { 1151L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SNIPER", 1, "Magnifying Glass (Sniper Rifle Material)") },
+        { 1152L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_UZI", 1, "Titanium Plates (Machine Gun Material)") },
+        { 1153L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_ROCKETLAUNCHER", 1, "Missile (Rocket Launcher Material)") },
+
+        // ===== Puppy gifts =====
+        { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Toy Bike") },
+        { 1901L, () => new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console") },
+        { 1902L, () => new PendingItem(ItemKind.PuppyTreat, "I_PLANT_PUPPY", 1, "Tangerine Tree") },
+        { 1903L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_ANIMAL", 1, "Toy Animal") },
+        { 1904L, () => new PendingItem(ItemKind.PuppyTreat, "I_BOOK_MOTHER", 1, "Great-Great-Grandma's Novella") },
+        { 1905L, () => new PendingItem(ItemKind.PuppyTreat, "I_DREAMCATCHER", 1, "Dreamcatcher") },
+        { 1906L, () => new PendingItem(ItemKind.PuppyTreat, "I_UKULELE", 1, "Ukulele") },
+
+        // ===== Currency =====
+        { 1907L, () => new PendingItem(ItemKind.Currency, "VISCERA_100", 100, "Viscera x100") },
+
+        // ===== Ingredients =====
+        { 1950L, () => new PendingItem(ItemKind.Ingredient, "I_C_BEANS", 1, "Beans") },
+        { 1951L, () => new PendingItem(ItemKind.Ingredient, "I_C_CORN", 1, "Corn") },
+        { 1952L, () => new PendingItem(ItemKind.Ingredient, "I_C_WORMS", 1, "Worms") },
+        { 1953L, () => new PendingItem(ItemKind.Ingredient, "I_C_ONION", 1, "Onion") },
+        { 1954L, () => new PendingItem(ItemKind.Ingredient, "I_C_CHILLY", 1, "Chilly Pepper") },
+        { 1955L, () => new PendingItem(ItemKind.Ingredient, "I_C_GHOSTPEPPER", 1, "Ghost Pepper") },
+        { 1956L, () => new PendingItem(ItemKind.Ingredient, "I_C_LEMON", 1, "Lemon") },
+        { 1957L, () => new PendingItem(ItemKind.Ingredient, "I_C_GARLIC", 1, "Garlic") },
+        { 1958L, () => new PendingItem(ItemKind.Ingredient, "I_C_MEAT", 1, "Meat") },
+        { 1959L, () => new PendingItem(ItemKind.Ingredient, "I_C_JACKFRUIT", 1, "Jackfruit") },
+        { 1960L, () => new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine") },
+        { 1961L, () => new PendingItem(ItemKind.Ingredient, "I_C_COCO", 1, "Coco") },
+        { 1962L, () => new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 1, "Coffee Beans") },
+        { 1963L, () => new PendingItem(ItemKind.Ingredient, "I_C_WHISKEY", 1, "Whiskey") },
+        { 1964L, () => new PendingItem(ItemKind.Ingredient, "I_C_TOMATO", 1, "Tomato") },
+
+        // ===== Cassettes =====
+        { 1970L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_1", 1, "Cassette: Bloody Sunset") },
+        { 1971L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_2", 1, "Cassette: Playing in the Sun") },
+        { 1972L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_3", 1, "Cassette: Lullaby of the Dead") },
+        { 1973L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_4", 1, "Cassette: Blue Limbo") },
+        { 1974L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_D01", 1, "Cassette: Trust Them") },
+        { 1975L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_D02", 1, "Cassette: My Destiny") },
+        { 1976L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_D03", 1, "Cassette: The End of the Road") },
+        { 1977L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_5", 1, "Cassette: The Whisper") },
+        { 1978L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_6", 1, "Cassette: Heartglaze Hope") },
+        { 1979L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_7", 1, "Cassette: The Hero") },
+        { 1980L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_8", 1, "Cassette: Visions of Red") },
+        { 1981L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_9", 1, "Cassette: Through the Wind") },
+        { 1982L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_10", 1, "Cassette: Heartbeat from the Last Century") },
+        { 1983L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_11", 1, "Cassette: Coming Home") },
+        { 1984L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_KIDNAPPING", 1, "Cassette: Mother") },
+        { 1985L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_12", 1, "Cassette: The Last Tear") },
+        { 1986L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_13", 1, "Cassette: The Final Hours") },
+        { 1987L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_14", 1, "Cassette: Overthinker") },
+        { 1988L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_15", 1, "Cassette: Recurring Dream") },
+        { 1989L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_16", 1, "Cassette: Lonely Mountain") },
+
+        // ===== Map unlocks =====
+        { 2000L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map: Where Our Bikes Growl") },
+        { 2001L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W01_BOTTOM", 1, "Map: Where All Was Lost (Bottom)") },
+        { 2002L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W01_TOP", 1, "Map: Where All Was Lost (Top)") },
+        { 2003L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W02", 1, "Map: Where Doom Fell") },
+        { 2004L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W03_LEFT", 1, "Map: Where Rust Weaves (Left)") },
+        { 2005L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W03_CENTER", 1, "Map: Where Rust Weaves (Center)") },
+        { 2006L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W03_RIGHT", 1, "Map: Where Rust Weaves (Right)") },
+        { 2007L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W04_BOTTOM", 1, "Map: Where Iron Caresses the Sky (Bottom)") },
+        { 2008L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W04_TOP", 1, "Map: Where Iron Caresses the Sky (Top)") },
+        { 2009L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W05_LEFT", 1, "Map: Where the Waves Die (Left)") },
+        { 2010L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W05_RIGHT", 1, "Map: Where the Waves Die (Right)") },
+        { 2011L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W07_BOTTOM", 1, "Map: Where Our Ancestors Rest (Bottom)") },
+        { 2012L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W07_TOP", 1, "Map: Where Our Ancestors Rest (Top)") },
+        { 2013L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W08_LEFT", 1, "Map: Where Birds Came From (Left/Bottom)") },
+        { 2014L, () => new PendingItem(ItemKind.MapUnlock, "M_A_W08_RIGHT", 1, "Map: Where Birds Came From (Right/Top)") },
+        { 2015L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D00_LEFT", 1, "Map: Where Birds Lurk (Left)") },
+        { 2016L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D00_RIGHT", 1, "Map: Where Birds Lurk (Right)") },
+        { 2017L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D01_LEFT", 1, "Map: Where Rock Bleeds (Left)") },
+        { 2018L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D01_CENTER", 1, "Map: Where Rock Bleeds (Center)") },
+        { 2019L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D01_RIGHT", 1, "Map: Where Rock Bleeds (Right)") },
+        { 2020L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D02_BORDERS", 1, "Map: Where Water Glistened (Borders)") },
+        { 2021L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D02_SHIP1", 1, "Map: Where Water Glistened (1st Ship)") },
+        { 2022L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D02_SHIP2", 1, "Map: Where Water Glistened (2nd Ship)") },
+        { 2023L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D02_SHIP3", 1, "Map: Where Water Glistened (3rd Ship)") },
+        { 2024L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D02_SHIP4", 1, "Map: Where Water Glistened (4th Ship)") },
+        { 2025L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D03", 1, "Map: The Big Tree") },
+        { 2026L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D04_CENTER", 1, "Map: Floating City (Control Area)") },
+        { 2027L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D04_TOWN", 1, "Map: Floating City (Old Town)") },
+        { 2028L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D04_ZEPPELIN", 1, "Map: Floating City (Hangar)") },
+        { 2029L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D04_FACTORY", 1, "Map: Floating City (Factory)") },
+        { 2030L, () => new PendingItem(ItemKind.MapUnlock, "M_A_D04_FACILITIES", 1, "Map: Floating City (City Facilities)") },
+        };
+
+    internal static bool TryCreatePendingItemFromApItemId(long apItemId, out PendingItem pendingItem)
+    {
+        pendingItem = null;
+
+        Func<PendingItem> factory;
+        if (!ItemFactoriesByApId.TryGetValue(apItemId, out factory))
+        {
+            LogWarning($"AP ITEM: no C# mapping exists yet for AP item id {apItemId}");
+            return false;
+        }
+
+        pendingItem = factory();
+        return pendingItem != null;
+    }
+
     // Canonical collectible item registry.
     // Use this for AP received-item display names.
     // Do not use this as a location/check registry unless cassette checks are later
@@ -1341,48 +1553,12 @@ public class LaikaMod : BaseUnityPlugin
             { "I_COLLECTION_JAKOB", "Cassette Tape: Jakob's Music Collection" }
         };
 
-    // Saves persistent AP session state to disk.
-    internal static void SaveSessionState()
-    {
-        try
-        {
-            List<string> lines = new List<string>();
-
-            lines.Add("last_index=" + SessionState.LastProcessedReceivedItemIndex);
-            lines.Add("goal_reported=" + SessionState.GoalReported);
-            lines.Add("server_address=" + SessionState.Connection.ServerAddress);
-            lines.Add("server_port=" + SessionState.Connection.ServerPort);
-            lines.Add("slot_name=" + SessionState.Connection.SlotName);
-            lines.Add("team=" + SessionState.Connection.Team);
-            lines.Add("slot=" + SessionState.Connection.Slot);
-            lines.Add("is_connected=" + SessionState.Connection.IsConnected);
-            lines.Add("is_authenticated=" + SessionState.Connection.IsAuthenticated);
-
-            foreach (long locationId in SessionState.SentLocationIds)
-            {
-                lines.Add("sent_location=" + locationId);
-            }
-
-            File.WriteAllLines(SessionStateFilePath, lines.ToArray());
-
-            Log.LogInfo(
-                $"AP session state saved. " +
-                $"LastReceivedIndex={SessionState.LastProcessedReceivedItemIndex}, " +
-                $"SentChecks={SessionState.SentLocationIds.Count}, " +
-                $"GoalReported={SessionState.GoalReported}"
-            );
-        }
-        catch (Exception ex)
-        {
-            Log.LogError($"Failed to save AP session state:\n{ex}");
-        }
-    }
-
     // Marks a location as sent locally so reconnect/resync logic can reuse this data later.
     internal static void MarkLocationCheckedAndSent(long locationId)
     {
-        if (SessionState.SentLocationIds.Add(locationId))
+        if (!SessionState.SentLocationIds.Contains(locationId))
         {
+            SessionState.SentLocationIds.Add(locationId);
             SaveSessionState();
             LogInfo($"AP STATE: marked location as sent -> {locationId}");
         }
@@ -1421,9 +1597,9 @@ public class LaikaMod : BaseUnityPlugin
     // Clears connection-only state without wiping persistent progression tracking.
     internal static void ResetRuntimeConnectionState()
     {
-        SessionState.Connection = new APConnectionInfo();
+        SessionState.Connection = new APConnectionState();
 
-        Log.LogInfo("AP runtime connection state reset.");
+        LogInfo("AP runtime connection state reset.");
     }
 
     public class APLocationDefinition
@@ -1670,7 +1846,7 @@ public class LaikaMod : BaseUnityPlugin
         statusPanelRect.anchorMax = new Vector2(0f, 0f);
         statusPanelRect.pivot = new Vector2(0f, 0f);
         statusPanelRect.anchoredPosition = new Vector2(20f, 300f);
-        statusPanelRect.sizeDelta = new Vector2(320f, 150f);
+        statusPanelRect.sizeDelta = new Vector2(360f, 190f);
 
         GameObject statusTextObj = new GameObject("OverlayStatusText");
         statusTextObj.transform.SetParent(statusPanel.transform, false);
@@ -2694,27 +2870,24 @@ public class LaikaMod : BaseUnityPlugin
     {
         if (definition == null)
         {
-            LogWarning($"{sourceTag}: TrySendLocationCheck received null definition.");
+            LogWarning($"{sourceTag}: TrySendLocationCheck called with null definition.");
             return;
         }
 
         if (HasLocationBeenSent(definition.LocationId))
         {
-            LogInfo(
-                $"{sourceTag}: LOCATION CHECK ALREADY SENT -> " +
-                $"{definition.DisplayName} ({definition.LocationId})"
-            );
+            LogInfo($"{sourceTag}: check already sent -> {definition.DisplayName} ({definition.LocationId})");
             return;
         }
 
-        MarkLocationCheckedAndSent(definition.LocationId);
-
-        LogInfo(
-            $"{sourceTag}: CHECK SENT -> " +
-            $"{definition.DisplayName} ({definition.LocationId})"
-        );
-
-        AnnounceAPActivity($"[AP] Sent check: {definition.DisplayName}");
+        if (ArchipelagoClientManager.Instance != null)
+        {
+            ArchipelagoClientManager.Instance.SendLocationCheck(definition);
+        }
+        else
+        {
+            LogWarning($"{sourceTag}: ArchipelagoClientManager missing, check not sent -> {definition.DisplayName}");
+        }
     }
 
     internal static string BuildReceivedItemAnnouncement(PendingItem item)
@@ -3091,9 +3264,12 @@ public class LaikaMod : BaseUnityPlugin
         // If death amnesty is disabled, every valid local death would send immediately.
         if (!WorldOptions.DeathAmnestyEnabled)
         {
-            LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty disabled).");
-            AnnounceAPActivity("[AP] Death sent.");
-            return;
+            LogInfo($"{sourceTag}: DEATHLINK SEND NOW (death amnesty disabled).");
+            if (ArchipelagoClientManager.Instance != null)
+            {
+                string deathCause = $"{SessionState.Connection.SlotName ?? "Laika"} couldn't survive in the Wasteland. (Skill issue)";
+                ArchipelagoClientManager.Instance.SendDeathLink(deathCause);
+            }
         }
 
         // Safety clamp in case a bad config sets the threshold too low.
@@ -3109,13 +3285,18 @@ public class LaikaMod : BaseUnityPlugin
         // When enough deaths are reached, a DeathLink would send.
         if (DeathsSinceLastDeathLink >= requiredDeaths)
         {
-            LogInfo($"{sourceTag}: DEATHLINK WOULD SEND NOW (death amnesty threshold reached).");
-            AnnounceAPActivity("[AP] Death sent.");
+            LogInfo($"{sourceTag}: DEATHLINK SEND NOW (death amnesty threshold reached).");
 
-            // Reset the amnesty counter after a "send".
+            if (ArchipelagoClientManager.Instance != null)
+            {
+                string deathCause = $"{SessionState.Connection.SlotName ?? "Laika"} couldn't survive in the Wasteland. (Skill issue)";
+                ArchipelagoClientManager.Instance.SendDeathLink(deathCause);
+            }
+
+            // Reset the amnesty counter after a real send.
             DeathsSinceLastDeathLink = 0;
 
-            LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after simulated send.");
+            LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after real send.");
         }
     }
 
@@ -3123,6 +3304,12 @@ public class LaikaMod : BaseUnityPlugin
     // This is a stepping stone until live AP networking fills these values directly after Connect/Connected.
     internal static void LoadWorldOptionsFromLocalSlotData()
     {
+        if (HasAppliedLiveSlotData)
+        {
+            LogInfo("AP local slot_data load skipped because live slot_data is already active.");
+            return;
+        }
+
         try
         {
             // Keep the defaults already defined on APWorldOptions unless the file overrides them.
@@ -3580,6 +3767,8 @@ public class LaikaMod : BaseUnityPlugin
     {
         private bool initialized = false;
         private bool updateLoggedOnce = false;
+        private Rect apDebugPanelRect = new Rect(10f, 10f, 340f, 320f);
+        private bool showAPDebugPanel = true;
 
         void Start()
         {
@@ -3598,10 +3787,40 @@ public class LaikaMod : BaseUnityPlugin
             if (!initialized)
                 InitializeOverlay();
 
+            if (Input.GetKeyDown(KeyCode.F10))
+            {
+                showAPDebugPanel = !showAPDebugPanel;
+
+                LaikaMod.Log.LogInfo(
+                    $"AP DEBUG UI visibility toggled -> {showAPDebugPanel}"
+                );
+            }
+
             if (!updateLoggedOnce)
             {
                 updateLoggedOnce = true;
                 LaikaMod.Log.LogInfo("DevOverlayController Update() is running.");
+            }
+
+            if (ArchipelagoClientManager.Instance != null)
+            {
+                ArchipelagoClientManager.Instance.PumpReceivedItems();
+            }
+        }
+
+        void OnGUI()
+        {
+            if (!initialized)
+                return;
+
+            if (showAPDebugPanel)
+            {
+                apDebugPanelRect = GUI.Window(
+                    928374,
+                    apDebugPanelRect,
+                    DrawAPDebugWindow,
+                    "Laika AP Debug"
+                );
             }
         }
 
@@ -3634,6 +3853,97 @@ public class LaikaMod : BaseUnityPlugin
 
             LaikaMod.RefreshDevOverlay();
             LaikaMod.Log.LogInfo("DevOverlayController initialized runtime overlay.");
+        }
+
+        private void DrawAPDebugWindow(int windowId)
+        {
+            GUILayout.BeginVertical();
+
+            GUILayout.Label($"Active AP Slot: {LaikaMod.ActiveSaveSlotIndex}");
+
+            bool isConnected = ArchipelagoClientManager.Instance != null &&
+                   ArchipelagoClientManager.Instance.IsConnected;
+
+            GUILayout.Label($"Connection: {(isConnected ? "Connected" : "Not Connected")}");
+
+            GUILayout.Space(6f);
+
+            if (GUILayout.Button("Load AP Slot 1"))
+            {
+                LaikaMod.ActiveSaveSlotIndex = 1;
+                LaikaMod.LoadSessionState();
+                LaikaMod.Log.LogInfo("AP DEBUG UI: loaded slot 1.");
+                LaikaMod.AnnounceAPActivity("[AP] Loaded AP slot 1.");
+            }
+
+            if (GUILayout.Button("Load AP Slot 2"))
+            {
+                LaikaMod.ActiveSaveSlotIndex = 2;
+                LaikaMod.LoadSessionState();
+                LaikaMod.Log.LogInfo("AP DEBUG UI: loaded slot 2.");
+                LaikaMod.AnnounceAPActivity("[AP] Loaded AP slot 2.");
+            }
+
+            if (GUILayout.Button("Load AP Slot 3"))
+            {
+                LaikaMod.ActiveSaveSlotIndex = 3;
+                LaikaMod.LoadSessionState();
+                LaikaMod.Log.LogInfo("AP DEBUG UI: loaded slot 3.");
+                LaikaMod.AnnounceAPActivity("[AP] Loaded AP slot 3.");
+            }
+
+            GUILayout.Space(8f);
+
+            if (GUILayout.Button("Connect Active Slot"))
+            {
+                LaikaMod.ConnectActiveSlotIfConfigured();
+            }
+
+            if (GUILayout.Button("Kill Player"))
+            {
+                var rider = GameObject.FindObjectOfType<RiderHead>();
+                if (rider != null)
+                {
+                    rider.Kill();
+                    LaikaMod.Log.LogInfo("AP DEBUG UI: forced player death.");
+                }
+            }
+
+            if (GUILayout.Button("Trigger DeathLink Send"))
+            {
+                LaikaMod.OnPlayerDeathDetected("DEBUG BUTTON");
+            }
+
+            if (GUILayout.Button("Give Shotgun"))
+            {
+                LaikaMod.EnqueueItem(new PendingItem(
+                    ItemKind.Weapon,
+                    "I_W_SHOTGUN",
+                    1,
+                    "Shotgun"
+                ));
+
+                LaikaMod.ProcessPendingItemQueue("AP DEBUG UI");
+            }
+
+            GUILayout.Space(8f);
+
+            if (LaikaMod.SessionState != null)
+            {
+                string host = LaikaMod.SessionState.Connection != null ? LaikaMod.SessionState.Connection.Host : "<null>";
+                int port = LaikaMod.SessionState.Connection != null ? LaikaMod.SessionState.Connection.Port : 0;
+                string slotName = LaikaMod.SessionState.Connection != null ? LaikaMod.SessionState.Connection.SlotName : "<null>";
+                bool apEnabled = LaikaMod.SessionState.APEnabled;
+
+                GUILayout.Label($"AP Enabled: {apEnabled}");
+                GUILayout.Label($"Host: {host}:{port}");
+                GUILayout.Label($"Slot: {slotName}");
+            }
+
+            GUILayout.FlexibleSpace();
+            GUILayout.EndVertical();
+
+            GUI.DragWindow();
         }
     }
 }
@@ -3692,45 +4002,6 @@ public class APWorldOptions
 
     // Number of local deaths required before a DeathLink would send when amnesty is enabled.
     public int DeathAmnestyCount { get; set; } = 1;
-}
-
-public class APSessionState
-{
-    // Last processed index from Archipelago ReceivedItems.
-    // Needed so the client can reject already-processed items on reconnect.
-    public int LastProcessedReceivedItemIndex { get; set; } = 0;
-
-    // AP location ids already sent by this client.
-    // This supports reconnect/resync and prevents duplicate sends.
-    public HashSet<long> SentLocationIds { get; set; } = new HashSet<long>();
-
-    // Whether this slot's goal completion has already been reported.
-    public bool GoalReported { get; set; } = false;
-
-    // Connection/session metadata.
-    public APConnectionInfo Connection { get; set; } = new APConnectionInfo();
-}
-
-public class APConnectionInfo
-{
-    // Last server address the client tried to use.
-    public string ServerAddress { get; set; } = string.Empty;
-
-    // Last server port the client tried to use.
-    public int ServerPort { get; set; } = 0;
-
-    // Last authenticated slot/player name.
-    public string SlotName { get; set; } = string.Empty;
-
-    // Team/slot identifiers once connected.
-    public int Team { get; set; } = 0;
-    public int Slot { get; set; } = 0;
-
-    // Whether the mod currently considers itself connected.
-    public bool IsConnected { get; set; } = false;
-
-    // Whether authentication completed successfully.
-    public bool IsAuthenticated { get; set; } = false;
 }
 
 // Represents one pending AP-style item waiting to be granted.
