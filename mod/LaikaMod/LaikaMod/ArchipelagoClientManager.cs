@@ -32,7 +32,7 @@ public class ArchipelagoClientManager
         Instance = this;
     }
 
-    public void Connect(string host, int port, string slotName)
+    public void Connect(string host, int port, string slotName, string password)
     {
         if (isConnecting)
         {
@@ -70,7 +70,7 @@ public class ArchipelagoClientManager
                 slotName,
                 ItemsHandlingFlags.AllItems,
                 version: null,
-                password: null,
+                password: string.IsNullOrWhiteSpace(password) ? null : password,
                 uuid: null,
                 requestSlotData: true
             );
@@ -92,6 +92,7 @@ public class ArchipelagoClientManager
             LaikaMod.SessionState.Connection.Host = host;
             LaikaMod.SessionState.Connection.Port = port;
             LaikaMod.SessionState.Connection.SlotName = slotName;
+            LaikaMod.SessionState.Connection.Password = password ?? "";
             LaikaMod.SessionState.Connection.IsConnected = true;
             LaikaMod.SessionState.Connection.IsAuthenticated = true;
 

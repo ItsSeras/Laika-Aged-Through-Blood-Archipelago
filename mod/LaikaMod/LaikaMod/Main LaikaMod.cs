@@ -68,37 +68,30 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static bool HasAppliedLiveSlotData = false;
 
-    internal static int ActiveSaveSlotIndex = 1;
-    internal static APSaveState SessionState = new APSaveState();
+    internal static int ActiveSaveSlotIndex = 0;
+    internal static APSaveState SessionState = new APSaveState
+    {
+        SaveSlotIndex = 0,
+        APEnabled = false
+    };
 
 
     // ===== Startup =====
     private void Awake()
     {
-        // Save logger for static patches.
         Log = Logger;
-
         LogInfo("AP LIFECYCLE: Awake() entered.");
 
-
-
-        ActiveSaveSlotIndex = 1;
-        LoadSessionState();
+        ActiveSaveSlotIndex = 0;
+        LoadSessionStateForSlot(ActiveSaveSlotIndex);
 
         new ArchipelagoClientManager();
 
-        // Try to load APWorld options from local slot-data cache.
-        // If nothing exists yet, the defaults already defined on APWorldOptions stay in place.
-        // Only fall back to local cached slot_data if live AP slot_data was not applied.
-        if (!HasAppliedLiveSlotData)
-        {
-            LoadWorldOptionsFromLocalSlotData();
-        }
+        // Local cached slot_data fallback intentionally disabled.
+        // Live AP slot_data should be the real source.
 
-        // Make absolutely sure the plugin component is enabled for Update() / OnGUI().
         enabled = true;
 
-        // Confirm plugin loaded.
         Log.LogInfo(
             $"Laika AP Prototype loaded. " +
             $"WeaponMode={WorldOptions.WeaponMode}, " +
@@ -108,23 +101,17 @@ public partial class LaikaMod : BaseUnityPlugin
             $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}"
         );
 
-        // Queue any items the player must start with for AP to make sense.
-        // Right now that mainly covers cases where vanilla assumes the player always has something.
         EnqueueRequiredStartingItems();
 
-        // Development stress test items.
         if (EnableDevelopmentStressTest)
         {
             EnqueueDevelopmentStressTestItems();
         }
 
-        // Apply all Harmony patches in this file.
         Harmony harmony = new Harmony("com.seras.laikaapprototype");
         harmony.PatchAll();
-
         Log.LogInfo("Harmony patches applied.");
     }
-
     // ===== Dev overlay state =====
     // Stores recent player-facing AP activity lines for the recent overlay.
     internal static Queue<string> OverlayLines = new Queue<string>();

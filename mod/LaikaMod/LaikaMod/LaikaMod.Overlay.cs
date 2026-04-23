@@ -510,9 +510,14 @@ public partial class LaikaMod
     {
         private bool initialized = false;
         private bool updateLoggedOnce = false;
-        private Rect apDebugPanelRect = new Rect(10f, 10f, 340f, 320f);
+        private Rect apDebugPanelRect = new Rect(10f, 10f, 340f, 420f);
         private bool showAPDebugPanel = true;
         private Coroutine apPollCoroutine;
+        private string hostInput = "";
+        private string portInput = "";
+        private string slotNameInput = "";
+        private string passwordInput = "";
+        private bool textFieldsInitialized = false;
 
         void Start()
         {
@@ -595,6 +600,46 @@ public partial class LaikaMod
             }
         }
 
+        private void EnsureConnectionInputFieldsInitialized()
+        {
+            if (textFieldsInitialized)
+                return;
+
+            if (LaikaMod.SessionState == null || LaikaMod.SessionState.Connection == null)
+                return;
+
+            hostInput = LaikaMod.SessionState.Connection.Host ?? "";
+            portInput = LaikaMod.SessionState.Connection.Port > 0
+                ? LaikaMod.SessionState.Connection.Port.ToString()
+                : "";
+            slotNameInput = LaikaMod.SessionState.Connection.SlotName ?? "";
+            passwordInput = LaikaMod.SessionState.Connection.Password ?? "";
+
+            textFieldsInitialized = true;
+        }
+
+        public void ReloadConnectionInputFieldsFromSession()
+        {
+            hostInput = LaikaMod.SessionState != null && LaikaMod.SessionState.Connection != null
+                ? LaikaMod.SessionState.Connection.Host ?? ""
+                : "";
+
+            portInput = LaikaMod.SessionState != null && LaikaMod.SessionState.Connection != null &&
+                        LaikaMod.SessionState.Connection.Port > 0
+                ? LaikaMod.SessionState.Connection.Port.ToString()
+                : "";
+
+            slotNameInput = LaikaMod.SessionState != null && LaikaMod.SessionState.Connection != null
+                ? LaikaMod.SessionState.Connection.SlotName ?? ""
+                : "";
+
+            passwordInput = LaikaMod.SessionState != null && LaikaMod.SessionState.Connection != null
+                ? LaikaMod.SessionState.Connection.Password ?? ""
+                : "";
+
+            textFieldsInitialized = true;
+        }
+
         // Cancels any pending hide callback and schedules a new one.
         // This makes each new recent-log event extend the panel's visibility window.
         public void ResetRecentLogAutoHideTimer()
@@ -629,11 +674,14 @@ public partial class LaikaMod
         private void DrawAPDebugWindow(int windowId)
         {
             GUILayout.BeginVertical();
+            EnsureConnectionInputFieldsInitialized();
 
-            GUILayout.Label($"Active AP Slot: {LaikaMod.ActiveSaveSlotIndex}");
+            GUILayout.Label($"AP Slot Index: {LaikaMod.ActiveSaveSlotIndex + 1}");
+
+            GUILayout.Label($"AP Save File: slot{LaikaMod.ActiveSaveSlotIndex}.json");
 
             bool isConnected = ArchipelagoClientManager.Instance != null &&
-                               ArchipelagoClientManager.Instance.IsConnected;
+                   ArchipelagoClientManager.Instance.IsConnected;
 
             bool isConnecting = ArchipelagoClientManager.Instance != null &&
                                 ArchipelagoClientManager.Instance.IsConnecting;
@@ -647,39 +695,113 @@ public partial class LaikaMod
                 GUILayout.Label($"Connection: {(isConnected ? "Connected" : "Not Connected")}");
             }
 
-            GUILayout.Space(6f);
-
-            if (GUILayout.Button("Load AP Slot 1"))
-            {
-                LaikaMod.ActiveSaveSlotIndex = 1;
-                LaikaMod.LoadSessionState();
-                LaikaMod.Log.LogInfo("AP DEBUG UI: loaded slot 1.");
-                LaikaMod.AnnounceAPActivity("[AP] Loaded AP slot 1.");
-            }
-
-            if (GUILayout.Button("Load AP Slot 2"))
-            {
-                LaikaMod.ActiveSaveSlotIndex = 2;
-                LaikaMod.LoadSessionState();
-                LaikaMod.Log.LogInfo("AP DEBUG UI: loaded slot 2.");
-                LaikaMod.AnnounceAPActivity("[AP] Loaded AP slot 2.");
-            }
-
-            if (GUILayout.Button("Load AP Slot 3"))
-            {
-                LaikaMod.ActiveSaveSlotIndex = 3;
-                LaikaMod.LoadSessionState();
-                LaikaMod.Log.LogInfo("AP DEBUG UI: loaded slot 3.");
-                LaikaMod.AnnounceAPActivity("[AP] Loaded AP slot 3.");
-            }
-
             GUILayout.Space(8f);
+            GUILayout.Label("Archipelago Settings");
+
+            bool slotApEnabled = LaikaMod.SessionState != null && LaikaMod.SessionState.APEnabled;
+            bool newSlotApEnabled = GUILayout.Toggle(slotApEnabled, "Enable AP for this save slot");
+            if (newSlotApEnabled != slotApEnabled)
+            {
+                LaikaMod.SessionState.APEnabled = newSlotApEnabled;
+                LaikaMod.SaveSessionState();
+                LaikaMod.RefreshDevOverlay();
+            }
+
+            string oldHost = hostInput;
+            string oldPort = portInput;
+            string oldSlotName = slotNameInput;
+            string oldPassword = passwordInput;
+
+            GUILayout.Label("Host");
+            hostInput = GUILayout.TextField(hostInput ?? "", 256);
+
+            GUILayout.Label("Port");
+            portInput = GUILayout.TextField(portInput ?? "", 16);
+
+            GUILayout.Label("Slot Name");
+            slotNameInput = GUILayout.TextField(slotNameInput ?? "", 128);
+
+            GUILayout.Label("Password");
+            passwordInput = GUILayout.PasswordField(passwordInput ?? "", '*', 128);
+
+            bool inputsChanged =
+                oldHost != hostInput ||
+                oldPort != portInput ||
+                oldSlotName != slotNameInput ||
+                oldPassword != passwordInput;
+
+            if (inputsChanged)
+            {
+                if (LaikaMod.SessionState.Connection == null)
+                    LaikaMod.SessionState.Connection = new APConnectionState();
+
+                LaikaMod.SessionState.Connection.Host = (hostInput ?? "").Trim();
+
+                int previewPort;
+                if (string.IsNullOrWhiteSpace(portInput))
+                {
+                    LaikaMod.SessionState.Connection.Port = 0;
+                }
+                else if (int.TryParse(portInput, out previewPort) && previewPort > 0)
+                {
+                    LaikaMod.SessionState.Connection.Port = previewPort;
+                }
+                else
+                {
+                    LaikaMod.SessionState.Connection.Port = 0;
+                }
+
+                LaikaMod.SessionState.Connection.SlotName = (slotNameInput ?? "").Trim();
+                LaikaMod.SessionState.Connection.Password = passwordInput ?? "";
+
+                LaikaMod.RefreshDevOverlay();
+            }
+
+            if (GUILayout.Button("Save AP Settings"))
+            {
+                int parsedPort;
+                if (!int.TryParse(portInput, out parsedPort) || parsedPort <= 0)
+                {
+                    LaikaMod.AnnounceAPWarning("[AP] Invalid port.");
+                }
+                else
+                {
+                    if (LaikaMod.SessionState.Connection == null)
+                        LaikaMod.SessionState.Connection = new APConnectionState();
+
+                    LaikaMod.SessionState.Connection.Host = (hostInput ?? "").Trim();
+                    LaikaMod.SessionState.Connection.Port = parsedPort;
+                    LaikaMod.SessionState.Connection.SlotName = (slotNameInput ?? "").Trim();
+                    LaikaMod.SessionState.Connection.Password = passwordInput ?? "";
+                    LaikaMod.SaveSessionState();
+                    LaikaMod.RefreshDevOverlay();
+                    LaikaMod.AnnounceAPSuccess("[AP] Saved settings for this slot.");
+                }
+            }
 
             GUI.enabled = !isConnected && !isConnecting;
 
             if (GUILayout.Button(isConnecting ? "Connecting..." : "Connect Active Slot"))
             {
-                LaikaMod.ConnectActiveSlotIfConfigured();
+                int parsedPort;
+                if (!int.TryParse(portInput, out parsedPort) || parsedPort <= 0)
+                {
+                    LaikaMod.AnnounceAPWarning("[AP] Invalid port.");
+                }
+                else
+                {
+                    if (LaikaMod.SessionState.Connection == null)
+                        LaikaMod.SessionState.Connection = new APConnectionState();
+
+                    LaikaMod.SessionState.APEnabled = true;
+                    LaikaMod.SessionState.Connection.Host = (hostInput ?? "").Trim();
+                    LaikaMod.SessionState.Connection.Port = parsedPort;
+                    LaikaMod.SessionState.Connection.SlotName = (slotNameInput ?? "").Trim();
+                    LaikaMod.SessionState.Connection.Password = passwordInput ?? "";
+                    LaikaMod.SaveSessionState();
+
+                    LaikaMod.ConnectActiveSlotIfConfigured();
+                }
             }
 
             GUI.enabled = isConnected && !isConnecting;
@@ -728,9 +850,9 @@ public partial class LaikaMod
                 string host = LaikaMod.SessionState.Connection != null ? LaikaMod.SessionState.Connection.Host : "<null>";
                 int port = LaikaMod.SessionState.Connection != null ? LaikaMod.SessionState.Connection.Port : 0;
                 string slotName = LaikaMod.SessionState.Connection != null ? LaikaMod.SessionState.Connection.SlotName : "<null>";
-                bool apEnabled = LaikaMod.SessionState.APEnabled;
+                bool currentApEnabled = LaikaMod.SessionState.APEnabled;
 
-                GUILayout.Label($"AP Enabled: {apEnabled}");
+                GUILayout.Label($"AP Enabled: {currentApEnabled}");
                 GUILayout.Label($"Host: {host}:{port}");
                 GUILayout.Label($"Slot: {slotName}");
             }

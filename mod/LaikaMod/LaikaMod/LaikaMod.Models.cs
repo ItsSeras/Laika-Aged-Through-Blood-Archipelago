@@ -19,8 +19,8 @@ public class APConnectionState
 [Serializable]
 public class APSaveState
 {
-    public int SaveSlotIndex = 1;
-    public bool APEnabled = true;
+    public int SaveSlotIndex = 0;
+    public bool APEnabled = false;
 
     public APConnectionState Connection = new APConnectionState();
 

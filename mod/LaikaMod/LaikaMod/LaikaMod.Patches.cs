@@ -42,6 +42,80 @@ public partial class LaikaMod
         }
     }
 
+    [HarmonyPatch(typeof(PersistenceManager), "StartNewGame", new Type[] { typeof(int) })]
+    public class PersistenceManager_StartNewGame_APSlotBindPatch
+    {
+        static void Prefix(int slot)
+        {
+            try
+            {
+                LaikaMod.BindToGameSaveSlot(
+                    slot,
+                    "PersistenceManager.StartNewGame",
+                    autoConnectIfConfigured: true
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"StartNewGame AP slot bind patch failed:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PersistenceManager), "ContinueGame", new Type[] { typeof(int), typeof(Action) })]
+    public class PersistenceManager_ContinueGame_APSlotBindPatch
+    {
+        static void Prefix(int slot)
+        {
+            try
+            {
+                LaikaMod.BindToGameSaveSlot(
+                    slot,
+                    "PersistenceManager.ContinueGame",
+                    autoConnectIfConfigured: true
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"ContinueGame AP slot bind patch failed:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PersistenceManager), "DeleteGame", new Type[] { typeof(int) })]
+    public class PersistenceManager_DeleteGame_APCleanupPatch
+    {
+        static void Postfix(int slot)
+        {
+            try
+            {
+                string apStatePath = LaikaMod.GetAPStatePathForSlot(slot);
+
+                if (System.IO.File.Exists(apStatePath))
+                {
+                    System.IO.File.Delete(apStatePath);
+                    LaikaMod.LogInfo($"AP STATE: deleted AP state file for deleted Laika save slot {slot}");
+                }
+
+                if (LaikaMod.ActiveSaveSlotIndex == slot)
+                {
+                    if (ArchipelagoClientManager.Instance != null &&
+                        (ArchipelagoClientManager.Instance.IsConnected || ArchipelagoClientManager.Instance.IsConnecting))
+                    {
+                        ArchipelagoClientManager.Instance.Disconnect("Underlying Laika save was deleted");
+                    }
+
+                    LaikaMod.LoadSessionStateForSlot(slot);
+                    LaikaMod.RefreshDevOverlay();
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"DeleteGame AP cleanup patch failed:\n{ex}");
+            }
+        }
+    }
+
 
     [HarmonyPatch(typeof(QuestLog), "TryCloseQuest")]
     public class QuestClosePatch

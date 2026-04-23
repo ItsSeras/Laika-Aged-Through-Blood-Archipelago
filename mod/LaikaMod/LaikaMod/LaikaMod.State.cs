@@ -11,6 +11,74 @@ public partial class LaikaMod
     internal static string SlotDataFilePath =
         Path.Combine(Paths.ConfigPath, "laika_ap_slot_data.txt");
 
+    internal static void BindToGameSaveSlot(int slotIndex, string reason, bool autoConnectIfConfigured = false)
+    {
+        try
+        {
+            if (slotIndex < 0)
+            {
+                LogWarning($"AP SLOT BIND ignored because slotIndex was invalid: {slotIndex}");
+                return;
+            }
+
+            bool slotChanged = ActiveSaveSlotIndex != slotIndex;
+
+            LogInfo(
+                $"AP SLOT BIND requested. " +
+                $"OldSlot={ActiveSaveSlotIndex}, NewSlot={slotIndex}, Reason={reason}, AutoConnect={autoConnectIfConfigured}"
+            );
+
+            if (slotChanged && ArchipelagoClientManager.Instance != null)
+            {
+                if (ArchipelagoClientManager.Instance.IsConnected || ArchipelagoClientManager.Instance.IsConnecting)
+                {
+                    ArchipelagoClientManager.Instance.Disconnect(
+                        $"Switching AP context from slot {ActiveSaveSlotIndex} to slot {slotIndex}"
+                    );
+                }
+            }
+
+            ActiveSaveSlotIndex = slotIndex;
+
+            LoadSessionStateForSlot(slotIndex);
+
+            if (ActiveDevOverlayController != null)
+            {
+                ActiveDevOverlayController.ReloadConnectionInputFieldsFromSession();
+            }
+
+            // Reset per-runtime-only counters so one slot does not leak into another.
+            LocalDeathsThisSession = 0;
+            DeathsSinceLastDeathLink = 0;
+            SuppressedDeathLinksRemaining = 0;
+
+            // Clear any pending runtime-only grants when changing slot context.
+            PendingItemQueue.Clear();
+            IsProcessingQueue = false;
+
+            // Reset slot_data-derived runtime options until this slot connects and reapplies them.
+            WorldOptions = new APWorldOptions();
+            HasAppliedLiveSlotData = false;
+
+            // Keep slot index normalized in persisted state.
+            SessionState.SaveSlotIndex = slotIndex;
+            SaveSessionState();
+
+            RefreshDevOverlay();
+
+            AnnounceAPActivity($"[AP] Bound to Laika save slot {slotIndex + 1}.");
+
+            if (autoConnectIfConfigured)
+            {
+                ConnectActiveSlotIfConfigured();
+            }
+        }
+        catch (Exception ex)
+        {
+            LogError($"AP SLOT BIND failed for slot {slotIndex}:\n{ex}");
+        }
+    }
+
     // Loads APWorld slot_data values from a tiny local cache file.
     // This is a stepping stone until live AP networking fills these values directly after Connect/Connected.
     internal static void LoadWorldOptionsFromLocalSlotData()
@@ -255,7 +323,8 @@ public partial class LaikaMod
         ArchipelagoClientManager.Instance.Connect(
             SessionState.Connection.Host,
             SessionState.Connection.Port,
-            SessionState.Connection.SlotName
+            SessionState.Connection.SlotName,
+            SessionState.Connection.Password
         );
     }
 
