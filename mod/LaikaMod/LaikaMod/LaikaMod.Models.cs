@@ -24,6 +24,8 @@ public class APSaveState
 
     public APConnectionState Connection = new APConnectionState();
 
+    public APWorldOptions Options = new APWorldOptions();
+
     public int LastProcessedReceivedItemIndex = 0;
     public bool GoalReported = false;
 

@@ -568,20 +568,51 @@ public partial class LaikaMod
             if (!initialized)
                 InitializeOverlay();
 
-            if (Input.GetKeyDown(KeyCode.F10))
-            {
-                showAPDebugPanel = !showAPDebugPanel;
-
-                LaikaMod.Log.LogInfo(
-                    $"AP DEBUG UI visibility toggled -> {showAPDebugPanel}"
-                );
-            }
-
             if (!updateLoggedOnce)
             {
                 updateLoggedOnce = true;
                 LaikaMod.Log.LogInfo("DevOverlayController Update() is running.");
             }
+
+            if (LaikaMod.IsAPSettingsInputFocused())
+            {
+                Input.ResetInputAxes();
+                return;
+            }
+
+            if (APSettingsPanelObject != null && APSettingsPanelObject.activeSelf)
+            {
+                RectTransform rect = APSettingsPanelObject.GetComponent<RectTransform>();
+
+                if (Input.GetMouseButtonDown(0))
+                {
+                    Vector2 mousePos = Input.mousePosition;
+
+                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                        rect,
+                        mousePos,
+                        null,
+                        out APPanelDragOffset
+                    );
+
+                    if (RectTransformUtility.RectangleContainsScreenPoint(rect, mousePos))
+                    {
+                        DraggingAPPanel = true;
+                    }
+                }
+
+                if (Input.GetMouseButtonUp(0))
+                {
+                    DraggingAPPanel = false;
+                }
+
+                if (DraggingAPPanel)
+                {
+                    rect.position = Input.mousePosition;
+                }
+            }
+
+
         }
 
         void OnGUI()
@@ -855,6 +886,14 @@ public partial class LaikaMod
                 GUILayout.Label($"AP Enabled: {currentApEnabled}");
                 GUILayout.Label($"Host: {host}:{port}");
                 GUILayout.Label($"Slot: {slotName}");
+            }
+
+            if (LaikaMod.TitleScreenSavePickerOpen)
+            {
+                GUI.Box(new Rect(20f, 20f, 260f, 90f),
+                    "AP Title Debug\n" +
+                    "SavePickerOpen: true\n" +
+                    "Highlighted Slot: " + LaikaMod.TitleScreenHighlightedSlotIndex);
             }
 
             GUILayout.FlexibleSpace();

@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using UnityEngine;
 
 public partial class LaikaMod
 {
@@ -10,6 +11,107 @@ public partial class LaikaMod
     // For now this is just a tiny text file so I can test option flow before full live networking is finished.
     internal static string SlotDataFilePath =
         Path.Combine(Paths.ConfigPath, "laika_ap_slot_data.txt");
+
+    internal static APSaveState PeekSessionStateForSlot(int slotIndex)
+    {
+        try
+        {
+            string path = GetAPStatePathForSlot(slotIndex);
+
+            if (!File.Exists(path))
+            {
+                return new APSaveState
+                {
+                    SaveSlotIndex = slotIndex,
+                    APEnabled = false,
+                    Connection = new APConnectionState()
+                };
+            }
+
+            string json = File.ReadAllText(path);
+            APSaveState state = JsonConvert.DeserializeObject<APSaveState>(json) ?? new APSaveState();
+
+            state.SaveSlotIndex = slotIndex;
+            if (state.Connection == null)
+                state.Connection = new APConnectionState();
+
+            if (state.SentLocationIds == null)
+                state.SentLocationIds = new List<long>();
+
+            return state;
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"Failed to peek AP session state for slot {slotIndex}:\n{ex}");
+            return new APSaveState
+            {
+                SaveSlotIndex = slotIndex,
+                APEnabled = false,
+                Connection = new APConnectionState()
+            };
+        }
+    }
+
+    internal static string BuildSaveSlotAPSummary(int slotIndex)
+    {
+        APSaveState state = PeekSessionStateForSlot(slotIndex);
+
+        if (state == null || !state.APEnabled)
+            return "[AP Off]";
+
+        bool ready =
+            state.Connection != null &&
+            !string.IsNullOrWhiteSpace(state.Connection.Host) &&
+            state.Connection.Port > 0 &&
+            !string.IsNullOrWhiteSpace(state.Connection.SlotName);
+
+        if (!ready)
+            return "[AP ON]";
+
+        return $"[AP Ready: {state.Connection.SlotName}]";
+    }
+
+    internal static string BuildSaveSlotAPSummaryShort(int slotIndex)
+    {
+        APSaveState state = PeekSessionStateForSlot(slotIndex);
+
+        if (state == null || !state.APEnabled)
+            return "AP OFF";
+
+        bool ready =
+            state.Connection != null &&
+            !string.IsNullOrWhiteSpace(state.Connection.Host) &&
+            state.Connection.Port > 0 &&
+            !string.IsNullOrWhiteSpace(state.Connection.SlotName);
+
+        if (!ready)
+            return "ADDITIONAL AP SETUP REQUIRED";
+
+        return "AP Enabled: " + state.Connection.SlotName.ToUpperInvariant();
+    }
+
+    internal static Color GetSaveSlotAPColor(int slotIndex)
+    {
+        APSaveState state = PeekSessionStateForSlot(slotIndex);
+
+        if (state == null || !state.APEnabled)
+        {
+            return new Color(0.48f, 0.56f, 0.66f, 1f); // stronger cool gray-blue
+        }
+
+        bool ready =
+            state.Connection != null &&
+            !string.IsNullOrWhiteSpace(state.Connection.Host) &&
+            state.Connection.Port > 0 &&
+            !string.IsNullOrWhiteSpace(state.Connection.SlotName);
+
+        if (!ready)
+        {
+            return new Color(0.8627452f, 0.07843138f, 0.2352941f, 1f); // crimson
+        }
+
+        return new Color(0.25f, 1.00f, 0.52f, 1f); // brighter green
+    }
 
     internal static void BindToGameSaveSlot(int slotIndex, string reason, bool autoConnectIfConfigured = false)
     {
@@ -195,6 +297,11 @@ public partial class LaikaMod
             if (SessionState.Connection == null)
             {
                 SessionState.Connection = new APConnectionState();
+            }
+
+            if (SessionState.Options == null)
+            {
+                SessionState.Options = new APWorldOptions();
             }
 
             if (SessionState.SentLocationIds == null)
