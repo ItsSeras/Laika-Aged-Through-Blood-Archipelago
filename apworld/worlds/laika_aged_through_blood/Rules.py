@@ -28,41 +28,80 @@ def set_rules(world):
     # Map pieces, cassettes, and puppy gifts are intentionally left without extra rules for now.
     # That keeps them as fast filler checks while I focus on major progression first.
 
-    # Main opening
-    set_rule(
-        loc("Quest Complete: Rage and Sorrow"),
-        lambda state: True
+# Main opening
+# Player always starts with pistol + reflect, so Hundred Hungry Beaks has no AP item requirement.
+set_rule(
+    loc("Boss Defeated: A Hundred Hungry Beaks"),
+    lambda state: True
+)
+
+set_rule(
+    loc("Quest Complete: Rage and Sorrow"),
+    lambda state: can_reach_loc(state, player, "Boss Defeated: A Hundred Hungry Beaks")
+)
+
+# Post Rage and Sorrow
+set_rule(
+    loc("Quest Complete: A Heart for Poochie"),
+    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+)
+
+set_rule(
+    loc("Quest Complete: The Remnants"),
+    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+)
+
+set_rule(
+    loc("Quest Complete: Shake Off the Dead Leaves"),
+    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+)
+
+set_rule(
+    loc("Quest Complete: Desperately in Need of Music"),
+    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+)
+
+set_rule(
+    loc("Boss Defeated: A Long Lost Woodcrawler"),
+    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+)
+
+# War chapter requires Rage and Sorrow + A Heart for Poochie.
+def war_chapter(state) -> bool:
+    return (
+        can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+        and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
     )
 
-    set_rule(
-        loc("Quest Complete: A Heart for Poochie"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-    )
+set_rule(
+    loc("Quest Complete: Diplomacy"),
+    lambda state: war_chapter(state)
+)
 
-    # War chapter
-    # These can be tackled in any order after A Heart for Poochie.
-    set_rule(
-        loc("Quest Complete: Diplomacy"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-    )
+set_rule(
+    loc("Quest Complete: Radio Silence"),
+    lambda state: war_chapter(state)
+)
 
-    set_rule(
-        loc("Quest Complete: Radio Silence"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-    )
+set_rule(
+    loc("Quest Complete: The Big Tree"),
+    lambda state: war_chapter(state)
+)
 
-    set_rule(
-        loc("Quest Complete: Old Warfare"),
-        lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
-        )
-    )
+set_rule(
+    loc("Quest Complete: Stargazing"),
+    lambda state: war_chapter(state)
+)
 
-    set_rule(
-        loc("Quest Complete: The Big Tree"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-    )
+set_rule(
+    loc("Quest Complete: Fogg's Only Wish"),
+    lambda state: war_chapter(state)
+)
+
+set_rule(
+    loc("Boss Defeated: A Caterpiller Made of Sadness"),
+    lambda state: war_chapter(state)
+)
 
     set_rule(
         loc("Quest Complete: The Bonehead's Hook"),

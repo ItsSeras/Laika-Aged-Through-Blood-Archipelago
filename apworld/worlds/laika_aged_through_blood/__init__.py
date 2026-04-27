@@ -23,6 +23,12 @@ class LaikaWorld(World):
     item_name_to_id = {name: data["id"] for name, data in ITEM_TABLE.items()}
     location_name_to_id = LOCATION_TABLE
 
+    def generate_early(self):
+    if self.options.weapon_mode.current_key == "crafting":
+        self.multiworld.local_early_items[self.player]["Rusty Spring (Shotgun Material)"] = 1
+    else:
+        self.multiworld.local_early_items[self.player]["Shotgun (Weapon)"] = 1
+
     def get_weapon_unlock_pool(self) -> list[str]:
         # In direct mode, major weapons are placed as themselves.
         # In crafting mode, the four main crafted weapons are represented by their unique materials instead.
@@ -158,24 +164,39 @@ class LaikaWorld(World):
     def create_regions(self):
         create_regions(self)
 
-    def create_items(self):
-        # These are always in the item pool regardless of weapon mode.
-        pool = [
-            self.create_item("Dash (Bike Upgrade)"),
-            self.create_item("Hook (Bike Upgrade)"),
-            self.create_item("Maya's Pendant (Bike Upgrade)"),
-        ]
+def create_items(self):
+    # These are always in the item pool regardless of weapon mode.
+    pool = [
+        self.create_item("Dash (Bike Upgrade)"),
+        self.create_item("Hook (Bike Upgrade)"),
+        self.create_item("Maya's Pendant (Bike Upgrade)"),
+    ]
 
-        # Weapon entries depend on the configured AP weapon mode.
-        for item_name in self.get_weapon_unlock_pool():
-            pool.append(self.create_item(item_name))
+    # Weapon entries depend on the configured AP weapon mode.
+    for item_name in self.get_weapon_unlock_pool():
+        pool.append(self.create_item(item_name))
 
-        total_locations = len(self.multiworld.get_unfilled_locations(self.player))
+    weapon_upgrades = [
+        "Shotgun Upgrade (Weapon Upgrade)",
+        "Shotgun Upgrade (Weapon Upgrade)",
+        "Shotgun Upgrade (Weapon Upgrade)",
+        "Sniper Rifle Upgrade (Weapon Upgrade)",
+        "Machine Gun Upgrade (Weapon Upgrade)",
+        "Rocket Launcher Upgrade (Weapon Upgrade)",
+        "Crossbow Upgrade (Weapon Upgrade)",
+    ]
 
-        while len(pool) < total_locations:
-            pool.append(self.create_item(self.get_filler_item_name()))
+    for item_name in weapon_upgrades:
+        pool.append(self.create_item(item_name))
 
-        self.multiworld.itempool += pool
+    total_locations = len(self.multiworld.get_unfilled_locations(self.player))
+
+    while len(pool) < total_locations:
+        pool.append(self.create_item(self.get_filler_item_name()))
+
+    self.multiworld.itempool += pool
+
+
 
     def set_rules(self):
         set_rules(self)

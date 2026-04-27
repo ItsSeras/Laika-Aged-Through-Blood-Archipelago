@@ -707,6 +707,55 @@ public partial class LaikaMod
         }
     }
 
+    [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] { typeof(ItemData), typeof(int), typeof(Action), typeof(bool) })]
+    public class InventoryManager_AddItem_APLocationPatch
+    {
+        static void Postfix(ItemData item, int amount, Action onAddedCallback, bool silent, bool __result)
+        {
+            try
+            {
+                if (!__result || item == null || string.IsNullOrEmpty(item.id))
+                    return;
+
+                if (LaikaMod.IsGrantingAPItem)
+                {
+                    LaikaMod.LogInfo($"InventoryManager_AddItem_APLocationPatch: ignored AP-granted item {item.id}.");
+                    return;
+                }
+
+                string itemId = item.id;
+
+                // Puppy gifts already have their own safer key-item path.
+                if (
+                    itemId == "I_TOY_BIKE" ||
+                    itemId == "I_GAMEBOY" ||
+                    itemId == "I_PLANT_PUPPY" ||
+                    itemId == "I_TOY_ANIMAL" ||
+                    itemId == "I_BOOK_MOTHER" ||
+                    itemId == "I_DREAMCATCHER" ||
+                    itemId == "I_UKULELE"
+                )
+                {
+                    return;
+                }
+
+                APLocationDefinition definition;
+                if (!LaikaMod.TryGetLocationDefinition(itemId, out definition))
+                    return;
+
+                LaikaMod.LogInfo(
+                    $"INVENTORY LOCATION SOURCE DETECTED: id={itemId}, category={definition.Category}, amount={amount}, silent={silent}"
+                );
+
+                LaikaMod.TrySendLocationCheck(definition, "InventoryManager_AddItem_APLocationPatch");
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"InventoryManager_AddItem_APLocationPatch exception:\n{ex}");
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(Boss_00), "OnEndingVideoEnd")]
     public class Boss00VerifyPatch
     {

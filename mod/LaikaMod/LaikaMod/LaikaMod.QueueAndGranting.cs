@@ -89,6 +89,8 @@ public partial class LaikaMod
         EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map: Where Our Bikes Growl"));
     }
 
+    internal static bool IsGrantingAPItem = false;
+
     // Adds a pending item to the queue.
     internal static void EnqueueItem(PendingItem item)
     {
@@ -146,8 +148,17 @@ public partial class LaikaMod
                     }
                     else
                     {
-                        LaikaMod.LogWarning($"{sourceTag}: grant failed -> {item}");
-                        LaikaMod.AnnounceAPWarning($"[AP] Failed to grant: {item.DisplayName}");
+                        if (ShouldKeepPendingAfterFailedGrant(item, sourceTag))
+                        {
+                            remainingQueue.Enqueue(item);
+                            LaikaMod.LogInfo($"{sourceTag}: deferred grant kept pending -> {item}");
+                            LaikaMod.AnnounceAPActivity($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
+                        }
+                        else
+                        {
+                            LaikaMod.LogWarning($"{sourceTag}: grant failed -> {item}");
+                            LaikaMod.AnnounceAPWarning($"[AP] Failed to grant: {item.DisplayName}");
+                        }
                     }
                 }
                 catch (Exception ex)
@@ -173,41 +184,79 @@ public partial class LaikaMod
     // Each ItemKind goes through its own grant path so I can keep the weird edge cases isolated.
     internal static bool TryGrantPendingItem(PendingItem item, string sourceTag)
     {
-        LogInfo($"{sourceTag}: processing {item}");
+        if (item == null)
+            return false;
 
-        switch (item.Kind)
+        IsGrantingAPItem = true;
+
+        try
         {
-            case ItemKind.Currency:
-                return TryGrantCurrency(item, sourceTag);
+            LogInfo($"{sourceTag}: processing {item}");
 
-            case ItemKind.Weapon:
-                return TryGrantWeapon(item, sourceTag);
+            switch (item.Kind)
+            {
+                case ItemKind.Currency:
+                    return TryGrantCurrency(item, sourceTag);
 
-            case ItemKind.WeaponUpgrade:
-                return TryGrantWeaponUpgrade(item, sourceTag);
+                case ItemKind.Weapon:
+                    return TryGrantWeapon(item, sourceTag);
 
-            case ItemKind.Ingredient:
-                return TryGrantIngredient(item, sourceTag);
+                case ItemKind.WeaponUpgrade:
+                    return TryGrantWeaponUpgrade(item, sourceTag);
 
-            case ItemKind.Material:
-                return TryGrantMaterial(item, sourceTag);
+                case ItemKind.Ingredient:
+                    return TryGrantIngredient(item, sourceTag);
 
-            case ItemKind.Collectible:
-                return TryGrantCollectible(item, sourceTag);
+                case ItemKind.Material:
+                    return TryGrantMaterial(item, sourceTag);
 
-            case ItemKind.PuppyTreat:
-                return TryGrantPuppyTreat(item, sourceTag);
+                case ItemKind.Collectible:
+                    return TryGrantCollectible(item, sourceTag);
 
-            case ItemKind.KeyItem:
-                return TryGrantKeyItem(item, sourceTag);
+                case ItemKind.PuppyTreat:
+                    return TryGrantPuppyTreat(item, sourceTag);
 
-            case ItemKind.MapUnlock:
-                return TryGrantMapUnlock(item, sourceTag);
+                case ItemKind.KeyItem:
+                    return TryGrantKeyItem(item, sourceTag);
 
-            default:
-                LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
-                return false;
+                case ItemKind.MapUnlock:
+                    return TryGrantMapUnlock(item, sourceTag);
+
+                default:
+                    LogWarning($"{sourceTag}: unsupported item kind -> {item.Kind}");
+                    return false;
+            }
         }
+        finally
+        {
+            IsGrantingAPItem = false;
+        }
+    }
+
+    internal static bool ShouldKeepPendingAfterFailedGrant(PendingItem item, string sourceTag)
+    {
+        if (item == null)
+            return false;
+
+        if (item.Kind != ItemKind.WeaponUpgrade)
+            return false;
+
+        var weaponsInventory = Singleton<WeaponsInventory>.Instance;
+        if (weaponsInventory == null)
+            return true;
+
+        var itemLoader = Singleton<ItemDataLoader>.Instance;
+        if (itemLoader == null)
+            return true;
+
+        ItemDataWeapon weaponData = itemLoader.FindWeapon(item.Id);
+        if (weaponData == null)
+        {
+            LogWarning($"{sourceTag}: not deferring weapon upgrade because FindWeapon({item.Id}) returned null.");
+            return false;
+        }
+
+        return !weaponsInventory.HasWeapon(item.Id);
     }
 
     // Grants Viscera through EconomyManager.
@@ -909,10 +958,91 @@ public partial class LaikaMod
         if (ArchipelagoClientManager.Instance != null)
         {
             ArchipelagoClientManager.Instance.SendLocationCheck(definition);
+            TryConsumeVanillaLocationReward(definition, sourceTag);
         }
         else
         {
             LogWarning($"{sourceTag}: ArchipelagoClientManager missing, check not sent -> {definition.DisplayName}");
+        }
+    }
+
+    // Attempts to remove vanilla item rewwards from the player.
+    internal static void TryConsumeVanillaLocationReward(APLocationDefinition definition, string sourceTag)
+    {
+        if (definition == null)
+            return;
+
+        if (definition.Category == "Cassette")
+        {
+            TryRemoveCassetteReward(definition.InternalId, sourceTag);
+            return;
+        }
+
+        if (definition.Category == "PuppyGift" ||
+            definition.Category == "KeyItem" ||
+            definition.Category == "Material" ||
+            definition.Category == "Ingredient")
+        {
+            TryRemoveInventoryReward(definition.InternalId, 1, sourceTag);
+            return;
+        }
+
+        // Do not consume quest-completion, boss, or map-unlock rewards here.
+        // Those are progression/check states, not the randomized item reward itself.
+    }
+
+    internal static void TryRemoveInventoryReward(string itemId, int amount, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(itemId))
+            return;
+
+        var inventory = Singleton<InventoryManager>.Instance;
+        if (inventory == null)
+        {
+            LogWarning($"{sourceTag}: could not remove vanilla reward {itemId}; InventoryManager is null.");
+            return;
+        }
+
+        try
+        {
+            bool removed = inventory.RemoveItem(itemId, amount, true);
+            LogInfo($"{sourceTag}: remove vanilla inventory reward {itemId} x{amount} -> {removed}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"{sourceTag}: exception removing vanilla inventory reward {itemId}:\n{ex}");
+        }
+    }
+
+    internal static void TryRemoveCassetteReward(string cassetteId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(cassetteId))
+            return;
+
+        var manager = Singleton<CassettesManager>.Instance;
+        var loader = Singleton<CassettesDataLoader>.Instance;
+
+        if (manager == null || loader == null)
+        {
+            LogWarning($"{sourceTag}: could not remove vanilla cassette {cassetteId}; cassette manager/loader is null.");
+            return;
+        }
+
+        try
+        {
+            CassetteData cassette = loader.FindCassette(cassetteId);
+            if (cassette == null)
+            {
+                LogWarning($"{sourceTag}: could not remove vanilla cassette {cassetteId}; FindCassette returned null.");
+                return;
+            }
+
+            bool removed = manager.CassettesInventory != null && manager.CassettesInventory.Remove(cassette);
+            LogInfo($"{sourceTag}: remove vanilla cassette reward {cassetteId} -> {removed}");
+        }
+        catch (Exception ex)
+        {
+            LogError($"{sourceTag}: exception removing vanilla cassette reward {cassetteId}:\n{ex}");
         }
     }
 

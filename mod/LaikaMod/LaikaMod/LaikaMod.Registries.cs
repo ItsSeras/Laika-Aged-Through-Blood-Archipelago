@@ -1099,6 +1099,13 @@ public partial class LaikaMod
         // Crossbow is still direct for now
         { 1104L, () => new PendingItem(ItemKind.Weapon, "I_W_CROSSBOW", 1, "Crossbow (Weapon)") },
 
+                    // ===== Weapon upgrades =====
+        { 1110L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade") },
+        { 1111L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Sniper Rifle Upgrade") },
+        { 1112L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 1, "Machine Gun Upgrade") },
+        { 1113L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_ROCKETLAUNCHER", 1, "Rocket Launcher Upgrade") },
+        { 1114L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_CROSSBOW", 1, "Crossbow Upgrade") },
+
         // ===== Crafting-mode weapon materials =====
         { 1150L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)") },
         { 1151L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SNIPER", 1, "Magnifying Glass (Sniper Rifle Material)") },

@@ -64,6 +64,38 @@ ITEM_TABLE = {
         "kind": "Weapon",
     },
 
+    # ===== Weapon Upgrades =====
+    "Shotgun Upgrade (Weapon Upgrade)": {
+        "id": 1110,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_W_SHOTGUN",
+        "kind": "WeaponUpgrade",
+    },
+    "Sniper Rifle Upgrade (Weapon Upgrade)": {
+        "id": 1111,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_W_SNIPER",
+        "kind": "WeaponUpgrade",
+    },
+    "Machine Gun Upgrade (Weapon Upgrade)": {
+        "id": 1112,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_W_UZI",
+        "kind": "WeaponUpgrade",
+    },
+    "Rocket Launcher Upgrade (Weapon Upgrade)": {
+        "id": 1113,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_W_ROCKETLAUNCHER",
+        "kind": "WeaponUpgrade",
+    },
+    "Crossbow Upgrade (Weapon Upgrade)": {
+        "id": 1114,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_W_CROSSBOW",
+        "kind": "WeaponUpgrade",
+    },    
+
     # ===== Crafting-mode weapon material items =====
     "Rusty Spring (Shotgun Material)": {
         "id": 1150,
