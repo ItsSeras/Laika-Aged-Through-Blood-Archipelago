@@ -113,6 +113,9 @@ public partial class LaikaMod
         return new Color(0.25f, 1.00f, 0.52f, 1f); // brighter green
     }
 
+    internal static bool SuppressTitleUIForSlotLoad = false;
+    internal static float SuppressTitleUIUntil = 0f;
+
     internal static void BindToGameSaveSlot(int slotIndex, string reason, bool autoConnectIfConfigured = false)
     {
         try
@@ -172,6 +175,15 @@ public partial class LaikaMod
 
             if (autoConnectIfConfigured)
             {
+                SuppressTitleUIForSlotLoad = true;
+                SuppressTitleUIUntil = UnityEngine.Time.unscaledTime + 6f;
+
+                if (MainMenuArchipelagoEditionCanvasObject != null)
+                    MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+
+                if (TitleAPPanelCanvasObject != null)
+                    TitleAPPanelCanvasObject.SetActive(false);
+
                 ConnectActiveSlotIfConfigured();
             }
         }

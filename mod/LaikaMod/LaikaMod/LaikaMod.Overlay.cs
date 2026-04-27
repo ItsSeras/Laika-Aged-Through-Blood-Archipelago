@@ -3,6 +3,7 @@ using Laika.Inventory;
 using Laika.UI.InGame.Inventory;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,19 +36,20 @@ public partial class LaikaMod
         if (string.IsNullOrWhiteSpace(message))
             return;
 
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
+        EnsureDevOverlayCanvas();
+
         OverlayLines.Enqueue(message);
 
         while (OverlayLines.Count > MaxOverlayLines)
-        {
             OverlayLines.Dequeue();
-        }
 
         ShowRecentLogOverlay = true;
 
         if (ActiveDevOverlayController != null)
-        {
             ActiveDevOverlayController.ResetRecentLogAutoHideTimer();
-        }
 
         RefreshDevOverlay();
     }
@@ -178,37 +180,58 @@ public partial class LaikaMod
 
     internal static void AnnounceAPInfo(string message)
     {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
         AnnounceAPActivity(ColorizeOverlayMessage("#FFFFFF", message));
     }
 
     internal static void AnnounceAPSuccess(string message)
     {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
         AnnounceAPActivity(ColorizeOverlayMessage("#7CFF7C", message));
     }
 
     internal static void AnnounceAPWarning(string message)
     {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
         AnnounceAPActivity(ColorizeOverlayMessage("#FFD166", message));
     }
 
     internal static void AnnounceAPError(string message)
     {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
         AnnounceAPActivity(ColorizeOverlayMessage("#FF7B7B", message));
     }
 
     internal static void AnnounceAPCheckSent(string message)
     {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
         AnnounceAPActivity(ColorizeOverlayMessage("#7FDBFF", message));
     }
 
     internal static void AnnounceAPItemReceived(string message)
     {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
         AnnounceAPActivity(ColorizeOverlayMessage("#C792EA", message));
     }
 
     internal static void AnnounceAPDeathLink(string message)
     {
-        AnnounceAPActivity(ColorizeOverlayMessage("#FF5C5C", message));
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
+        AnnounceAPActivity(ColorizeOverlayMessage("#7FDBFF", message));
     }
 
     // Logs every ingredient ID the game has loaded.
@@ -352,14 +375,15 @@ public partial class LaikaMod
         statusPanel.transform.SetParent(DevOverlayCanvasObject.transform, false);
 
         Image statusBg = statusPanel.AddComponent<Image>();
-        statusBg.color = new Color(0f, 0f, 0f, 0.65f);
+        statusBg.color = new Color(0f, 0f, 0f, 0f);
+        statusBg.raycastTarget = false;
 
         RectTransform statusPanelRect = statusPanel.GetComponent<RectTransform>();
-        statusPanelRect.anchorMin = new Vector2(0f, 0f);
-        statusPanelRect.anchorMax = new Vector2(0f, 0f);
-        statusPanelRect.pivot = new Vector2(0f, 0f);
-        statusPanelRect.anchoredPosition = new Vector2(20f, 300f);
-        statusPanelRect.sizeDelta = new Vector2(360f, 190f);
+        statusPanelRect.anchorMin = new Vector2(0f, 1f);
+        statusPanelRect.anchorMax = new Vector2(0f, 1f);
+        statusPanelRect.pivot = new Vector2(0f, 1f);
+        statusPanelRect.anchoredPosition = new Vector2(24f, -8f);
+        statusPanelRect.sizeDelta = new Vector2(620f, 42f);
 
         GameObject statusTextObj = new GameObject("OverlayStatusText");
         statusTextObj.transform.SetParent(statusPanel.transform, false);
@@ -370,14 +394,15 @@ public partial class LaikaMod
         DevOverlayStatusText.fontSize = 16;
         DevOverlayStatusText.color = Color.white;
         DevOverlayStatusText.alignment = TextAnchor.UpperLeft;
+        DevOverlayStatusText.fontStyle = FontStyle.Bold;
         DevOverlayStatusText.horizontalOverflow = HorizontalWrapMode.Wrap;
         DevOverlayStatusText.verticalOverflow = VerticalWrapMode.Overflow;
 
         RectTransform statusTextRect = statusTextObj.GetComponent<RectTransform>();
         statusTextRect.anchorMin = new Vector2(0f, 0f);
         statusTextRect.anchorMax = new Vector2(1f, 1f);
-        statusTextRect.offsetMin = new Vector2(10f, 10f);
-        statusTextRect.offsetMax = new Vector2(-10f, -10f);
+        statusTextRect.offsetMin = new Vector2(26f, 12f);
+        statusTextRect.offsetMax = new Vector2(0f, -12f);
 
         // ===== Recent log panel =====
         GameObject logPanel = new GameObject("OverlayRecentLogPanel");
@@ -399,7 +424,7 @@ public partial class LaikaMod
         DevOverlayRecentLogText = logTextObj.AddComponent<Text>();
         DevOverlayRecentLogText.font = builtInFont;
         DevOverlayRecentLogText.supportRichText = true;
-        DevOverlayRecentLogText.fontSize = 12;
+        DevOverlayRecentLogText.fontSize = 15;
         DevOverlayRecentLogText.color = Color.white;
         DevOverlayRecentLogText.alignment = TextAnchor.UpperLeft;
         DevOverlayRecentLogText.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -427,38 +452,41 @@ public partial class LaikaMod
 
         if (ArchipelagoClientManager.Instance != null)
         {
-            if (ArchipelagoClientManager.Instance.IsConnecting)
-                connectionState = "Connecting...";
-            else if (ArchipelagoClientManager.Instance.IsConnected)
+            if (ArchipelagoClientManager.Instance.IsConnected)
                 connectionState = "Connected";
+            else if (ArchipelagoClientManager.Instance.IsConnecting)
+                connectionState = "Attempting to connect...";
         }
 
-        string currentHost = SessionState != null && SessionState.Connection != null
-            ? SessionState.Connection.Host
-            : "<none>";
+        Color statusColor = Color.red;
 
-        int currentPort = SessionState != null && SessionState.Connection != null
-            ? SessionState.Connection.Port
-            : 0;
+        if (connectionState == "Connected")
+            statusColor = Color.green;
+        else if (connectionState == "Attempting to connect...")
+            statusColor = Color.yellow;
 
-        string currentSlot = SessionState != null && SessionState.Connection != null
-            ? SessionState.Connection.SlotName
-            : "<none>";
+        DevOverlayStatusText.color = statusColor;
+
+        int displaySlot = Mathf.Clamp(ActiveSaveSlotIndex, 0, 2) + 1;
+
+        string displayConnectionState = connectionState;
+
+        if (connectionState == "Connected")
+            displayConnectionState = "Connected!";
 
         DevOverlayStatusText.text =
-            "Laika AP Status\n\n" +
-            $"Connection={connectionState}\n" +
-            $"APEnabled={SessionState.APEnabled}\n" +
-            $"Host={currentHost}:{currentPort}\n" +
-            $"Slot={currentSlot}\n" +
-            $"Queue={PendingItemQueue.Count}\n" +
-            $"WeaponMode={WorldOptions.WeaponMode}\n" +
-            $"SessionDeaths={LocalDeathsThisSession}\n" +
-            $"DeathsSinceLastLink={DeathsSinceLastDeathLink}\n" +
-            $"DeathLink={WorldOptions.DeathLinkEnabled}\n" +
-            $"DeathAmnesty={WorldOptions.DeathAmnestyEnabled} ({WorldOptions.DeathAmnestyCount})";
+            $"Archipelago: {displayConnectionState} (Slot {displaySlot})";
 
-        DevOverlayRecentLogText.transform.parent.gameObject.SetActive(ShowRecentLogOverlay);
+        bool shouldShowStatus =
+            SessionState != null &&
+            SessionState.APEnabled;
+
+        DevOverlayStatusText.transform.parent.gameObject.SetActive(shouldShowStatus);
+        bool shouldShowRecentLog =
+            ShowRecentLogOverlay &&
+            ShouldShowAPActivityOverlay();
+
+        DevOverlayRecentLogText.transform.parent.gameObject.SetActive(shouldShowRecentLog);
 
         if (ShowRecentLogOverlay)
         {
@@ -511,7 +539,7 @@ public partial class LaikaMod
         private bool initialized = false;
         private bool updateLoggedOnce = false;
         private Rect apDebugPanelRect = new Rect(10f, 10f, 340f, 420f);
-        private bool showAPDebugPanel = true;
+        private bool showAPDebugPanel = false;
         private Coroutine apPollCoroutine;
         private string hostInput = "";
         private string portInput = "";
@@ -719,7 +747,7 @@ public partial class LaikaMod
 
             if (isConnecting)
             {
-                GUILayout.Label("Connection: Connecting...");
+                GUILayout.Label("Connection: Attempting to connect...");
             }
             else
             {
@@ -812,7 +840,7 @@ public partial class LaikaMod
 
             GUI.enabled = !isConnected && !isConnecting;
 
-            if (GUILayout.Button(isConnecting ? "Connecting..." : "Connect Active Slot"))
+            if (GUILayout.Button(isConnecting ? "Attempting to connect..." : "Connect Active Slot"))
             {
                 int parsedPort;
                 if (!int.TryParse(portInput, out parsedPort) || parsedPort <= 0)

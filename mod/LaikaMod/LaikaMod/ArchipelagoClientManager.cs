@@ -108,6 +108,24 @@ public class ArchipelagoClientManager
             LaikaMod.AnnounceAPSuccess("[AP] Connected to server.");
 
             TryApplyLiveSlotData(loginResult);
+
+            LaikaMod.WorldOptions.DeathLinkEnabled =
+                LaikaMod.SessionState != null &&
+                LaikaMod.SessionState.Options != null &&
+                LaikaMod.SessionState.Options.DeathLinkEnabled;
+
+            LaikaMod.WorldOptions.DeathAmnestyEnabled =
+                LaikaMod.SessionState != null &&
+                LaikaMod.SessionState.Options != null &&
+                LaikaMod.SessionState.Options.DeathAmnestyEnabled;
+
+            if (LaikaMod.SessionState != null && LaikaMod.SessionState.Options != null)
+            {
+                LaikaMod.WorldOptions.DeathAmnestyCount =
+                    LaikaMod.SessionState.Options.DeathAmnestyCount;
+            }
+
+            RefreshConnectionTags();
         }
         catch (Exception ex)
         {
@@ -765,8 +783,33 @@ public class ArchipelagoClientManager
             if (!isDeathLink)
                 return;
 
+            string source = "<unknown>";
+            string cause = "DeathLink";
+
+            if (bounced.Data != null)
+            {
+                if (bounced.Data.ContainsKey("source") && bounced.Data["source"] != null)
+                    source = bounced.Data["source"].ToString();
+
+                if (bounced.Data.ContainsKey("cause") && bounced.Data["cause"] != null)
+                    cause = bounced.Data["cause"].ToString();
+            }
+
+            string localSlot =
+                LaikaMod.SessionState != null &&
+                LaikaMod.SessionState.Connection != null
+                    ? LaikaMod.SessionState.Connection.SlotName
+                    : "";
+
+            if (!string.IsNullOrWhiteSpace(localSlot) &&
+                string.Equals(source, localSlot, StringComparison.OrdinalIgnoreCase))
+            {
+                LaikaMod.LogInfo("AP DEATHLINK: self-bounced DeathLink packet received, treating as sent confirmation.");
+                LaikaMod.AnnounceAPDeathLink($"[AP] DeathLink sent to other players: {cause}");
+                return;
+            }
+
             LaikaMod.LogInfo("AP DEATHLINK: incoming DeathLink packet received.");
-            LaikaMod.AnnounceAPActivity("[AP] Incoming DeathLink packet received.");
             ApplyIncomingDeathLink(bounced.Data);
         }
         catch (Exception ex)
@@ -807,6 +850,34 @@ public class ArchipelagoClientManager
         catch (Exception ex)
         {
             LaikaMod.LogError($"AP DEATHLINK: failed to apply incoming death:\n{ex}");
+        }
+    }
+
+    public void RefreshConnectionTags()
+    {
+        if (session == null || !IsConnected)
+            return;
+
+        List<string> tags = new List<string>();
+
+        if (LaikaMod.WorldOptions.DeathLinkEnabled)
+            tags.Add("DeathLink");
+
+        try
+        {
+            var packet = new ConnectUpdatePacket
+            {
+                Tags = tags.ToArray(),
+                ItemsHandling = ItemsHandlingFlags.AllItems
+            };
+
+            session.Socket.SendPacket(packet);
+
+            LaikaMod.LogInfo("AP: refreshed connection tags -> " + string.Join(", ", tags.ToArray()));
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning("AP: failed to refresh connection tags:\n" + ex);
         }
     }
 
@@ -925,7 +996,6 @@ public class ArchipelagoClientManager
 
             session.Socket.SendPacket(packet);
 
-            LaikaMod.AnnounceAPDeathLink("[AP] DeathLink sent.");
             LaikaMod.LogInfo("AP DEATHLINK: outbound DeathLink sent.");
         }
         catch (Exception ex)

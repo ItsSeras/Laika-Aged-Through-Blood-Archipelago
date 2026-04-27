@@ -402,6 +402,17 @@ public partial class LaikaMod
         static void Postfix()
         {
             LaikaMod.PollTitleScreenAPHotkey();
+
+            if (!LaikaMod.TitleScreenSavePickerOpen &&
+                !LaikaMod.ShowAPSettingsPopup &&
+                !LaikaMod.SuppressTitleUIForSlotLoad)
+            {
+                LaikaMod.UpdateMainMenuArchipelagoEditionText(false);
+            }
+            else if (LaikaMod.MainMenuArchipelagoEditionCanvasObject != null)
+            {
+                LaikaMod.MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+            }
         }
     }
 
@@ -864,6 +875,22 @@ public partial class LaikaMod
             catch (Exception ex)
             {
                 LaikaMod.LogError($"TryCompleteQuestGoalReconcilePatch exception:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PersistenceManager), "ExitToTitleScreen")]
+    public class PersistenceManager_ExitToTitleScreen_APDisconnectPatch
+    {
+        static void Prefix()
+        {
+            if (ArchipelagoClientManager.Instance != null &&
+                ArchipelagoClientManager.Instance.IsConnected)
+            {
+                ArchipelagoClientManager.Instance.Disconnect("Returned to title screen");
+                LaikaMod.AnnounceAPActivity("[AP] Disconnected because player returned to title screen.");
+                LaikaMod.DisconnectedBecauseReturnedToTitle = true;
+                LaikaMod.HasEnteredGameplayWhileConnected = false;
             }
         }
     }

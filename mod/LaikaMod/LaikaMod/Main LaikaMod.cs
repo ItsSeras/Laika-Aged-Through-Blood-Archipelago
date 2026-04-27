@@ -173,6 +173,21 @@ public partial class LaikaMod : BaseUnityPlugin
             return;
         }
 
+        string apConnectionState = "Not Connected";
+
+        bool highlightedSlotIsActiveConnection =
+            ActiveSaveSlotIndex == slotIndex &&
+            state.APEnabled &&
+            ArchipelagoClientManager.Instance != null;
+
+        if (highlightedSlotIsActiveConnection)
+        {
+            if (ArchipelagoClientManager.Instance.IsConnected)
+                apConnectionState = "Connected";
+            else if (ArchipelagoClientManager.Instance.IsConnecting)
+                apConnectionState = "Attempting to connect...";
+        }
+
         APConnectionState connection = state.Connection ?? new APConnectionState();
 
         bool ready =
@@ -188,10 +203,18 @@ public partial class LaikaMod : BaseUnityPlugin
             ready ? "#59FF84" :
             "#DC143C";
 
+        string connectionColor = "#DC143C";
+
+        if (apConnectionState == "Connected")
+            connectionColor = "#90FF90";
+        else if (apConnectionState == "Attempting to connect...")
+            connectionColor = "#FFD166";
+
         TitleAPPanelText.text =
-            "<size=78><b>Archipelago Edition</b></size>\n\n" +
+        "<size=68><b>Archipelago Edition</b></size>\n" +
             "Save Slot " + (slotIndex + 1) + "\n\n" +
             "Status: <color=" + statusColor + ">" + statusText + "</color>\n" +
+            "Connection: <color=" + connectionColor + ">" + apConnectionState + "</color>\n" +
         "Host: " + (string.IsNullOrWhiteSpace(connection.Host)
             ? "<empty>"
             : connection.Host) + "\n" +
@@ -253,7 +276,6 @@ public partial class LaikaMod : BaseUnityPlugin
         LogInfo("AP TITLE PANEL: creating title canvas panel.");
 
         TitleAPPanelCanvasObject = new GameObject("LaikaAPTitlePanelCanvas");
-        DontDestroyOnLoad(TitleAPPanelCanvasObject);
 
         Canvas canvas = TitleAPPanelCanvasObject.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -270,7 +292,7 @@ public partial class LaikaMod : BaseUnityPlugin
         panelRect.anchorMin = new Vector2(1f, 0.5f);
         panelRect.anchorMax = new Vector2(1f, 0.5f);
         panelRect.pivot = new Vector2(1f, 0.5f);
-        panelRect.anchoredPosition = new Vector2(-50f, -5f);
+        panelRect.anchoredPosition = new Vector2(-50f, 15f);
         panelRect.sizeDelta = new Vector2(470f, 290f);
 
         Image panelImage = TitleAPPanelObject.AddComponent<Image>();
@@ -343,6 +365,8 @@ public partial class LaikaMod : BaseUnityPlugin
                 break;
             }
         }
+
+
 
 
         TitleAPPanelText.fontSize = 48;
@@ -496,10 +520,23 @@ public partial class LaikaMod : BaseUnityPlugin
             () => SessionState.APEnabled,
             value =>
             {
+                bool wasEnabled = SessionState.APEnabled;
+
                 SessionState.APEnabled = value;
                 SaveSessionStateForSlot(ActiveSaveSlotIndex);
+
+                if (wasEnabled && !value &&
+                    ArchipelagoClientManager.Instance != null &&
+                    (ArchipelagoClientManager.Instance.IsConnected ||
+                     ArchipelagoClientManager.Instance.IsConnecting))
+                {
+                    ArchipelagoClientManager.Instance.Disconnect("AP disabled for active save slot");
+                    AnnounceAPActivity("[AP] Disconnected because Archipelago was disabled for this save slot.");
+                }
+
                 UpdateTitleScreenAPPanel();
                 RefreshVisibleSaveSlotAPLabels();
+                RefreshDevOverlay();
             });
 
         AddAPInput(contentObject.transform, "Host", SessionState.Connection.Host, value =>
@@ -553,15 +590,36 @@ public partial class LaikaMod : BaseUnityPlugin
             value =>
             {
                 SessionState.Options.DeathLinkEnabled = value;
+                WorldOptions.DeathLinkEnabled = value;
+
                 SaveSessionStateForSlot(ActiveSaveSlotIndex);
+
+                if (ArchipelagoClientManager.Instance != null)
+                    ArchipelagoClientManager.Instance.RefreshConnectionTags();
+
+                AnnounceAPDeathLink(
+                    value
+                        ? "[AP] DeathLink enabled. Your deaths can affect other players."
+                        : "[AP] DeathLink disabled."
+                        );
+
                 UpdateTitleScreenAPPanel();
                 RefreshVisibleSaveSlotAPLabels();
+                RefreshDevOverlay();
             });
 
         AddAPToggleButton(contentObject.transform, "Death Amnesty", () => SessionState.Options.DeathAmnestyEnabled, value =>
         {
             SessionState.Options.DeathAmnestyEnabled = value;
+            WorldOptions.DeathAmnestyEnabled = value;
+
             SaveSessionStateForSlot(ActiveSaveSlotIndex);
+
+            AnnounceAPDeathLink(
+                value
+                    ? "[AP] Death Amnesty enabled."
+                    : "[AP] Death Amnesty disabled. Every death will be sent immediately."
+            );
 
             if (APSettingsPanelObject != null)
             {
@@ -583,7 +641,14 @@ public partial class LaikaMod : BaseUnityPlugin
                 if (int.TryParse(value, out int parsedAmount))
                 {
                     SessionState.Options.DeathAmnestyCount = Mathf.Clamp(parsedAmount, 0, 99);
+                    WorldOptions.DeathAmnestyCount = SessionState.Options.DeathAmnestyCount;
+
                     SaveSessionStateForSlot(ActiveSaveSlotIndex);
+
+                    AnnounceAPActivity(
+                        $"[AP] Death Amnesty threshold set to {SessionState.Options.DeathAmnestyCount}."
+                    );
+
                     UpdateTitleScreenAPPanel();
                     RefreshVisibleSaveSlotAPLabels();
                 }
@@ -593,15 +658,18 @@ public partial class LaikaMod : BaseUnityPlugin
         AddAPActionButton(contentObject.transform, "Connect", () =>
         {
             SaveSessionStateForSlot(ActiveSaveSlotIndex);
+            AnnounceAPActivity("[AP] Connection requested from title screen.");
             ConnectActiveSlotIfConfigured();
             UpdateTitleScreenAPPanel();
             RefreshVisibleSaveSlotAPLabels();
         });
+
         AddAPActionButton(contentObject.transform, "Disconnect", () =>
         {
             if (ArchipelagoClientManager.Instance != null)
             {
                 ArchipelagoClientManager.Instance.Disconnect("User requested disconnect from title screen");
+                AnnounceAPActivity("[AP] Disconnected from title screen.");
             }
 
             UpdateTitleScreenAPPanel();
@@ -887,6 +955,8 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static void HideTitleScreenAPPanel()
     {
+        HideMainMenuArchipelagoEditionText();
+
         if (TitleAPPanelCanvasObject != null)
         {
             TitleAPPanelCanvasObject.SetActive(false);
@@ -1021,6 +1091,13 @@ public partial class LaikaMod : BaseUnityPlugin
         return ShowAPSettingsPopup || APSettingsTextInputActive || IsAPSettingsInputFocused();
     }
 
+    internal static bool ShouldShowAPActivityOverlay()
+    {
+        return SessionState != null && SessionState.APEnabled;
+    }
+
+    internal static float MainMenuEditionForceShowUntil = -1f;
+
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
@@ -1036,6 +1113,118 @@ public partial class LaikaMod : BaseUnityPlugin
         return pressed;
     }
 
+    internal static void HideMainMenuArchipelagoEditionText()
+    {
+        if (MainMenuArchipelagoEditionCanvasObject != null)
+            MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+    }
+
+    internal static float MainMenuEditionEligibleSince = -1f;
+
+    internal static bool MainMenuEditionSkipNextDelay = false;
+
+    internal static bool WasSavePickerOpenLastFrame = false;
+
+    internal static void UpdateMainMenuArchipelagoEditionText(bool isTitleScreen)
+    {
+        bool titleMenuTextExists = false;
+
+        foreach (TMP_Text tmp in Resources.FindObjectsOfTypeAll<TMP_Text>())
+        {
+            if (tmp == null || tmp.text == null || tmp.gameObject == null)
+                continue;
+
+            if (!tmp.gameObject.activeInHierarchy)
+                continue;
+
+            string text = tmp.text.Trim().ToUpperInvariant();
+
+            if (text == "PLAY" || text == "SETTINGS" || text == "CREDITS" || text == "EXIT")
+            {
+                titleMenuTextExists = true;
+                break;
+            }
+        }
+
+        bool eligibleToShow =
+            isTitleScreen &&
+            titleMenuTextExists &&
+            !ShowAPSettingsPopup;
+
+        if (!eligibleToShow)
+        {
+            MainMenuEditionEligibleSince = -1f;
+
+            if (MainMenuArchipelagoEditionCanvasObject != null)
+                MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+
+            return;
+        }
+
+        // If the real main menu buttons are visible, we are definitely not in the save picker.
+        TitleScreenSavePickerOpen = false;
+
+        if (MainMenuEditionSkipNextDelay)
+        {
+            MainMenuEditionSkipNextDelay = false;
+            MainMenuEditionEligibleSince = 0f;
+            MainMenuEditionForceShowUntil = Time.unscaledTime + 2.0f;
+        }
+
+        if (MainMenuEditionEligibleSince < 0f)
+            MainMenuEditionEligibleSince = Time.unscaledTime;
+
+        bool shouldShow =
+            Time.unscaledTime <= MainMenuEditionForceShowUntil ||
+            Time.unscaledTime - MainMenuEditionEligibleSince >= 1.2f;
+
+        if (!shouldShow)
+        {
+            if (MainMenuArchipelagoEditionCanvasObject != null)
+                MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+
+            return;
+        }
+
+        if (MainMenuArchipelagoEditionCanvasObject == null)
+        {
+            MainMenuArchipelagoEditionCanvasObject = new GameObject("LaikaAPMainMenuEditionCanvas");
+
+            Canvas canvas = MainMenuArchipelagoEditionCanvasObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 32767;
+
+            MainMenuArchipelagoEditionCanvasObject.AddComponent<CanvasScaler>();
+
+            GameObject textObject = new GameObject("LaikaAPMainMenuEditionText");
+            textObject.transform.SetParent(MainMenuArchipelagoEditionCanvasObject.transform, false);
+
+            RectTransform rect = textObject.AddComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 0.5f);
+            rect.anchorMax = new Vector2(1f, 0.5f);
+            rect.pivot = new Vector2(1f, 0.5f);
+            rect.anchoredPosition = new Vector2(-75.5f, 226.5f);
+            rect.sizeDelta = new Vector2(426f, 90f);
+
+            MainMenuArchipelagoEditionText = textObject.AddComponent<TextMeshProUGUI>();
+            MainMenuArchipelagoEditionText.text = "<size=68><b>Archipelago Edition</b></size>";
+            MainMenuArchipelagoEditionText.fontSize = 48f;
+            MainMenuArchipelagoEditionText.characterSpacing = 3.5f;
+            MainMenuArchipelagoEditionText.fontStyle = FontStyles.Bold;
+            MainMenuArchipelagoEditionText.alignment = TextAlignmentOptions.MidlineRight;
+            MainMenuArchipelagoEditionText.color = Color.white;
+            MainMenuArchipelagoEditionText.enableWordWrapping = false;
+            MainMenuArchipelagoEditionText.overflowMode = TextOverflowModes.Overflow;
+            MainMenuArchipelagoEditionText.richText = true;
+
+            if (TitleAPPanelText != null && TitleAPPanelText.font != null)
+                MainMenuArchipelagoEditionText.font = TitleAPPanelText.font;
+        }
+
+        MainMenuArchipelagoEditionCanvasObject.SetActive(true);
+    }
+
     private void Update()
     {
         PollTitleScreenAPHotkey();
@@ -1046,6 +1235,89 @@ public partial class LaikaMod : BaseUnityPlugin
         SetTitleScreenNavigationBlocked(shouldLockTitleScreen);
         SetTitleScreenSelectablesLocked(shouldLockTitleScreen);
         SetTitleScreenUINavigationLocked(shouldLockTitleScreen);
+
+        bool isTitleScreen = false;
+
+        try
+        {
+            if (MonoSingleton<SceneLoader>.Instance != null)
+                isTitleScreen = MonoSingleton<SceneLoader>.Instance.CurrentSceneIsTitleScreen;
+        }
+        catch
+        {
+            isTitleScreen =
+                UnityEngine.SceneManagement.SceneManager
+                    .GetActiveScene()
+                    .name
+                    .ToLowerInvariant()
+                    .Contains("title");
+        }
+
+        bool returnedFromSavePickerToMainMenu =
+            WasSavePickerOpenLastFrame &&
+            !TitleScreenSavePickerOpen;
+
+        if (returnedFromSavePickerToMainMenu)
+            MainMenuEditionSkipNextDelay = true;
+
+        WasSavePickerOpenLastFrame = TitleScreenSavePickerOpen;
+
+        if (isTitleScreen)
+        {
+            UpdateMainMenuArchipelagoEditionText(isTitleScreen);
+        }
+        else
+        {
+            HideMainMenuArchipelagoEditionText();
+        }
+
+        bool isConnected =
+            ArchipelagoClientManager.Instance != null &&
+            ArchipelagoClientManager.Instance.IsConnected;
+
+        if (!isTitleScreen && isConnected)
+        {
+            HasEnteredGameplayWhileConnected = true;
+            DisconnectedBecauseReturnedToTitle = false;
+        }
+
+        if (!isTitleScreen)
+        {
+            if (MainMenuArchipelagoEditionCanvasObject != null)
+            {
+                Destroy(MainMenuArchipelagoEditionCanvasObject);
+                MainMenuArchipelagoEditionCanvasObject = null;
+                MainMenuArchipelagoEditionText = null;
+            }
+
+            if (TitleAPPanelCanvasObject != null)
+            {
+                Destroy(TitleAPPanelCanvasObject);
+                TitleAPPanelCanvasObject = null;
+                TitleAPPanelObject = null;
+                TitleAPPanelText = null;
+            }
+        }
+
+        if (isTitleScreen && isConnected && HasEnteredGameplayWhileConnected && !DisconnectedBecauseReturnedToTitle)
+        {
+            DisconnectedBecauseReturnedToTitle = true;
+            HasEnteredGameplayWhileConnected = false;
+
+            ArchipelagoClientManager.Instance.Disconnect("Returned to title screen");
+            AnnounceAPActivity("[AP] Disconnected because player returned to title screen.");
+        }
+
+        if (isTitleScreen)
+        {
+            UpdateTitleScreenAPPanel();
+            RefreshVisibleSaveSlotAPLabels();
+            RefreshDevOverlay();
+        }
+        else
+        {
+            HideTitleScreenAPPanel();
+        }
 
         if (shouldLockTitleScreen)
         {
@@ -1058,7 +1330,7 @@ public partial class LaikaMod : BaseUnityPlugin
     internal static Queue<string> OverlayLines = new Queue<string>();
 
     // Maximum number of lines to keep in the overlay at once.
-    internal static int MaxOverlayLines = 15;
+    internal static int MaxOverlayLines = 10;
 
     // Recent-log box visibility is separate from the always-visible status HUD.
     internal static bool ShowRecentLogOverlay = false;
@@ -1103,4 +1375,9 @@ public partial class LaikaMod : BaseUnityPlugin
     internal static bool TitleScreenWasEnabled = true;
 
     internal static bool TitleScreenNavigationWasEnabled = true;
+    internal static bool DisconnectedBecauseReturnedToTitle = false;
+    internal static bool HasEnteredGameplayWhileConnected = false;
+
+    internal static TMPro.TextMeshProUGUI MainMenuArchipelagoEditionText;
+    internal static GameObject MainMenuArchipelagoEditionCanvasObject;
 }

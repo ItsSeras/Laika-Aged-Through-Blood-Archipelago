@@ -1239,6 +1239,8 @@ public partial class LaikaMod
                     $"RemainingSuppressedDeaths={SuppressedDeathLinksRemaining}"
                 );
 
+                AnnounceAPDeathLink("[AP] Local death detected.");
+
                 return;
             }
 
@@ -1269,35 +1271,51 @@ public partial class LaikaMod
     // For now this is log-only scaffolding until real AP networking is added.
     internal static void EvaluateDeathLinkAfterLocalDeath(string sourceTag)
     {
-        // If DeathLink is disabled entirely, do nothing.
-        if (!WorldOptions.DeathLinkEnabled)
+        bool effectiveDeathLinkEnabled =
+            WorldOptions.DeathLinkEnabled ||
+            (SessionState != null &&
+             SessionState.Options != null &&
+             SessionState.Options.DeathLinkEnabled);
+
+        if (!effectiveDeathLinkEnabled)
         {
+            AnnounceAPDeathLink("[AP] Local death detected. DeathLink is disabled.");
             LogInfo($"{sourceTag}: DeathLink disabled. No outbound DeathLink would be sent.");
             return;
         }
 
-        // If death amnesty is disabled, every valid local death would send immediately.
-        if (!WorldOptions.DeathAmnestyEnabled)
+        bool effectiveDeathAmnestyEnabled =
+            WorldOptions.DeathAmnestyEnabled ||
+            (SessionState != null &&
+             SessionState.Options != null &&
+             SessionState.Options.DeathAmnestyEnabled);
+
+        if (!effectiveDeathAmnestyEnabled)
         {
             LogInfo($"{sourceTag}: DEATHLINK SEND NOW (death amnesty disabled).");
+
             if (ArchipelagoClientManager.Instance != null)
             {
                 string deathCause = $"{SessionState.Connection.SlotName ?? "Laika"} couldn't survive in the Wasteland. (Skill issue)";
                 ArchipelagoClientManager.Instance.SendDeathLink(deathCause);
             }
+
+            return;
         }
 
-        // Safety clamp in case a bad config sets the threshold too low.
-        int requiredDeaths = Math.Max(1, WorldOptions.DeathAmnestyCount);
+        int effectiveDeathAmnestyCount =
+            SessionState != null && SessionState.Options != null
+                ? SessionState.Options.DeathAmnestyCount
+                : WorldOptions.DeathAmnestyCount;
 
-        LogInfo(
-            $"{sourceTag}: Death Amnesty Progress = {DeathsSinceLastDeathLink} / {requiredDeaths}"
+        int requiredDeaths = Math.Max(1, effectiveDeathAmnestyCount);
 
+        LogInfo($"{sourceTag}: Death Amnesty Progress = {DeathsSinceLastDeathLink} / {requiredDeaths}");
+
+        AnnounceAPActivity(
+            $"[AP] Your suffering inches closer to your friends... ({DeathsSinceLastDeathLink}/{requiredDeaths})"
         );
 
-        AnnounceAPActivity($"[AP] Death count: {DeathsSinceLastDeathLink}/{requiredDeaths}");
-
-        // When enough deaths are reached, a DeathLink would send.
         if (DeathsSinceLastDeathLink >= requiredDeaths)
         {
             LogInfo($"{sourceTag}: DEATHLINK SEND NOW (death amnesty threshold reached).");
@@ -1308,7 +1326,6 @@ public partial class LaikaMod
                 ArchipelagoClientManager.Instance.SendDeathLink(deathCause);
             }
 
-            // Reset the amnesty counter after a real send.
             DeathsSinceLastDeathLink = 0;
 
             LogInfo($"{sourceTag}: Death amnesty counter reset to 0 after real send.");
