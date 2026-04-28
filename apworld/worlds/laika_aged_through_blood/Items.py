@@ -96,6 +96,40 @@ ITEM_TABLE = {
         "kind": "WeaponUpgrade",
     },    
 
+    # ===== Weapon recipes / blueprints =====
+    "Blueprint: Shotgun": {
+        "id": 1160,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_RECIPE_SHOTGUN",
+        "kind": "KeyItem",
+    },
+    "Blueprint: Sniper": {
+        "id": 1161,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_RECIPE_SNIPER",
+        "kind": "KeyItem",
+    },
+    "Blueprint: Machine Gun": {
+        "id": 1162,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_RECIPE_UZI",
+        "kind": "KeyItem",
+    },
+    "Blueprint: Rocket Launcher": {
+        "id": 1163,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_RECIPE_ROCKETLAUNCHER",
+        "kind": "KeyItem",
+    },
+
+    # ===== Special key/progression items =====
+    "Jakob's Ashes": {
+        "id": 1165,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_JAKOB_ASHES",
+        "kind": "KeyItem",
+    },
+    
     # ===== Crafting-mode weapon material items =====
     "Rusty Spring (Shotgun Material)": {
         "id": 1150,

@@ -123,7 +123,7 @@ public partial class LaikaMod : BaseUnityPlugin
             $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}"
         );
 
-        EnqueueRequiredStartingItems();
+        //EnqueueRequiredStartingItems();
 
         if (EnableDevelopmentStressTest)
         {

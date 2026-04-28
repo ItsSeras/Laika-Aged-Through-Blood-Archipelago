@@ -6,6 +6,11 @@ def has_shotgun_access(state, player) -> bool:
         or state.has("Rusty Spring (Shotgun Material)", player)
     )
 
+def has_shotgun_level_2(state, player) -> bool:
+    return (
+        has_shotgun_access(state, player)
+        and state.has("Shotgun Upgrade (Weapon Upgrade)", player)
+    )
 
 def has(state, player, item_name: str, count: int = 1) -> bool:
     return state.has(item_name, player, count)
@@ -28,80 +33,73 @@ def set_rules(world):
     # Map pieces, cassettes, and puppy gifts are intentionally left without extra rules for now.
     # That keeps them as fast filler checks while I focus on major progression first.
 
-# Main opening
-# Player always starts with pistol + reflect, so Hundred Hungry Beaks has no AP item requirement.
-set_rule(
-    loc("Boss Defeated: A Hundred Hungry Beaks"),
-    lambda state: True
-)
-
-set_rule(
-    loc("Quest Complete: Rage and Sorrow"),
-    lambda state: can_reach_loc(state, player, "Boss Defeated: A Hundred Hungry Beaks")
-)
-
-# Post Rage and Sorrow
-set_rule(
-    loc("Quest Complete: A Heart for Poochie"),
-    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-)
-
-set_rule(
-    loc("Quest Complete: The Remnants"),
-    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-)
-
-set_rule(
-    loc("Quest Complete: Shake Off the Dead Leaves"),
-    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-)
-
-set_rule(
-    loc("Quest Complete: Desperately in Need of Music"),
-    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-)
-
-set_rule(
-    loc("Boss Defeated: A Long Lost Woodcrawler"),
-    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-)
-
-# War chapter requires Rage and Sorrow + A Heart for Poochie.
-def war_chapter(state) -> bool:
-    return (
-        can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-        and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+    # Main opening
+    # Player always starts with pistol + reflect, so Hundred Hungry Beaks has no AP item requirement.
+    set_rule(
+        loc("Boss Defeated: A Hundred Hungry Beaks"),
+        lambda state: True
     )
 
-set_rule(
-    loc("Quest Complete: Diplomacy"),
-    lambda state: war_chapter(state)
-)
+    set_rule(
+        loc("Quest Complete: Rage and Sorrow"),
+        lambda state: can_reach_loc(state, player, "Boss Defeated: A Hundred Hungry Beaks")
+    )
 
-set_rule(
-    loc("Quest Complete: Radio Silence"),
-    lambda state: war_chapter(state)
-)
+    # Post Rage and Sorrow
+    set_rule(
+        loc("Quest Complete: A Heart for Poochie"),
+        lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+    )
 
-set_rule(
-    loc("Quest Complete: The Big Tree"),
-    lambda state: war_chapter(state)
-)
+    set_rule(
+        loc("Quest Complete: The Remnants"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has(state, player, "Jakob's Ashes")
+        )
+    )
 
-set_rule(
-    loc("Quest Complete: Stargazing"),
-    lambda state: war_chapter(state)
-)
+    set_rule(
+        loc("Quest Complete: Shake Off the Dead Leaves"),
+        lambda state: can_reach_loc(state, player, "Quest Complete: The Remnants")
+    )
 
-set_rule(
-    loc("Quest Complete: Fogg's Only Wish"),
-    lambda state: war_chapter(state)
-)
+    set_rule(
+        loc("Boss Defeated: A Long Lost Woodcrawler"),
+        lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+    )
 
-set_rule(
-    loc("Boss Defeated: A Caterpiller Made of Sadness"),
-    lambda state: war_chapter(state)
-)
+    # War chapter requires Rage and Sorrow + A Heart for Poochie.
+    def war_chapter(state) -> bool:
+        return (
+            can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+            and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+        )
+
+    set_rule(
+        loc("Quest Complete: Diplomacy"),
+        lambda state: war_chapter(state)
+    )
+
+    set_rule(
+        loc("Quest Complete: Radio Silence"),
+        lambda state: war_chapter(state)
+    )
+
+    set_rule(
+        loc("Quest Complete: The Big Tree"),
+        lambda state: war_chapter(state)
+    )
+
+    set_rule(
+        loc("Quest Complete: Stargazing"),
+        lambda state: war_chapter(state)
+    )
+
+    set_rule(
+        loc("Boss Defeated: A Caterpiller Made of Sadness"),
+        lambda state: war_chapter(state)
+    )
 
     set_rule(
         loc("Quest Complete: The Bonehead's Hook"),
@@ -141,21 +139,6 @@ set_rule(
     )
 
     # Side quests
-    set_rule(
-        loc("Quest Complete: Shake Off the Dead Leaves"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-    )
-
-    set_rule(
-        loc("Quest Complete: Stargazing"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-    )
-
-    set_rule(
-        loc("Quest Complete: The Remnants"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-    )
-
     set_rule(
         loc("Quest Complete: A New Sheriff in Town"),
         lambda state: can_reach_loc(state, player, "Quest Complete: Diplomacy")
@@ -239,7 +222,7 @@ set_rule(
     ]:
         set_rule(
             loc(name),
-            lambda state, quest_name=name: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            lambda state, quest_name=name: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie") 
         )
 
     # Flashbacks
@@ -267,6 +250,36 @@ set_rule(
             and has(state, player, "Hook (Bike Upgrade)")
             and has_shotgun_access(state, player)
         )
+    )
+
+    set_rule(
+    loc("Cassette Tape: Coming Home"),
+    lambda state: (
+        can_reach_loc(state, player, "Quest Complete: Diplomacy")
+        and has_shotgun_level_2(state, player)
+    )
+    )
+    # We do not have the gun parts randomized yet. Once we do, we can uncomment this.
+    #set_rule(
+    #loc("Gun Part: Titanium Plates"),
+    #lambda state: (
+    #    can_reach_loc(state, player, "Quest Complete: Diplomacy")
+    #    and has_shotgun_level_2(state, player)
+    #)
+    #)
+
+    set_rule(
+    loc("Cassette Tape: Overthinker"),
+    lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+    )
+
+    set_rule(
+    loc("Puppy Gift: Toy Animal"),
+    lambda state: (
+        can_reach_loc(state, player, "Quest Complete: Diplomacy")
+        and has_shotgun_level_2(state, player)
+        and has(state, player, "Hook (Bike Upgrade)")
+    )
     )
 
     # Completion condition

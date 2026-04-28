@@ -82,18 +82,33 @@ public partial class LaikaMod
         // Example confirmed ids:
         // M_A_W06, M_A_W07_TOP, M_A_W07_BOTTOM, etc.
         // EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map Piece: Where Our Bikes Growl"));
-
-        EnqueueItem(new PendingItem(ItemKind.Currency, "VISCERA_100", 0, "Viscera x100"));
-        EnqueueItem(new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 1, "Coffee Beans"));
-        EnqueueItem(new PendingItem(ItemKind.Collectible, "I_CASSETTE_1", 1, "Cassette: Bloody Sunset"));
-        EnqueueItem(new PendingItem(ItemKind.MapUnlock, "M_A_W06", 1, "Map: Where Our Bikes Growl"));
     }
 
     internal static bool IsGrantingAPItem = false;
 
+    private static readonly HashSet<string> DeferredUpgradeNoticesShown = new HashSet<string>();
+
     // Adds a pending item to the queue.
     internal static void EnqueueItem(PendingItem item)
     {
+        if (item == null)
+            return;
+
+        if (item.Kind == ItemKind.WeaponUpgrade)
+        {
+            foreach (PendingItem queuedItem in PendingItemQueue)
+            {
+                if (queuedItem != null &&
+                    queuedItem.Kind == ItemKind.WeaponUpgrade &&
+                    queuedItem.Id == item.Id)
+                {
+                    queuedItem.AddAmount(item.Amount);
+                    LogInfo($"QUEUE: merged pending weapon upgrade -> {queuedItem}");
+                    return;
+                }
+            }
+        }
+
         PendingItemQueue.Enqueue(item);
         LogInfo($"QUEUE: added pending item -> {item}");
     }
@@ -152,7 +167,12 @@ public partial class LaikaMod
                         {
                             remainingQueue.Enqueue(item);
                             LaikaMod.LogInfo($"{sourceTag}: deferred grant kept pending -> {item}");
-                            LaikaMod.AnnounceAPActivity($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
+                            string noticeKey = item.Id + "|" + item.DisplayName;
+
+                            if (DeferredUpgradeNoticesShown.Add(noticeKey))
+                            {
+                                LaikaMod.AnnounceAPActivity($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
+                            }
                         }
                         else
                         {
@@ -606,21 +626,23 @@ public partial class LaikaMod
                 return true;
             }
 
-            // Try to add the cassette by its internal ID.
+            // Mark suppression BEFORE calling AddCassetteToInventory.
+            // The cassette inventory patch fires during this call, so doing it after is too late.
+            SuppressedCassetteChecks.Add(item.Id);
+            LogInfo($"{sourceTag}: cassette {item.Id} marked for one-shot check suppression before grant.");
+
             bool addResult = cassettesManager.AddCassetteToInventory(item.Id, null, false);
             LogInfo($"{sourceTag}: AddCassetteToInventory({item.Id}) returned {addResult}");
 
-            // Check again after trying to add it.
             bool ownedAfter = cassettesManager.HasCassette(item.Id);
             LogInfo($"{sourceTag}: ownedAfter={ownedAfter} for cassette {item.Id}");
 
-            if (ownedAfter)
+            if (!ownedAfter)
             {
-                SuppressedCassetteChecks.Add(item.Id);
-                LogInfo($"{sourceTag}: cassette {item.Id} marked for one-shot check suppression.");
+                SuppressedCassetteChecks.Remove(item.Id);
+                LogWarning($"{sourceTag}: cassette {item.Id} was not owned after grant, removed suppression token.");
             }
 
-            // Success if the player now owns it.
             return ownedAfter;
         }
         catch (Exception ex)
@@ -1103,6 +1125,27 @@ public partial class LaikaMod
         return false;
     }
 
+    internal static bool ShouldSuppressVanillaInventoryReward(APLocationDefinition definition)
+    {
+        if (definition == null)
+            return false;
+
+        // Cassettes and maps have their own specialized handlers.
+        if (definition.Category == "Cassette" || definition.Category == "MapUnlock")
+            return false;
+
+        // Do not block progression-state-only checks here.
+        if (definition.Category == "Quest" || definition.Category == "Boss")
+            return false;
+
+        return (
+            definition.Category == "PuppyGift" ||
+            definition.Category == "KeyItem" ||
+            definition.Category == "Material" ||
+            definition.Category == "Ingredient"
+        );
+    }
+
     // Handles a real Puppy gift source and turns it into an AP location check.
     // If the gift came from AP instead of being found naturally, suppression eats it here
     // so the player does not get a fake local check for an item they were only sent.
@@ -1196,9 +1239,6 @@ public partial class LaikaMod
         if (currentGoal == null)
             return;
 
-        if (currentGoal.GoalId != "CraftShotgun")
-            return;
-
         WeaponsInventory weaponsInventory = Singleton<WeaponsInventory>.Instance;
 
         if (weaponsInventory == null)
@@ -1206,6 +1246,16 @@ public partial class LaikaMod
             LogWarning($"{sourceTag}: could not reconcile Old Warfare because WeaponsInventory is null.");
             return;
         }
+
+        if (currentGoal.GoalId == "GiveRecipe" && weaponsInventory.HasWeapon("I_W_SHOTGUN"))
+        {
+            LogInfo($"{sourceTag}: Old Warfare is on GiveRecipe but player already has shotgun. Advancing recipe step.");
+            questLog.TryCompleteQuestGoal("Q_D_S_OldWarfare", "GiveRecipe");
+            return;
+        }
+
+        if (currentGoal.GoalId != "CraftShotgun")
+            return;
 
         if (!weaponsInventory.HasWeapon("I_W_SHOTGUN"))
             return;
@@ -1442,7 +1492,7 @@ public partial class LaikaMod
 
         LogInfo($"{sourceTag}: Death Amnesty Progress = {DeathsSinceLastDeathLink} / {requiredDeaths}");
 
-        AnnounceAPActivity(
+        AnnounceAPDeathLink(
             $"[AP] Your suffering inches closer to your friends... ({DeathsSinceLastDeathLink}/{requiredDeaths})"
         );
 

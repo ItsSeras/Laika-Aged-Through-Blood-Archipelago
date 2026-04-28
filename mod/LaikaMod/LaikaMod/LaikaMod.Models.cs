@@ -78,6 +78,11 @@ public class PendingItem
         DisplayName = displayName;
     }
 
+    public void AddAmount(int amount)
+    {
+        Amount += amount;
+    }
+
     public override string ToString()
     {
         return $"Kind={Kind}, Id={Id}, Amount={Amount}, DisplayName={DisplayName}";

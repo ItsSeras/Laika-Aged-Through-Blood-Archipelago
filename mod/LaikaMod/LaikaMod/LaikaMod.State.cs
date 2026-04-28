@@ -161,6 +161,11 @@ public partial class LaikaMod
             PendingItemQueue.Clear();
             IsProcessingQueue = false;
 
+            if (SessionState != null && SessionState.APEnabled)
+            {
+                EnqueueRequiredStartingItems();
+            }
+
             // Reset slot_data-derived runtime options until this slot connects and reapplies them.
             WorldOptions = new APWorldOptions();
             HasAppliedLiveSlotData = false;

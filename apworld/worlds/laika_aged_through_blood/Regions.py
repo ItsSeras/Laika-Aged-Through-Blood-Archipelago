@@ -11,9 +11,9 @@ def create_regions(world):
     menu.connect(wasteland)
 
     # First pass:
-    # I am putting every location in one abstract region on purpose.
-    # Right now progression is modeled through quest access rules rather than
-    # full map/room traversal. I can split this into real regions later.
+    # All locations live in one abstract region.
+    # Access is controlled by Rules.py through quest/item requirements.
+    # Real map regions can be added later once movement/map traversal logic is fully documented.
     for location_name, location_id in LOCATION_TABLE.items():
         wasteland.locations.append(
             LaikaLocation(world.player, location_name, location_id, wasteland)

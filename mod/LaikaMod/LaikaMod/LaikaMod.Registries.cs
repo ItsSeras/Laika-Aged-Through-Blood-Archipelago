@@ -1078,8 +1078,56 @@ public partial class LaikaMod
                     true
                 )
             },
-
-
+            {
+                "I_RECIPE_SHOTGUN",
+                new APLocationDefinition(
+                    150001L,
+                    "Blueprint: Shotgun",
+                    "I_RECIPE_SHOTGUN",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_RECIPE_SNIPER",
+                new APLocationDefinition(
+                    150002L,
+                    "Blueprint: Sniper",
+                    "I_RECIPE_SNIPER",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_RECIPE_UZI",
+                new APLocationDefinition(
+                    150003L,
+                    "Blueprint: Machine Gun",
+                    "I_RECIPE_UZI",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_RECIPE_ROCKETLAUNCHER",
+                new APLocationDefinition(
+                    150004L,
+                    "Blueprint: Rocket Launcher",
+                    "I_RECIPE_ROCKETLAUNCHER",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_JAKOB_ASHES",
+                new APLocationDefinition(
+                    150005L,
+                    "Jakob's Ashes",
+                    "I_JAKOB_ASHES",
+                    "KeyItem",
+                    true
+                )
+            },
         };
 
     internal static Dictionary<long, Func<PendingItem>> ItemFactoriesByApId =
@@ -1099,7 +1147,7 @@ public partial class LaikaMod
         // Crossbow is still direct for now
         { 1104L, () => new PendingItem(ItemKind.Weapon, "I_W_CROSSBOW", 1, "Crossbow (Weapon)") },
 
-                    // ===== Weapon upgrades =====
+        // ===== Weapon upgrades =====
         { 1110L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade") },
         { 1111L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Sniper Rifle Upgrade") },
         { 1112L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 1, "Machine Gun Upgrade") },
@@ -1111,6 +1159,15 @@ public partial class LaikaMod
         { 1151L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SNIPER", 1, "Magnifying Glass (Sniper Rifle Material)") },
         { 1152L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_UZI", 1, "Titanium Plates (Machine Gun Material)") },
         { 1153L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_ROCKETLAUNCHER", 1, "Missile (Rocket Launcher Material)") },
+
+        // ===== Weapon recipes / blueprints =====
+        { 1160L, () => GetShotgunUnlockItem() },
+        { 1161L, () => GetSniperUnlockItem() },
+        { 1162L, () => GetMachineGunUnlockItem() },
+        { 1163L, () => GetRocketLauncherUnlockItem() },
+
+        // ===== Special key/progression items =====
+        { 1165L, () => new PendingItem(ItemKind.KeyItem, "I_JAKOB_ASHES", 1, "Jakob's Ashes") },
 
         // ===== Puppy gifts =====
         { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Toy Bike") },

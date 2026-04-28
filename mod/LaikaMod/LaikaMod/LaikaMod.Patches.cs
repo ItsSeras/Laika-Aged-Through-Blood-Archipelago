@@ -8,6 +8,7 @@ using Laika.Quests.PlayMaker.FsmActions;
 using Laika.UI;
 using Laika.UI.InGame.Inventory;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -440,7 +441,7 @@ public partial class LaikaMod
             }
 
             // Process queued AP-style items once the game UI/inventory systems are ready.
-            ProcessPendingItemQueue("InitialItemGrant");
+            LaikaMod.ProcessPendingItemQueue("WeaponsOverlayInitializeQueueProcess");
         }
     }
 
@@ -595,41 +596,52 @@ public partial class LaikaMod
         }
     }
 
+    [HarmonyPatch(typeof(QuestLog), "TryCompleteQuestGoal")]
+    public class QuestGoalCompleteReconcilePatch
+    {
+        static void Postfix()
+        {
+            LaikaMod.TryReconcileKnownQuestSoftlocks("QuestGoalCompleteReconcilePatch");
+        }
+    }
+
     // Tracks Renato map purchases as AP location checks.
     // Resolves the unlocked mapAreaID through the AP location registry.
     [HarmonyPatch(typeof(UnlockMapArea), "OnEnter")]
     public class UnlockMapAreaPatch
     {
-        static void Prefix(UnlockMapArea __instance)
+        static void Postfix(UnlockMapArea __instance)
         {
             try
             {
                 if (__instance == null)
-                {
-                    LaikaMod.LogWarning("UnlockMapAreaPatch: __instance was null.");
                     return;
-                }
 
-                // Read the raw internal mapAreaID for AP location resolution.
-                string mapAreaId = __instance.mapAreaID != null ? __instance.mapAreaID.Value : "<null>";
+                string mapAreaId = __instance.mapAreaID != null
+                    ? __instance.mapAreaID.Value
+                    : "<null>";
 
-                // Log the raw map ID even if no AP location definition exists yet.
                 LaikaMod.LogInfo($"MAP UNLOCK ACTION: mapAreaID={mapAreaId}");
 
                 APLocationDefinition locationDefinition;
                 if (!LaikaMod.TryGetLocationDefinition(mapAreaId, out locationDefinition))
-                {
-                    LaikaMod.LogWarning(
-                        $"UnlockMapAreaPatch: no AP location definition found for mapAreaID={mapAreaId}"
-                    );
                     return;
-                }
 
                 LaikaMod.TrySendLocationCheck(locationDefinition, "UnlockMapAreaPatch");
+
+                // Suppress vanilla Renato reward AFTER vanilla flow finishes.
+                var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+                if (progressionManager != null && progressionManager.ProgressionData != null)
+                {
+                    progressionManager.ProgressionData.LockMapArea(mapAreaId);
+                    LaikaMod.LogInfo($"UnlockMapAreaPatch: re-locked vanilla Renato map reward {mapAreaId}.");
+                }
+
+                LaikaMod.TryReconcileKnownQuestSoftlocks("UnlockMapAreaPatch");
             }
             catch (Exception ex)
             {
-                LaikaMod.LogError($"UnlockMapAreaPatch: exception while logging map unlock action:\n{ex}");
+                LaikaMod.LogError($"UnlockMapAreaPatch exception:\n{ex}");
             }
         }
     }
@@ -651,6 +663,19 @@ public partial class LaikaMod
                 }
 
                 string cassetteId = cassette.id;
+
+                if (LaikaMod.IsGrantingAPItem)
+                {
+                    LaikaMod.SuppressedCassetteChecks.Remove(cassetteId);
+                    LaikaMod.LogInfo($"CassetteInventoryRealSourcePatch: ignored AP-granted cassette {cassetteId}.");
+                    return;
+                }
+
+                if (LaikaMod.SuppressedCassetteChecks.Remove(cassetteId))
+                {
+                    LaikaMod.LogInfo($"CassetteInventoryRealSourcePatch: suppressed cassette check for AP-granted cassette {cassetteId}.");
+                    return;
+                }
 
                 if (string.IsNullOrEmpty(cassetteId))
                 {
@@ -710,48 +735,57 @@ public partial class LaikaMod
     [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] { typeof(ItemData), typeof(int), typeof(Action), typeof(bool) })]
     public class InventoryManager_AddItem_APLocationPatch
     {
-        static void Postfix(ItemData item, int amount, Action onAddedCallback, bool silent, bool __result)
+        static bool Prefix(ItemData item, int amount, Action onAddedCallback, bool silent, ref bool __result)
         {
             try
             {
-                if (!__result || item == null || string.IsNullOrEmpty(item.id))
-                    return;
+
+                if (item == null || string.IsNullOrEmpty(item.id))
+                    return true;
+
+                string sourceTag = "InventoryManager_AddItem_APLocationPatch";
 
                 if (LaikaMod.IsGrantingAPItem)
                 {
-                    LaikaMod.LogInfo($"InventoryManager_AddItem_APLocationPatch: ignored AP-granted item {item.id}.");
-                    return;
+                    LaikaMod.LogInfo($"InventoryManager_AddItem_APLocationPatch: allowed AP-granted item {item.id}.");
+                    return true;
                 }
 
                 string itemId = item.id;
 
-                // Puppy gifts already have their own safer key-item path.
-                if (
-                    itemId == "I_TOY_BIKE" ||
-                    itemId == "I_GAMEBOY" ||
-                    itemId == "I_PLANT_PUPPY" ||
-                    itemId == "I_TOY_ANIMAL" ||
-                    itemId == "I_BOOK_MOTHER" ||
-                    itemId == "I_DREAMCATCHER" ||
-                    itemId == "I_UKULELE"
-                )
-                {
-                    return;
-                }
-
                 APLocationDefinition definition;
                 if (!LaikaMod.TryGetLocationDefinition(itemId, out definition))
-                    return;
+                    return true;
+
+                // Key items often start quests or advance dialogue.
+                // Do not block them here. Let AddKeyItem run, then handle AP check/removal there.
+                if (definition.Category == "KeyItem")
+                {
+                    LaikaMod.LogInfo(
+                        $"{sourceTag}: key item {itemId} allowed through AddItem so vanilla quest logic can run."
+                    );
+
+                    return true;
+                }
+
+                if (!LaikaMod.ShouldSuppressVanillaInventoryReward(definition))
+                    return true;
 
                 LaikaMod.LogInfo(
-                    $"INVENTORY LOCATION SOURCE DETECTED: id={itemId}, category={definition.Category}, amount={amount}, silent={silent}"
+                    $"INVENTORY LOCATION SOURCE BLOCKED: id={itemId}, category={definition.Category}, amount={amount}, silent={silent}"
                 );
 
                 LaikaMod.TrySendLocationCheck(definition, "InventoryManager_AddItem_APLocationPatch");
+
+                // Pretend vanilla AddItem succeeded so quests/dialogue/shop flow continues,
+                // but do not actually add the original item.
+                __result = true;
+                return false;
             }
             catch (Exception ex)
             {
                 LaikaMod.LogError($"InventoryManager_AddItem_APLocationPatch exception:\n{ex}");
+                return true;
             }
         }
     }
@@ -831,39 +865,31 @@ public partial class LaikaMod
     }
 
     [HarmonyPatch(typeof(InventoryManager), "AddKeyItem", new Type[] { typeof(ItemData) })]
-    public class PuppyGiftKeyItemSourcePatch
+    public class KeyItemLocationSourcePatch
     {
         static void Postfix(ItemData __0, bool __result)
         {
             try
             {
-                // Ignore failed grants because they did not actually add the Puppy item.
-                if (!__result)
+                if (!__result || __0 == null || string.IsNullOrEmpty(__0.id))
                     return;
 
-                // Harmony positional argument __0 is the original ItemData parameter.
-                ItemData itemData = __0;
+                string itemId = __0.id;
 
-                if (itemData == null)
-                {
-                    LaikaMod.LogWarning("PuppyGiftKeyItemSourcePatch: itemData was null.");
+                if (LaikaMod.IsGrantingAPItem)
                     return;
-                }
 
-                string itemId = itemData.id;
-
-                if (string.IsNullOrEmpty(itemId))
-                {
-                    LaikaMod.LogWarning("PuppyGiftKeyItemSourcePatch: itemId was null or empty.");
+                APLocationDefinition definition;
+                if (!LaikaMod.TryGetLocationDefinition(itemId, out definition))
                     return;
-                }
 
-                // Helpful debug log so we can confirm which Puppy items naturally route through AddKeyItem(...).
+                if (!LaikaMod.ShouldSuppressVanillaInventoryReward(definition))
+                    return;
+
                 LaikaMod.LogInfo(
-                    $"KEY ITEM SOURCE DETECTED: id={itemId}, name={itemData.Name}, result={__result}"
+                    $"KEY ITEM LOCATION SOURCE DETECTED: id={itemId}, location={definition.DisplayName}"
                 );
 
-                // Only route known Puppy gift IDs into the AP Puppy location handler.
                 if (
                     itemId == "I_TOY_BIKE" ||
                     itemId == "I_GAMEBOY" ||
@@ -874,21 +900,47 @@ public partial class LaikaMod
                     itemId == "I_UKULELE"
                 )
                 {
-                    // Debug log so we can prove the Puppy gift is actually being routed
-                    // into the AP Puppy location-check handler.
-                    LaikaMod.LogInfo(
-                        $"PuppyGiftKeyItemSourcePatch: routing puppy gift id {itemId} into TryHandlePuppyGiftLocationCheck."
-                    );
+                    LaikaMod.TryHandlePuppyGiftLocationCheck(itemId, "KeyItemLocationSourcePatch");
+                }
+                else
+                {
+                    LaikaMod.TrySendLocationCheck(definition, "KeyItemLocationSourcePatch");
+                }
 
-                    LaikaMod.TryHandlePuppyGiftLocationCheck(itemId, "PuppyGiftKeyItemSourcePatch");
+                if (definition.Category == "KeyItem")
+                {
+                    LaikaMod.ScheduleDelayedVanillaRewardRemoval(
+                        itemId,
+                        1,
+                        "KeyItemLocationSourcePatch"
+                    );
                 }
             }
             catch (Exception ex)
             {
-                LaikaMod.LogError($"PuppyGiftKeyItemSourcePatch exception:\n{ex}");
+                LaikaMod.LogError($"KeyItemLocationSourcePatch exception:\n{ex}");
             }
         }
     }
+
+    internal static void ScheduleDelayedVanillaRewardRemoval(string itemId, int amount, string sourceTag)
+    {
+        if (Instance == null)
+            return;
+
+        Instance.StartCoroutine(DelayedVanillaRewardRemovalCoroutine(itemId, amount, sourceTag));
+    }
+
+    private static System.Collections.IEnumerator DelayedVanillaRewardRemovalCoroutine(
+        string itemId,
+        int amount,
+        string sourceTag)
+    {
+        yield return new WaitForSecondsRealtime(0.35f);
+
+        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemoval");
+    }
+
 
     // Some AP softlocks happen right when a quest gets added or advanced.
     // I re-run the quest softlock reconciliation here so the fix can happen immediately

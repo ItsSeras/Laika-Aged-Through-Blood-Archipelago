@@ -132,4 +132,13 @@ LOCATION_TABLE = {
     "Puppy Gift: Great-Great-Grandma's Novella": 140005,
     "Puppy Gift: Dreamcatcher": 140006,
     "Puppy Gift: Ukulele": 140007,
+
+    # Weapon blueprints / recipes
+    "Blueprint: Shotgun": 150001,
+    "Blueprint: Sniper": 150002,
+    "Blueprint: Machine Gun": 150003,
+    "Blueprint: Rocket Launcher": 150004,
+
+    # Special progression key items
+    "Jakob's Ashes": 150005,
 }
