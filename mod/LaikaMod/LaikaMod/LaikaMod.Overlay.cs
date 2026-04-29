@@ -593,6 +593,25 @@ public partial class LaikaMod
 
         void Update()
         {
+            try
+            {
+                if (LaikaMod.WaitingToRemoveHeartglazeFlowerAfterQuestUpdate &&
+                    !LaikaMod.HeartglazeFlowerCleanupDone &&
+                    Time.realtimeSinceStartup >= LaikaMod.HeartglazeFlowerCleanupReadyAt)
+                {
+                    if (LaikaMod.IsHeartglazeQuestReadyForFlowerRemoval())
+                    {
+                        LaikaMod.TryCleanupHeartglazeAfterQuestUpdate(
+                            "DevOverlayController.Update/HeartglazeQuestStepConfirmed"
+                        );
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"DevOverlayController.Update Heartglaze cleanup exception:\n{ex}");
+            }
+
             if (!initialized)
                 InitializeOverlay();
 

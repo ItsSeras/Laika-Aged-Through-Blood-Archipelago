@@ -555,6 +555,11 @@ public partial class LaikaMod
 
             LaikaMod.LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
 
+            if (questId == "Q_D_S_Flower")
+            {
+                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate("QuestClosePatch");
+            }
+
             APLocationDefinition locationDefinition;
             if (!LaikaMod.TryGetLocationDefinition(questId, out locationDefinition))
             {
@@ -601,7 +606,43 @@ public partial class LaikaMod
     {
         static void Postfix()
         {
-            LaikaMod.TryReconcileKnownQuestSoftlocks("QuestGoalCompleteReconcilePatch");
+            try
+            {
+                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate("QuestGoalCompleteReconcilePatch");
+                LaikaMod.TryReconcileKnownQuestSoftlocks("QuestGoalCompleteReconcilePatch");
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"QuestGoalCompleteReconcilePatch exception:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(QuestLog), "TryCompleteQuestGoal")]
+    public class QuestLog_TryCompleteQuestGoal_HeartglazeCleanupPatch
+    {
+        static void Postfix(string questId, string goalId, bool __result)
+        {
+            try
+            {
+                LaikaMod.LogInfo(
+                    $"QUEST GOAL COMPLETE EVENT: questId={questId}, goalId={goalId}, result={__result}"
+                );
+
+                if (!__result)
+                    return;
+
+                if (questId == "Q_D_S_Flower")
+                {
+                    LaikaMod.TryCleanupHeartglazeAfterQuestUpdate(
+                        $"QuestLog.TryCompleteQuestGoal/{goalId}"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"QuestLog_TryCompleteQuestGoal_HeartglazeCleanupPatch exception:\n{ex}");
+            }
         }
     }
 
@@ -729,6 +770,95 @@ public partial class LaikaMod
             }
 
             LaikaMod.TrySendLocationCheck(locationDefinition, "BossAchievementPatch");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_02_PickFlower), "Enter")]
+    public class Boss02PickFlowerLocationPatch
+    {
+        static void Postfix()
+        {
+            APLocationDefinition definition;
+            if (!LaikaMod.TryGetLocationDefinition("I_PUPPY_FLOWER", out definition))
+                return;
+
+            LaikaMod.TrySendLocationCheck(definition, "Boss02PickFlowerLocationPatch");
+        }
+    }
+
+    internal static void TryCleanupHeartglazeAfterQuestUpdate(string sourceTag)
+    {
+        if (!WaitingToRemoveHeartglazeFlowerAfterQuestUpdate)
+            return;
+
+        if (HeartglazeFlowerCleanupDone)
+            return;
+
+        try
+        {
+
+            if (!WaitingToRemoveHeartglazeFlowerAfterQuestUpdate)
+            {
+                LogInfo($"{sourceTag}: Heartglaze cleanup skipped because cleanup is not armed.");
+                return;
+            }
+
+            bool removed = TryRemoveInventoryReward(
+                "I_PUPPY_FLOWER",
+                1,
+                sourceTag + "/HeartglazeQuestUpdateCleanup"
+            );
+
+            if (HeartglazeFlowerCleanupDone)
+            {
+                LogInfo($"{sourceTag}: Heartglaze cleanup skipped because cleanup is already done.");
+                return;
+            }
+
+            if (removed)
+            {
+                HeartglazeFlowerCleanupDone = true;
+                WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = false;
+
+                LogInfo($"{sourceTag}: removed Heartglaze Flower after quest update.");
+            }
+            else
+            {
+                LogWarning($"{sourceTag}: tried to remove Heartglaze Flower after quest update, but removal returned false.");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: Heartglaze quest-update cleanup failed:\n{ex}");
+        }
+    }
+
+    [HarmonyPatch(typeof(D1_BossDoor), "CanInteract")]
+    public class D1BossDoor_APKeyGatePatch
+    {
+        static void Postfix(D1_BossDoor __instance, ref bool __result)
+        {
+            try
+            {
+                if (!__result)
+                    return;
+
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return;
+
+                if (LaikaMod.Dungeon01FinalDoorAlreadyOpened())
+                    return;
+
+                if (LaikaMod.PlayerHasAllDungeon01PitKeys(__instance))
+                    return;
+
+                __result = false;
+                LaikaMod.LogInfo("D1BossDoor_APKeyGatePatch: blocked final pit door because the player does not have all 3 AP pit keys.");
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"D1BossDoor_APKeyGatePatch exception:\n{ex}");
+            }
         }
     }
 
@@ -909,17 +1039,203 @@ public partial class LaikaMod
 
                 if (definition.Category == "KeyItem")
                 {
-                    LaikaMod.ScheduleDelayedVanillaRewardRemoval(
-                        itemId,
-                        1,
-                        "KeyItemLocationSourcePatch"
-                    );
+                    if (itemId == "I_PUPPY_FLOWER")
+                    {
+                        if (LaikaMod.IsGrantingAPItem)
+                        {
+                            LaikaMod.LogInfo("Heartglaze cleanup skipped because this flower came from AP grant.");
+                            return;
+                        }
+
+                        LaikaMod.HeartglazeFlowerCleanupDone = false;
+                        LaikaMod.WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = true;
+
+                        LaikaMod.LogInfo("Heartglaze cleanup armed. Waiting for A Heart for Poochie quest update before removing flower.");
+
+                        return;
+                    }
+                    else
+                    {
+                        LaikaMod.ScheduleDelayedVanillaRewardRemoval(
+                            itemId,
+                            1,
+                            "KeyItemLocationSourcePatch"
+                        );
+                    }
                 }
             }
             catch (Exception ex)
             {
                 LaikaMod.LogError($"KeyItemLocationSourcePatch exception:\n{ex}");
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(Laika.Quests.PlayMaker.FsmActions.TryCompleteQuestGoal), "OnEnter")]
+    public class HeartglazeFlowerQuestGoalCleanupPatch
+    {
+        static void Postfix(Laika.Quests.PlayMaker.FsmActions.TryCompleteQuestGoal __instance)
+        {
+            try
+            {
+                if (!LaikaMod.WaitingToRemoveHeartglazeFlowerAfterQuestUpdate)
+                    return;
+
+                if (LaikaMod.HeartglazeFlowerCleanupDone)
+                    return;
+
+                string questId = "";
+                string goalId = "";
+
+                try
+                {
+                    if (__instance.questId != null)
+                        questId = __instance.questId.Value;
+
+                    if (__instance.goalId != null)
+                        goalId = __instance.goalId.Value;
+                }
+                catch
+                {
+                }
+
+                LaikaMod.LogInfo(
+                    $"HEARTGLAZE QUEST GOAL EVENT: questId={questId}, goalId={goalId}"
+                );
+
+                if (questId != "Q_D_S_Flower")
+                    return;
+
+                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate(
+                    $"HeartglazeFlowerQuestGoalCleanupPatch/{goalId}"
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"HeartglazeFlowerQuestGoalCleanupPatch exception:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(QuestLog), "UpdateQuest")]
+    public class QuestLog_UpdateQuest_HeartglazeCleanupPatch
+    {
+        static void Postfix(string questId)
+        {
+            try
+            {
+                LaikaMod.LogInfo($"QUEST UPDATE EVENT: questId={questId}");
+
+                if (questId != "Q_D_S_Flower")
+                    return;
+
+                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate(
+                    "QuestLog.UpdateQuest/HeartglazeCleanup"
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"QuestLog_UpdateQuest_HeartglazeCleanupPatch exception:\n{ex}");
+            }
+        }
+    }
+
+
+
+    internal static void StartHeartglazeQuestAwareCleanup(string sourceTag)
+    {
+        if (Instance == null)
+        {
+            LogWarning($"{sourceTag}: cannot start Heartglaze quest-aware cleanup because Instance is null.");
+            return;
+        }
+
+        Instance.StartCoroutine(HeartglazeQuestAwareCleanupCoroutine(sourceTag));
+    }
+
+    private static IEnumerator HeartglazeQuestAwareCleanupCoroutine(string sourceTag)
+    {
+        // Let vanilla popup + quest goal transition finish.
+        yield return new WaitForSecondsRealtime(1.0f);
+
+        LogQuestGoals("Q_D_S_Flower", sourceTag + "/BeforeHeartglazeCleanup");
+
+        TryCleanupHeartglazeAfterQuestUpdate(sourceTag + "/QuestAwareCleanup");
+
+        yield return new WaitForSecondsRealtime(1.0f);
+
+        if (WaitingToRemoveHeartglazeFlowerAfterQuestUpdate && !HeartglazeFlowerCleanupDone)
+        {
+            LogWarning($"{sourceTag}: Heartglaze still present after first cleanup attempt, retrying.");
+            LogQuestGoals("Q_D_S_Flower", sourceTag + "/RetryHeartglazeCleanup");
+            TryCleanupHeartglazeAfterQuestUpdate(sourceTag + "/QuestAwareCleanupRetry");
+        }
+    }
+
+    internal static bool Dungeon01FinalDoorAlreadyOpened()
+    {
+        try
+        {
+            var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+
+            if (progressionManager == null || progressionManager.ProgressionData == null)
+                return false;
+
+            return
+                progressionManager.ProgressionData.GetAchievementCompleted("Q_D_2_Dungeon_01_door_pieces_0") &&
+                progressionManager.ProgressionData.GetAchievementCompleted("Q_D_2_Dungeon_01_door_pieces_1") &&
+                progressionManager.ProgressionData.GetAchievementCompleted("Q_D_2_Dungeon_01_door_pieces_2");
+        }
+        catch (Exception ex)
+        {
+            LogError($"Dungeon01FinalDoorAlreadyOpened exception:\n{ex}");
+            return false;
+        }
+    }
+
+    internal static bool PlayerHasAllDungeon01PitKeys(D1_BossDoor door)
+    {
+        try
+        {
+            if (door == null)
+                return false;
+
+            var inventory = MonoSingleton<PlayerManager>.Instance.PlayerInventory;
+
+            if (inventory == null)
+                return false;
+
+            var field = typeof(D1_BossDoor).GetField(
+                "itemDatasNeeded",
+                BindingFlags.Instance | BindingFlags.NonPublic
+            );
+
+            if (field == null)
+            {
+                LogWarning("PlayerHasAllDungeon01PitKeys: could not find D1_BossDoor.itemDatasNeeded.");
+                return false;
+            }
+
+            ItemData[] neededItems = field.GetValue(door) as ItemData[];
+
+            if (neededItems == null || neededItems.Length == 0)
+            {
+                LogWarning("PlayerHasAllDungeon01PitKeys: itemDatasNeeded was null or empty.");
+                return false;
+            }
+
+            foreach (ItemData item in neededItems)
+            {
+                if (item == null || !inventory.HasItem(item, 1))
+                    return false;
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogError($"PlayerHasAllDungeon01PitKeys exception:\n{ex}");
+            return false;
         }
     }
 
@@ -952,6 +1268,7 @@ public partial class LaikaMod
         {
             try
             {
+                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate("TryAddQuestReconcilePatch");
                 LaikaMod.TryReconcileKnownQuestSoftlocks("TryAddQuestReconcilePatch");
             }
             catch (Exception ex)
@@ -971,6 +1288,7 @@ public partial class LaikaMod
         {
             try
             {
+                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate("TryCompleteQuestGoalReconcilePatch");
                 LaikaMod.TryReconcileKnownQuestSoftlocks("TryCompleteQuestGoalReconcilePatch");
             }
             catch (Exception ex)
@@ -992,6 +1310,36 @@ public partial class LaikaMod
                 LaikaMod.AnnounceAPActivity("[AP] Disconnected because player returned to title screen.");
                 LaikaMod.DisconnectedBecauseReturnedToTitle = true;
                 LaikaMod.HasEnteredGameplayWhileConnected = false;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] {
+    typeof(ItemData),
+    typeof(int),
+    typeof(Action),
+    typeof(bool)
+})]
+    public class InventoryManager_AddItem_LoggerPatch
+    {
+        static void Prefix(ItemData item, int amount = 1, Action onAddedCallback = null, bool silent = false)
+        {
+            try
+            {
+                if (item == null)
+                {
+                    LaikaMod.LogInfo("[ITEM LOGGER] InventoryManager.AddItem called with null item.");
+                    return;
+                }
+
+                LaikaMod.LogInfo(
+                    $"[ITEM LOGGER] AddItem | ID: {item.id} | Name: {item.Name} | " +
+                    $"Amount: {amount} | KeyItem: {item.IsKeyItem} | Recipe: {item.IsRecipeItem} | Silent: {silent}"
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"InventoryManager_AddItem_LoggerPatch exception:\n{ex}");
             }
         }
     }

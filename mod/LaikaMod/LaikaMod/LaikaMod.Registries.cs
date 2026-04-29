@@ -759,21 +759,21 @@ public partial class LaikaMod
                 )
             },
             {
-                "B_BOSS_01_DEFEATED",
+                "B_BOSS_ROSCO_DEFEATED",
                 new APLocationDefinition(
                     120002L,
                     "Boss Defeated: A Long Lost Woodcrawler",
-                    "B_BOSS_01_DEFEATED",
+                    "B_BOSS_ROSCO_DEFEATED",
                     "Boss",
                     true
                 )
             },
             {
-                "B_BOSS_ROSCO_DEFEATED",
+                "B_BOSS_01_DEFEATED",
                 new APLocationDefinition(
                     120003L,
-                    "Boss Defeated: A Caterpiller Made of Sadness",
-                    "B_BOSS_ROSCO_DEFEATED",
+                    "Boss Defeated: A Caterpillar Made of Sadness",
+                    "B_BOSS_01_DEFEATED",
                     "Boss",
                     true
                 )
@@ -1128,6 +1128,216 @@ public partial class LaikaMod
                     true
                 )
             },
+            {
+                "I_GUITAR_STRINGS",
+                new APLocationDefinition(
+                    150006L,
+                    "Guitar Strings",
+                    "I_GUITAR_STRINGS",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_DRUMSTICKS",
+                new APLocationDefinition(
+                    150007L,
+                    "Fogg's Drumstick",
+                    "I_DRUMSTICKS",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_ALFREDO_COMIC",
+                new APLocationDefinition(
+                    150008L,
+                    "Gutsy Gus's Gushing Gunfights",
+                    "I_ALFREDO_COMIC",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_TOMB_FLOWER",
+                new APLocationDefinition(
+                    150009L,
+                    "Iris",
+                    "I_TOMB_FLOWER",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_CAMILLA_HERBS",
+                new APLocationDefinition(
+                    150010L,
+                    "Camilla's Special Herbs",
+                    "I_CAMILLA_HERBS",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_FLUTE_REED",
+                new APLocationDefinition(
+                    150011L,
+                    "Flute Cleaning Brush",
+                    "I_FLUTE_REED",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_SPECIAL_BONES",
+                new APLocationDefinition(
+                    150012L,
+                    "Vitamin-Coated Bones",
+                    "I_SPECIAL_BONES",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_ERHU_STRINGS",
+                new APLocationDefinition(
+                    150013L,
+                    "Erhu Strings",
+                    "I_ERHU_STRINGS",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_PARTITURES",
+                new APLocationDefinition(
+                    150014L,
+                    "Sheet Music",
+                    "I_PARTITURES",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_PETEY_PROPHECY",
+                new APLocationDefinition(
+                    150015L,
+                    "Petey's Letter",
+                    "I_PETEY_PROPHECY",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_ANTI_NIGHTMARE",
+                new APLocationDefinition(
+                    150016L,
+                    "Thistle Stems",
+                    "I_ANTI_NIGHTMARE",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_HILDA_BRAID",
+                new APLocationDefinition(
+                    150017L,
+                    "Family Braid",
+                    "I_HILDA_BRAID",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_SUICIDE_BERRIES",
+                new APLocationDefinition(
+                    150018L,
+                    "Bluelemon Berries",
+                    "I_SUICIDE_BERRIES",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_DICTIONARY",
+                new APLocationDefinition(
+                    150019L,
+                    "Magical Book",
+                    "I_DICTIONARY",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_ANTI_URTICARIA",
+                new APLocationDefinition(
+                    150020L,
+                    "Phalseria Sap",
+                    "I_ANTI_URTICARIA",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_BUGS_JAR",
+                new APLocationDefinition(
+                    150021L,
+                    "Jar Filled With Bugs",
+                    "I_BUGS_JAR",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_HILDA_SEASHELL",
+                new APLocationDefinition(
+                    150022L,
+                    "Seashell",
+                    "I_HILDA_SEASHELL",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_PUPPY_FLOWER",
+                new APLocationDefinition(
+                    150023L,
+                    "Heartglaze Flower",
+                    "I_PUPPY_FLOWER",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_D_Dungeon_01_door_piece_1",
+                new APLocationDefinition(
+                    150024L,
+                    "1st Key To The Pit",
+                    "I_D_Dungeon_01_door_piece_1",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_D_Dungeon_01_door_piece_2",
+                new APLocationDefinition(
+                    150025L,
+                    "2nd Key To The Pit",
+                    "I_D_Dungeon_01_door_piece_2",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_D_Dungeon_01_door_piece_3",
+                new APLocationDefinition(
+                    150026L,
+                    "3rd Key To The Pit",
+                    "I_D_Dungeon_01_door_piece_3",
+                    "KeyItem",
+                    true
+                )
+            },
         };
 
     internal static Dictionary<long, Func<PendingItem>> ItemFactoriesByApId =
@@ -1168,6 +1378,28 @@ public partial class LaikaMod
 
         // ===== Special key/progression items =====
         { 1165L, () => new PendingItem(ItemKind.KeyItem, "I_JAKOB_ASHES", 1, "Jakob's Ashes") },
+        { 1166L, () => new PendingItem(ItemKind.KeyItem, "I_GUITAR_STRINGS", 1, "Guitar Strings") },
+        { 1167L, () => new PendingItem(ItemKind.KeyItem, "I_DRUMSTICKS", 1, "Fogg's Drumstick") },
+        { 1168L, () => new PendingItem(ItemKind.KeyItem, "I_ALFREDO_COMIC", 1, "Gutsy Gus's Gushing Gunfights") },
+        { 1169L, () => new PendingItem(ItemKind.KeyItem, "I_TOMB_FLOWER", 1, "Iris") },
+        { 1170L, () => new PendingItem(ItemKind.KeyItem, "I_CAMILLA_HERBS", 1, "Camilla's Special Herbs") },
+        { 1171L, () => new PendingItem(ItemKind.KeyItem, "I_FLUTE_REED", 1, "Flute Cleaning Brush") },
+        { 1172L, () => new PendingItem(ItemKind.KeyItem, "I_SPECIAL_BONES", 1, "Vitamin-Coated Bones") },
+        { 1173L, () => new PendingItem(ItemKind.KeyItem, "I_ERHU_STRINGS", 1, "Erhu Strings") },
+        { 1174L, () => new PendingItem(ItemKind.KeyItem, "I_PARTITURES", 1, "Sheet Music") },
+        { 1175L, () => new PendingItem(ItemKind.KeyItem, "I_PETEY_PROPHECY", 1, "Petey's Letter") },
+        { 1176L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_NIGHTMARE", 1, "Thistle Stems") },
+        { 1177L, () => new PendingItem(ItemKind.KeyItem, "I_HILDA_BRAID", 1, "Family Braid") },
+        { 1178L, () => new PendingItem(ItemKind.KeyItem, "I_SUICIDE_BERRIES", 1, "Bluelemon Berries") },
+        { 1179L, () => new PendingItem(ItemKind.KeyItem, "I_DICTIONARY", 1, "Magical Book") },
+        { 1180L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_URTICARIA", 1, "Phalseria Sap") },
+        { 1181L, () => new PendingItem(ItemKind.KeyItem, "I_BUGS_JAR", 1, "Jar Filled With Bugs") },
+        { 1182L, () => new PendingItem(ItemKind.KeyItem, "I_HILDA_SEASHELL", 1, "Seashell") },
+        { 1183L, () => new PendingItem(ItemKind.KeyItem, "I_PUPPY_FLOWER", 1, "Heartglaze Flower") },
+        { 1184L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_1", 1, "1st Key To The Pit") },
+        { 1185L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_2", 1, "2nd Key To The Pit") },
+        { 1186L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_3", 1, "3rd Key To The Pit") },
+
 
         // ===== Puppy gifts =====
         { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Toy Bike") },

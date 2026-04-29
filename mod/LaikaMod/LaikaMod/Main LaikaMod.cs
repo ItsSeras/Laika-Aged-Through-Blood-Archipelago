@@ -1323,6 +1323,97 @@ public partial class LaikaMod : BaseUnityPlugin
         {
             Input.ResetInputAxes();
         }
+
+        bool connectedForPump =
+            ArchipelagoClientManager.Instance != null &&
+            ArchipelagoClientManager.Instance.IsConnected;
+
+        if (connectedForPump && !isTitleScreen)
+        {
+            bool shouldPump =
+                ReceivedItemPumpRequested ||
+                Time.unscaledTime >= NextReceivedItemPumpAllowedAt;
+
+            if (shouldPump)
+            {
+                ReceivedItemPumpRequested = false;
+                NextReceivedItemPumpAllowedAt = Time.unscaledTime + 1.0f;
+
+                ArchipelagoClientManager.Instance.PumpReceivedItems();
+            }
+        }
+    }
+
+    internal static void ScheduleHeartglazeFlowerRemovalAfterDelay(string sourceTag)
+    {
+        HeartglazeFlowerCleanupDone = false;
+        WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = true;
+        HeartglazeFlowerCleanupReadyAt = Time.realtimeSinceStartup + 2.0f;
+
+        LogInfo($"{sourceTag}: Heartglaze cleanup armed. Waiting for quest to advance, then delayed removal.");
+    }
+
+    internal static bool IsHeartglazeQuestReadyForFlowerRemoval()
+    {
+        try
+        {
+            QuestLog questLog = Singleton<QuestLog>.Instance;
+
+            if (questLog == null)
+                return false;
+
+            List<QuestInstance> activeQuests = questLog.GetActiveQuestsList();
+
+            if (activeQuests == null)
+                return false;
+
+            QuestInstance quest = activeQuests.Find(x => x != null && x.QuestId == "Q_D_S_Flower");
+
+            if (quest == null)
+                return false;
+
+            QuestGoal currentGoal = quest.GetCurrentGoal();
+
+            if (currentGoal == null)
+                return false;
+
+            // Commented out due to excessive log spam. Useful for checking
+            // Whenever Heartglaze breaks our vanilla failsafe switch.
+            //LogInfo(
+            //    $"Heartglaze quest state check: questId={quest.QuestId}, currentGoal={currentGoal.GoalId}, description={currentGoal.Description}"
+            //);
+
+            return currentGoal.GoalId == "GiveFlowerToPuppy" ||
+                   currentGoal.Description.ToLowerInvariant().Contains("give the flower");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"IsHeartglazeQuestReadyForFlowerRemoval failed:\n{ex}");
+            return false;
+        }
+    }
+
+    private static System.Collections.IEnumerator HeartglazeFlowerRemovalAfterDelayCoroutine(string sourceTag)
+    {
+        LogInfo($"{sourceTag}: Heartglaze cleanup coroutine started.");
+
+        yield return new WaitForSecondsRealtime(2.0f);
+
+        bool removed = TryRemoveInventoryReward(
+            "I_PUPPY_FLOWER",
+            1,
+            sourceTag + "/HeartglazeDelayedCleanup"
+        );
+
+        if (removed)
+        {
+            HeartglazeFlowerCleanupDone = true;
+            LogInfo($"{sourceTag}: Heartglaze Flower removed after delayed cleanup.");
+        }
+        else
+        {
+            LogWarning($"{sourceTag}: Heartglaze Flower delayed cleanup tried to remove flower, but removal returned false.");
+        }
     }
 
     // ===== Dev overlay state =====

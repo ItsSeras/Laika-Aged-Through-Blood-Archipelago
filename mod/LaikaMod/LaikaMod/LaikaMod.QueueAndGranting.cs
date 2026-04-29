@@ -199,6 +199,218 @@ public partial class LaikaMod
         }
     }
 
+    internal static bool IsImportantReconcileKind(ItemKind kind)
+    {
+        switch (kind)
+        {
+            case ItemKind.Weapon:
+            case ItemKind.WeaponUpgrade:
+            case ItemKind.KeyItem:
+            case ItemKind.PuppyTreat:
+            case ItemKind.Collectible:
+            case ItemKind.MapUnlock:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    internal static bool TryBuildMissingImportantReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
+    {
+        missingItem = null;
+
+        if (expectedItem == null)
+            return false;
+
+        try
+        {
+            switch (expectedItem.Kind)
+            {
+                case ItemKind.Weapon:
+                    return TryBuildMissingWeaponReconcileItem(expectedItem, out missingItem);
+
+                case ItemKind.WeaponUpgrade:
+                    return TryBuildMissingWeaponUpgradeReconcileItem(expectedItem, out missingItem);
+
+                case ItemKind.KeyItem:
+                case ItemKind.PuppyTreat:
+                    return TryBuildMissingInventoryReconcileItem(expectedItem, out missingItem);
+
+                case ItemKind.Collectible:
+                    return TryBuildMissingCassetteReconcileItem(expectedItem, out missingItem);
+
+                case ItemKind.MapUnlock:
+                    return TryBuildMissingMapUnlockReconcileItem(expectedItem, out missingItem);
+
+                default:
+                    return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"TryBuildMissingImportantReconcileItem failed for {expectedItem}:\n{ex}");
+            return false;
+        }
+    }
+
+    private static bool TryBuildMissingWeaponReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
+    {
+        missingItem = null;
+
+        var weaponsInventory = Singleton<WeaponsInventory>.Instance;
+        if (weaponsInventory == null)
+            return false;
+
+        if (weaponsInventory.HasWeapon(expectedItem.Id))
+            return false;
+
+        missingItem = new PendingItem(
+            expectedItem.Kind,
+            expectedItem.Id,
+            1,
+            expectedItem.DisplayName
+        );
+
+        return true;
+    }
+
+    private static bool TryBuildMissingWeaponUpgradeReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
+    {
+        missingItem = null;
+
+        var weaponsInventory = Singleton<WeaponsInventory>.Instance;
+        if (weaponsInventory == null)
+            return false;
+
+        var itemLoader = Singleton<ItemDataLoader>.Instance;
+        if (itemLoader == null)
+            return false;
+
+        ItemDataWeapon weaponData = itemLoader.FindWeapon(expectedItem.Id);
+        if (weaponData == null)
+            return false;
+
+        bool hasWeapon = weaponsInventory.HasWeapon(expectedItem.Id);
+
+        // If AP sent the upgrade before the player owns/crafts the weapon,
+        // keep it pending so it can apply later.
+        if (!hasWeapon)
+        {
+            missingItem = new PendingItem(
+                ItemKind.WeaponUpgrade,
+                expectedItem.Id,
+                expectedItem.Amount,
+                expectedItem.DisplayName
+            );
+
+            LogInfo($"AP RECONCILE: weapon upgrade still waiting for weapon -> {missingItem}");
+            return true;
+        }
+
+        WeaponInstance weaponInstance = weaponsInventory.GetWeaponInstance(weaponData);
+        if (weaponInstance == null)
+            return false;
+
+        int currentInternalLevel = weaponInstance.Level;
+        int expectedUpgradeSteps = Math.Max(0, expectedItem.Amount);
+        int targetInternalLevel = Math.Min(3, expectedUpgradeSteps);
+        int missingUpgradeSteps = targetInternalLevel - currentInternalLevel;
+
+        if (missingUpgradeSteps <= 0)
+            return false;
+
+        missingItem = new PendingItem(
+            ItemKind.WeaponUpgrade,
+            expectedItem.Id,
+            missingUpgradeSteps,
+            expectedItem.DisplayName
+        );
+
+        LogInfo($"AP RECONCILE: weapon upgrade missing levels -> {missingItem}");
+        return true;
+    }
+
+    private static bool TryBuildMissingInventoryReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
+    {
+        missingItem = null;
+
+        var inventory = Singleton<InventoryManager>.Instance;
+        if (inventory == null)
+            return false;
+
+        bool alreadyOwned = false;
+
+        try
+        {
+            alreadyOwned = inventory.HasItem(expectedItem.Id);
+        }
+        catch
+        {
+            alreadyOwned = inventory.GetItemAmount(expectedItem.Id) > 0;
+        }
+
+        if (alreadyOwned)
+            return false;
+
+        missingItem = new PendingItem(
+            expectedItem.Kind,
+            expectedItem.Id,
+            1,
+            expectedItem.DisplayName
+        );
+
+        return true;
+    }
+
+    private static bool TryBuildMissingCassetteReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
+    {
+        missingItem = null;
+
+        var cassettesManager = Singleton<CassettesManager>.Instance;
+        if (cassettesManager == null)
+            return false;
+
+        if (cassettesManager.HasCassette(expectedItem.Id))
+            return false;
+
+        missingItem = new PendingItem(
+            ItemKind.Collectible,
+            expectedItem.Id,
+            1,
+            expectedItem.DisplayName
+        );
+
+        return true;
+    }
+
+    private static bool TryBuildMissingMapUnlockReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
+    {
+        missingItem = null;
+
+        var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+        if (progressionManager == null || progressionManager.ProgressionData == null)
+            return false;
+
+        bool alreadyUnlocked = progressionManager.ProgressionData.HasMapAreaUnlocked(expectedItem.Id);
+
+        if (alreadyUnlocked)
+        {
+            RefreshMapAreaVisuals(expectedItem.Id);
+            LogInfo($"AP RECONCILE: map area already unlocked, refreshed visuals -> {expectedItem.Id}");
+            return false;
+        }
+
+        missingItem = new PendingItem(
+            ItemKind.MapUnlock,
+            expectedItem.Id,
+            1,
+            expectedItem.DisplayName
+        );
+
+        return true;
+    }
+
     // ===== Grant handlers =====
     // This is the main router for received items.
     // Each ItemKind goes through its own grant path so I can keep the weird edge cases isolated.
@@ -257,6 +469,22 @@ public partial class LaikaMod
     {
         if (item == null)
             return false;
+
+        if (item.Kind == ItemKind.MapUnlock)
+        {
+            var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+            return progressionManager == null || progressionManager.ProgressionData == null;
+        }
+
+        if (item.Kind == ItemKind.KeyItem || item.Kind == ItemKind.PuppyTreat)
+        {
+            return Singleton<InventoryManager>.Instance == null;
+        }
+
+        if (item.Kind == ItemKind.Collectible)
+        {
+            return Singleton<CassettesManager>.Instance == null;
+        }
 
         if (item.Kind != ItemKind.WeaponUpgrade)
             return false;
@@ -768,6 +996,11 @@ public partial class LaikaMod
             return false;
         }
 
+        if (item.Id == "I_PUPPY_FLOWER")
+        {
+            TryForceHeartglazeFlowerProgression(sourceTag);
+        }
+
         try
         {
             // Check whether the player already has this item before granting it.
@@ -809,6 +1042,39 @@ public partial class LaikaMod
         }
     }
 
+    internal static void TryForceHeartglazeFlowerProgression(string sourceTag)
+    {
+        try
+        {
+            var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+
+            if (progressionManager == null || progressionManager.ProgressionData == null)
+            {
+                LogWarning($"{sourceTag}: could not force Heartglaze progression because ProgressionData is not ready.");
+                return;
+            }
+
+            progressionManager.ProgressionData.SetAchievement("B_BOSS_ROSCO_DEFEATED", true, false);
+
+            // These are deliberately conservative. They should let the post-boss flower/door flow continue
+            // without completing A Heart for Poochie by itself.
+            progressionManager.ProgressionData.SetAchievement("I_PUPPY_FLOWER", true, false);
+
+            try
+            {
+                MonoSingleton<PersistenceManager>.Instance.SaveGame();
+            }
+            catch { }
+
+            LogInfo($"{sourceTag}: forced Heartglaze Flower progression flags.");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TryForceHeartglazeFlowerProgression failed:\n{ex}");
+        }
+    }
+
+
     // Map pieces are just progression unlocks under the hood,
     // so I can grant them straight through ProgressionData using the internal map ID.
     internal static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
@@ -827,9 +1093,20 @@ public partial class LaikaMod
         {
             // Ask the game to unlock the target map area directly.
             progressionManager.ProgressionData.UnlockMapArea(item.Id);
-            LogInfo($"{sourceTag}: UnlockMapArea({item.Id}) called successfully.");
 
-            // For now, trust the game's internal unlock flow.
+            RefreshMapAreaVisuals(item.Id);
+
+            try
+            {
+                MonoSingleton<PersistenceManager>.Instance.SaveGame();
+                LogInfo($"{sourceTag}: forced save after UnlockMapArea({item.Id}).");
+            }
+            catch (Exception saveEx)
+            {
+                LogWarning($"{sourceTag}: could not force save after map unlock:\n{saveEx}");
+            }
+
+            LogInfo($"{sourceTag}: UnlockMapArea({item.Id}) called successfully.");
             return true;
         }
         catch (Exception ex)
@@ -843,6 +1120,54 @@ public partial class LaikaMod
     // Some key items are not enough by themselves.
     // Vanilla also flips progression flags when the player gets them, so I mirror that here
     // when AP gives the item early.
+    internal static void RefreshMapAreaVisuals(string mapAreaId)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(mapAreaId))
+                return;
+
+            int found = 0;
+
+            MapArea[] mapAreas = UnityEngine.Object.FindObjectsOfType<MapArea>(true);
+
+            foreach (MapArea mapArea in mapAreas)
+            {
+                if (mapArea == null)
+                    continue;
+
+                FieldInfo field = typeof(MapArea).GetField(
+                    "mapAreaID",
+                    BindingFlags.Instance | BindingFlags.NonPublic
+                );
+
+                if (field == null)
+                {
+                    LogWarning("MAP REFRESH: could not find MapArea.mapAreaID field.");
+                    return;
+                }
+
+                string currentId = field.GetValue(mapArea) as string;
+
+                if (!string.Equals(currentId, mapAreaId, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                found++;
+
+                mapArea.gameObject.SetActive(true);
+                mapArea.Enable(true);
+
+                LogInfo($"MAP REFRESH: enabled MapArea object {mapArea.name} for {mapAreaId}.");
+            }
+
+            LogInfo($"MAP REFRESH: found {found} MapArea object(s) for {mapAreaId}.");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"RefreshMapAreaVisuals failed for {mapAreaId}:\n{ex}");
+        }
+    }
+
     internal static void ApplyKeyItemProgressionFlags(PendingItem item, string sourceTag)
     {
         // Dash needs the G_DASH_UNLOCKED progression flag in addition to the item itself.
@@ -858,6 +1183,14 @@ public partial class LaikaMod
             MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("G_HOOK_UNLOCKED", true, false);
             LogInfo($"{sourceTag}: set progression flag G_HOOK_UNLOCKED for Hook.");
         }
+
+        // Progression needs to be applied in order to leave the
+        // boss zone for A Long Lost Woodcrawler.
+        else if (item.Id == "I_PUPPY_FLOWER")
+        {
+            MonoSingleton<ProgressionManager>.Instance.ProgressionData.SetAchievement("I_PUPPY_FLOWER", true, false);
+            LogInfo($"{sourceTag}: set progression flag I_PUPPY_FLOWER for Heartglaze Flower.");
+        }
     }
 
     // Vanilla gives parry through the tutorial, so the player can never miss it there.
@@ -870,13 +1203,12 @@ public partial class LaikaMod
 
         var progressionManager = MonoSingleton<ProgressionManager>.Instance;
 
-        if (progressionManager == null)
+        if (progressionManager == null || progressionManager.ProgressionData == null)
         {
-            LogWarning($"{sourceTag}: could not unlock parry because ProgressionManager is null.");
+            LogWarning($"{sourceTag}: could not unlock parry because ProgressionManager/ProgressionData is not ready.");
             return;
         }
 
-        // This is the actual achievement checked by ParryShield.Update().
         progressionManager.ProgressionData.SetAchievement("G_PARRY_UNLOCKED", true, false);
         ParryUnlockEnsuredThisSession = true;
 
@@ -1001,7 +1333,6 @@ public partial class LaikaMod
         }
 
         if (definition.Category == "PuppyGift" ||
-            definition.Category == "KeyItem" ||
             definition.Category == "Material" ||
             definition.Category == "Ingredient")
         {
@@ -1009,30 +1340,42 @@ public partial class LaikaMod
             return;
         }
 
+        if (definition.Category == "KeyItem")
+        {
+            // Key items often drive vanilla quest/dialogue/exit flow.
+            // Remove them from the AddKeyItem postfix instead, where we can special-case timing.
+            return;
+        }
+
         // Do not consume quest-completion, boss, or map-unlock rewards here.
         // Those are progression/check states, not the randomized item reward itself.
     }
 
-    internal static void TryRemoveInventoryReward(string itemId, int amount, string sourceTag)
+    internal static bool TryRemoveInventoryReward(string itemId, int amount, string sourceTag)
     {
         if (string.IsNullOrEmpty(itemId))
-            return;
+            return false;
 
         var inventory = Singleton<InventoryManager>.Instance;
+
         if (inventory == null)
         {
             LogWarning($"{sourceTag}: could not remove vanilla reward {itemId}; InventoryManager is null.");
-            return;
+            return false;
         }
 
         try
         {
             bool removed = inventory.RemoveItem(itemId, amount, true);
+
             LogInfo($"{sourceTag}: remove vanilla inventory reward {itemId} x{amount} -> {removed}");
+
+            return removed;
         }
         catch (Exception ex)
         {
             LogError($"{sourceTag}: exception removing vanilla inventory reward {itemId}:\n{ex}");
+            return false;
         }
     }
 

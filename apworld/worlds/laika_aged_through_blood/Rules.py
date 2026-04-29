@@ -48,7 +48,10 @@ def set_rules(world):
     # Post Rage and Sorrow
     set_rule(
         loc("Quest Complete: A Heart for Poochie"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+            and has(state, player, "Heartglaze Flower")
+        )
     )
 
     set_rule(
@@ -69,6 +72,11 @@ def set_rules(world):
         lambda state: can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
     )
 
+    set_rule(
+        loc("Heartglaze Flower"),
+        lambda state: can_reach_loc(state, player, "Boss Defeated: A Long Lost Woodcrawler")
+    )
+
     # War chapter requires Rage and Sorrow + A Heart for Poochie.
     def war_chapter(state) -> bool:
         return (
@@ -78,7 +86,10 @@ def set_rules(world):
 
     set_rule(
         loc("Quest Complete: Diplomacy"),
-        lambda state: war_chapter(state)
+        lambda state: (
+            war_chapter(state)
+            and can_reach_loc(state, player, "Boss Defeated: A Caterpillar Made of Sadness")
+        )
     )
 
     set_rule(
@@ -93,12 +104,20 @@ def set_rules(world):
 
     set_rule(
         loc("Quest Complete: Stargazing"),
-        lambda state: war_chapter(state)
+        lambda state: (
+            war_chapter(state)
+            # Brand-New Notebook skipped until internal ID is confirmed.
+        )
     )
 
     set_rule(
-        loc("Boss Defeated: A Caterpiller Made of Sadness"),
-        lambda state: war_chapter(state)
+        loc("Boss Defeated: A Caterpillar Made of Sadness"),
+        lambda state: (
+            war_chapter(state)
+            and has(state, player, "1st Key To The Pit")
+            and has(state, player, "2nd Key To The Pit")
+            and has(state, player, "3rd Key To The Pit")
+        )
     )
 
     set_rule(
@@ -141,12 +160,18 @@ def set_rules(world):
     # Side quests
     set_rule(
         loc("Quest Complete: A New Sheriff in Town"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Diplomacy")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Diplomacy")
+            and has(state, player, "Gutsy Gus's Gushing Gunfights")
+        )
     )
 
     set_rule(
         loc("Quest Complete: A Little Tomb Stone"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Diplomacy")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Diplomacy")
+            and has(state, player, "Iris")
+        )
     )
 
     set_rule(
@@ -156,32 +181,51 @@ def set_rules(world):
 
     set_rule(
         loc("Quest Complete: Life of the Party"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: The Big Tree")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: The Big Tree")
+            and has(state, player, "Jar Filled With Bugs")
+        )
     )
 
     set_rule(
         loc("Quest Complete: Bone Flour"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: The Big Tree")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: The Big Tree")
+            and has(state, player, "Vitamin-Coated Bones")
+        )
     )
 
     set_rule(
         loc("Quest Complete: A Break for Camilla"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: The Big Tree")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: The Big Tree")
+            and has_shotgun_access(state, player)
+            and has(state, player, "Camilla's Special Herbs")
+        )
     )
 
     set_rule(
         loc("Quest Complete: From Mother to Daughter"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Radio Silence")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            and has(state, player, "Family Braid")
+        )
     )
 
     set_rule(
         loc("Quest Complete: The Prophecy"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Radio Silence")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            and has(state, player, "Petey's Letter")
+        )
     )
 
     set_rule(
         loc("Quest Complete: Last Meal"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Radio Silence")
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            and has(state, player, "Bluelemon Berries")
+        )
     )
 
     # Childless side branch
@@ -193,37 +237,90 @@ def set_rules(world):
         "Quest Complete: Just a little girl",
         "Quest Complete: We'll Never Know",
         "Quest Complete: High Spirits",
-        "Quest Complete: Water Whispers",
     ]:
         set_rule(
             loc(name),
-            lambda state, quest_name=name: can_reach_loc(state, player, "Quest Complete: Childless")
+            lambda state: can_reach_loc(state, player, "Quest Complete: Childless")
         )
+
+    set_rule(
+        loc("Quest Complete: Water Whispers"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Childless")
+            and has(state, player, "Seashell")
+        )
+    )
 
     # Nightmares
-    for name in [
-        "Quest Complete: Worse than Nightmares",
-        "Quest Complete: Worse than Hives",
-        "Quest Complete: Worse than Stomach Flu",
-    ]:
-        set_rule(
-            loc(name),
-            lambda state, quest_name=name: can_reach_loc(state, player, "Quest Complete: Radio Silence")
+    set_rule(
+        loc("Quest Complete: Worse than Nightmares"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            and has(state, player, "Thistle Stems")
         )
+    )
+
+    set_rule(
+        loc("Quest Complete: Worse than Hives"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            and has(state, player, "Phalseria Sap")
+        )
+    )
+
+    set_rule(
+        loc("Quest Complete: Worse than Stomach Flu"),
+        lambda state: can_reach_loc(state, player, "Quest Complete: Radio Silence")
+    )
 
     # Musicians
-    for name in [
-        "Quest Complete: Fogg's Only Wish",
-        "Quest Complete: The Last Erhu",
-        "Quest Complete: Clean Your Beak",
-        "Quest Complete: Desperately in Need of Music",
-        "Quest Complete: Sober Up",
-        "Quest Complete: Oooo Ooo Oo O Ooo",
-    ]:
-        set_rule(
-            loc(name),
-            lambda state, quest_name=name: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie") 
+    set_rule(
+        loc("Quest Complete: Fogg's Only Wish"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has(state, player, "Fogg's Drumstick")
         )
+    )
+
+    set_rule(
+        loc("Quest Complete: The Last Erhu"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has(state, player, "Hook (Bike Upgrade)")
+            and has_shotgun_access(state, player)
+            and has(state, player, "Erhu Strings")
+        )
+    )
+
+    set_rule(
+        loc("Quest Complete: Clean Your Beak"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+            and has(state, player, "Flute Cleaning Brush")
+        )
+    )
+
+    set_rule(
+        loc("Quest Complete: Desperately in Need of Music"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has(state, player, "Guitar Strings")
+        )
+    )
+
+    set_rule(
+        loc("Quest Complete: Sober Up"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            and has(state, player, "Sheet Music")
+        )
+    )
+
+    set_rule(
+        loc("Quest Complete: Oooo Ooo Oo O Ooo"),
+        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+    )
 
     # Flashbacks
     set_rule(

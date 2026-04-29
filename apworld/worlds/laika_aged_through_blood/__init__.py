@@ -121,6 +121,27 @@ class LaikaWorld(World):
         progression_key_items = [
             "Blueprint: Shotgun",
             "Jakob's Ashes",
+            "Guitar Strings",
+            "Fogg's Drumstick",
+            "Gutsy Gus's Gushing Gunfights",
+            "Iris",
+            "Camilla's Special Herbs",
+            "Flute Cleaning Brush",
+            "Vitamin-Coated Bones",
+            "Erhu Strings",
+            "Sheet Music",
+            "Petey's Letter",
+            "Thistle Stems",
+            "Family Braid",
+            "Bluelemon Berries",
+            "Magical Book",
+            "Phalseria Sap",
+            "Jar Filled With Bugs",
+            "Seashell",
+            "Heartglaze Flower",
+            "1st Key To The Pit",
+            "2nd Key To The Pit",
+            "3rd Key To The Pit",
         ]
 
         for item_name in progression_key_items:

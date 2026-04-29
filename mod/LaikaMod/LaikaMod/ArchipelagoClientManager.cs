@@ -97,8 +97,10 @@ public class ArchipelagoClientManager
             LaikaMod.SessionState.Connection.IsAuthenticated = true;
 
             TryCaptureSlotMetadata(loginResult);
+            ValidateSessionIdentityAndResetCacheIfNeeded(host, port, slotName, loginResult);
 
             LaikaMod.SessionState.APEnabled = true;
+            LaikaMod.HasReconciledReceivedItemsThisConnection = false;
             LaikaMod.SaveSessionState();
             LaikaMod.RefreshDevOverlay();
 
@@ -126,6 +128,7 @@ public class ArchipelagoClientManager
             }
 
             RefreshConnectionTags();
+            LaikaMod.RequestReceivedItemPump("connect");
         }
         catch (Exception ex)
         {
@@ -181,6 +184,128 @@ public class ArchipelagoClientManager
         {
             LaikaMod.LogWarning($"AP: Could not capture slot/team metadata:\n{ex}");
         }
+    }
+
+    private void ValidateSessionIdentityAndResetCacheIfNeeded(
+    string host,
+    int port,
+    string slotName,
+    object loginResult)
+    {
+        try
+        {
+            if (LaikaMod.SessionState == null)
+                return;
+
+            if (LaikaMod.SessionState.SentLocationIds == null)
+                LaikaMod.SessionState.SentLocationIds = new List<long>();
+
+            string seedName = TryReadSeedName(loginResult);
+
+            string newIdentityKey =
+                $"{host}:{port}|slotName={slotName}|team={LaikaMod.SessionState.Connection.Team}|slot={LaikaMod.SessionState.Connection.Slot}|seed={seedName}";
+
+            string oldIdentityKey = LaikaMod.SessionState.SessionIdentityKey ?? "";
+
+            if (string.IsNullOrWhiteSpace(oldIdentityKey))
+            {
+                LaikaMod.SessionState.SessionIdentityKey = newIdentityKey;
+                LaikaMod.SessionState.SessionSeedName = seedName;
+
+                LaikaMod.LogInfo($"AP CACHE: initialized session identity -> {newIdentityKey}");
+                return;
+            }
+
+            if (oldIdentityKey == newIdentityKey)
+            {
+                LaikaMod.LogInfo($"AP CACHE: session identity unchanged -> {newIdentityKey}");
+                return;
+            }
+
+            LaikaMod.LogWarning(
+                "AP CACHE: detected different AP session. Resetting received-item/check cache.\n" +
+                $"Old={oldIdentityKey}\n" +
+                $"New={newIdentityKey}"
+            );
+
+            LaikaMod.SessionState.SessionIdentityKey = newIdentityKey;
+            LaikaMod.SessionState.SessionSeedName = seedName;
+
+            LaikaMod.SessionState.LastProcessedReceivedItemIndex = 0;
+            LaikaMod.SessionState.GoalReported = false;
+            LaikaMod.SessionState.SentLocationIds.Clear();
+
+            LaikaMod.PendingItemQueue.Clear();
+            LaikaMod.IsProcessingQueue = false;
+
+            LaikaMod.AnnounceAPWarning("[AP] New seed/session detected. Resetting AP cache for this save slot.");
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning($"AP CACHE: session identity validation failed:\n{ex}");
+        }
+    }
+
+    private string TryReadSeedName(object loginResult)
+    {
+        string seedName = TryReadStringProperty(loginResult, "SeedName", "Seed", "RoomSeed");
+
+        if (!string.IsNullOrWhiteSpace(seedName))
+            return seedName;
+
+        try
+        {
+            if (session != null)
+            {
+                object roomState = TryReadObjectProperty(session, "RoomState", "RoomInfo", "Room");
+                seedName = TryReadStringProperty(roomState, "SeedName", "Seed", "RoomSeed");
+
+                if (!string.IsNullOrWhiteSpace(seedName))
+                    return seedName;
+            }
+        }
+        catch
+        {
+        }
+
+        return "unknown";
+    }
+
+    private object TryReadObjectProperty(object instance, params string[] propertyNames)
+    {
+        if (instance == null)
+            return null;
+
+        Type type = instance.GetType();
+
+        foreach (string propertyName in propertyNames)
+        {
+            var property = type.GetProperty(propertyName);
+            if (property == null)
+                continue;
+
+            try
+            {
+                object value = property.GetValue(instance, null);
+                if (value != null)
+                    return value;
+            }
+            catch
+            {
+            }
+        }
+
+        return null;
+    }
+
+    private string TryReadStringProperty(object instance, params string[] propertyNames)
+    {
+        object value = TryReadObjectProperty(instance, propertyNames);
+
+        if (value == null)
+            return "";
+
+        return value.ToString();
     }
 
     private void TryApplyLiveSlotData(object loginResult)
@@ -335,8 +460,26 @@ public class ArchipelagoClientManager
 
             int nextIndex = Math.Max(0, LaikaMod.SessionState.LastProcessedReceivedItemIndex);
 
+            if (nextIndex > allItems.Count)
+            {
+                LaikaMod.LogWarning(
+                    $"AP ITEMS: saved received-item index {nextIndex} is greater than server item count {allItems.Count}. Resetting to 0."
+                );
+
+                LaikaMod.UpdateLastProcessedReceivedItemIndex(0);
+                nextIndex = 0;
+            }
+
             if (nextIndex >= allItems.Count)
+            {
+                if (!LaikaMod.HasReconciledReceivedItemsThisConnection)
+                {
+                    LaikaMod.HasReconciledReceivedItemsThisConnection = true;
+                    ReconcileImportantReceivedItems(allItems);
+                    LaikaMod.ProcessPendingItemQueue("AP Reconcile");
+                }
                 return;
+            }
 
             for (int i = nextIndex; i < allItems.Count; i++)
             {
@@ -397,6 +540,12 @@ public class ArchipelagoClientManager
                 LaikaMod.UpdateLastProcessedReceivedItemIndex(i + 1);
             }
 
+            if (!LaikaMod.HasReconciledReceivedItemsThisConnection)
+            {
+                LaikaMod.HasReconciledReceivedItemsThisConnection = true;
+                ReconcileImportantReceivedItems(allItems);
+            }
+
             LaikaMod.LogInfo("AP ITEMS: handing queued items to ProcessPendingItemQueue.");
             LaikaMod.ProcessPendingItemQueue("AP ReceivedItems");
             LaikaMod.LogInfo("AP ITEMS: ProcessPendingItemQueue completed.");
@@ -407,6 +556,65 @@ public class ArchipelagoClientManager
             LaikaMod.AnnounceAPError("[AP] Error while processing received items.");
         }
     }
+
+    private void ReconcileImportantReceivedItems(System.Collections.IEnumerable allItems)
+    {
+        try
+        {
+            if (allItems == null)
+                return;
+
+            Dictionary<string, PendingItem> totalsByKindAndId = new Dictionary<string, PendingItem>();
+
+            foreach (object receivedItem in allItems)
+            {
+                if (receivedItem == null)
+                    continue;
+
+                long apItemId = ReadLongProperty(receivedItem, "ItemId", "Item");
+
+                PendingItem pendingItem;
+                if (!LaikaMod.TryCreatePendingItemFromApItemId(apItemId, out pendingItem))
+                    continue;
+
+                if (!LaikaMod.IsImportantReconcileKind(pendingItem.Kind))
+                    continue;
+
+                string key = pendingItem.Kind + "|" + pendingItem.Id;
+
+                PendingItem existing;
+                if (totalsByKindAndId.TryGetValue(key, out existing))
+                {
+                    existing.AddAmount(pendingItem.Amount);
+                }
+                else
+                {
+                    totalsByKindAndId[key] = new PendingItem(
+                        pendingItem.Kind,
+                        pendingItem.Id,
+                        pendingItem.Amount,
+                        pendingItem.DisplayName
+                    );
+                }
+            }
+
+            foreach (PendingItem expectedItem in totalsByKindAndId.Values)
+            {
+                PendingItem missingItem;
+                if (!LaikaMod.TryBuildMissingImportantReconcileItem(expectedItem, out missingItem))
+                    continue;
+
+                LaikaMod.EnqueueItem(missingItem);
+                LaikaMod.LogWarning($"AP RECONCILE: expected AP item missing from save, re-queued -> {missingItem}");
+            }
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning($"AP RECONCILE: failed:\n{ex}");
+        }
+    }
+
+
 
     public void SendLocationCheck(APLocationDefinition definition)
     {
@@ -423,11 +631,9 @@ public class ArchipelagoClientManager
         {
             session.Locations.CompleteLocationChecks(definition.LocationId);
 
+            LaikaMod.RequestReceivedItemPump("after location check");
+
             LaikaMod.MarkLocationCheckedAndSent(definition.LocationId);
-            LaikaMod.LogInfo(
-                $"AP CHECKS: sent location check -> " +
-                $"{definition.DisplayName} ({definition.LocationId})"
-            );
 
             LaikaMod.LogInfo(
                 $"AP CHECKS: sent location check -> " +
@@ -759,6 +965,12 @@ public class ArchipelagoClientManager
             if (string.Equals(cmd, "PrintJSON", StringComparison.OrdinalIgnoreCase))
             {
                 HandlePrintJsonPacket(packet);
+                return;
+            }
+
+            if (string.Equals(cmd, "ReceivedItems", StringComparison.OrdinalIgnoreCase))
+            {
+                LaikaMod.RequestReceivedItemPump("ReceivedItems packet");
                 return;
             }
 

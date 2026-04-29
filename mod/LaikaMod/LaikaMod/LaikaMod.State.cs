@@ -12,6 +12,13 @@ public partial class LaikaMod
     internal static string SlotDataFilePath =
         Path.Combine(Paths.ConfigPath, "laika_ap_slot_data.txt");
 
+    internal static bool HasReconciledReceivedItemsThisConnection = false;
+    internal static bool ReceivedItemPumpCoroutineRunning = false;
+
+    internal static bool WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = false;
+    internal static bool HeartglazeFlowerCleanupDone = false;
+    internal static float HeartglazeFlowerCleanupReadyAt = 0f;
+
     internal static APSaveState PeekSessionStateForSlot(int slotIndex)
     {
         try
@@ -390,6 +397,49 @@ public partial class LaikaMod
         string folder = Path.Combine(Paths.ConfigPath, "LaikaAP");
         Directory.CreateDirectory(folder);
         return folder;
+    }
+
+    internal static bool ReceivedItemPumpRequested = false;
+    internal static float NextReceivedItemPumpAllowedAt = 0f;
+
+    internal static void RequestReceivedItemPump(string reason)
+    {
+        ReceivedItemPumpRequested = true;
+        NextReceivedItemPumpAllowedAt = 0f;
+
+        LogInfo($"AP ITEMS: pump requested -> {reason}");
+    }
+
+    internal static System.Collections.IEnumerator ReceivedItemPumpCoroutine(string reason)
+    {
+        ReceivedItemPumpCoroutineRunning = true;
+
+        for (int attempt = 0; attempt < 20; attempt++)
+        {
+            yield return new WaitForSecondsRealtime(0.25f);
+
+            if (ArchipelagoClientManager.Instance == null ||
+                !ArchipelagoClientManager.Instance.IsConnected)
+                continue;
+
+            if (IsProcessingQueue)
+                continue;
+
+            ReceivedItemPumpRequested = false;
+            NextReceivedItemPumpAllowedAt = Time.unscaledTime + 1.0f;
+
+            LogInfo($"AP ITEMS: coroutine pump firing -> {reason}, attempt={attempt + 1}");
+            ArchipelagoClientManager.Instance.PumpReceivedItems();
+
+            break;
+        }
+
+        ReceivedItemPumpCoroutineRunning = false;
+
+        if (ReceivedItemPumpRequested && Instance != null)
+        {
+            Instance.StartCoroutine(ReceivedItemPumpCoroutine("follow-up pending request"));
+        }
     }
 
     internal static string GetAPStatePathForSlot(int slotIndex)

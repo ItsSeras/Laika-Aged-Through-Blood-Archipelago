@@ -22,6 +22,9 @@ public class APSaveState
     public int SaveSlotIndex = 0;
     public bool APEnabled = false;
 
+    public string SessionIdentityKey = "";
+    public string SessionSeedName = "";
+
     public APConnectionState Connection = new APConnectionState();
 
     public APWorldOptions Options = new APWorldOptions();
