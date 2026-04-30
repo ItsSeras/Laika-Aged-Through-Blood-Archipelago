@@ -255,8 +255,54 @@ ITEM_TABLE = {
         "internal_id": "I_D_Dungeon_01_door_piece_3",
         "kind": "KeyItem",
     },
-    
-
+     "Brand-New Notebook": {
+        "id": 1187,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_DALIA_NOTEBOOK",
+        "kind": "KeyItem",
+    },   
+     "Pads": {
+        "id": 1188,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_NAPKINS",
+        "kind": "KeyItem",
+    },   
+     "Moon Blossom": {
+        "id": 1189,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_PERIOD_MUSHROOM",
+        "kind": "KeyItem",
+    },   
+     "Lhey's Diary": {
+        "id": 1190,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_GIRL_DIARY",
+        "kind": "KeyItem",
+    },   
+     "Large Seed": {
+        "id": 1191,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_LARGE_SEED",
+        "kind": "KeyItem",
+    },   
+     "Gallon of Gasoline": {
+        "id": 1192,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_GASOLINE",
+        "kind": "KeyItem",
+    },   
+     "Banana Leaves": {
+        "id": 1193,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_ANTI_DIARRHOEA",
+        "kind": "KeyItem",
+    },   
+     "Ultra Fast Cough Syrup": {
+        "id": 1194,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_COUGHING_SYRUP",
+        "kind": "KeyItem",
+    },   
     # ===== Crafting-mode weapon material items =====
     "Rusty Spring (Shotgun Material)": {
         "id": 1150,

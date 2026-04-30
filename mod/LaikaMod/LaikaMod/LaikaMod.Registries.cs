@@ -1338,6 +1338,134 @@ public partial class LaikaMod
                     true
                 )
             },
+            {
+                "I_DALIA_NOTEBOOK",
+                new APLocationDefinition(
+                    150027,
+                    "Brand-New Notebook",
+                    "I_DALIA_NOTEBOOK",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_NAPKINS",
+                new APLocationDefinition(
+                    150028,
+                    "Pads",
+                    "I_NAPKINS",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_PERIOD_MUSHROOM",
+                new APLocationDefinition(
+                    150029,
+                    "Moon Blossom",
+                    "I_PERIOD_MUSHROOM",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_GIRL_DIARY",
+                new APLocationDefinition(
+                    150030,
+                    "Lhey's Diary",
+                    "I_GIRL_DIARY",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_LARGE_SEED",
+                new APLocationDefinition(
+                    150031,
+                    "Large Seed",
+                    "I_LARGE_SEED",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_GASOLINE",
+                new APLocationDefinition(
+                    150032,
+                    "Gallon of Gasoline",
+                    "I_GASOLINE",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_ANTI_DIARRHOEA",
+                new APLocationDefinition(
+                    150033,
+                    "Banana Leaves",
+                    "I_ANTI_DIARRHOEA",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_COUGHING_SYRUP",
+                new APLocationDefinition(
+                    150034,
+                    "Ultra Fast Cough Syrup",
+                    "I_COUGHING_SYRUP",
+                    "KeyItem",
+                    true
+                )
+            },
+
+            {
+                "I_MATERIAL_SHOTGUN",
+                new APLocationDefinition(
+                    150050,
+                    "Rusty Spring (Shotgun Material)",
+                    "I_MATERIAL_SHOTGUN",
+                    "Material",
+                    true
+                )
+            },
+            {
+                "I_MATERIAL_SNIPER",
+                new APLocationDefinition(
+                    150051,
+                    "Magnifying Glass (Sniper Rifle Material)",
+                    "I_MATERIAL_SNIPER",
+                    "Material",
+                    true
+                )
+            },
+            {
+                "I_MATERIAL_UZI",
+                new APLocationDefinition(
+                    150052,
+                    "Titanium Plates (Machine Gun Material)",
+                    "I_MATERIAL_UZI",
+                    "Material",
+                    true
+                )
+            },
+            {
+                "I_MATERIAL_ROCKETLAUNCHER",
+                new APLocationDefinition(
+                    150053,
+                    "Missile (Rocket Launcher Material)",
+                    "I_MATERIAL_ROCKETLAUNCHER",
+                    "Material",
+                    true
+                )
+            },
         };
 
     internal static Dictionary<long, Func<PendingItem>> ItemFactoriesByApId =
@@ -1399,6 +1527,14 @@ public partial class LaikaMod
         { 1184L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_1", 1, "1st Key To The Pit") },
         { 1185L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_2", 1, "2nd Key To The Pit") },
         { 1186L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_3", 1, "3rd Key To The Pit") },
+        { 1187L, () => new PendingItem(ItemKind.KeyItem, "I_DALIA_NOTEBOOK", 1, "Brand-New Notebook") },
+        { 1188L, () => new PendingItem(ItemKind.KeyItem, "I_NAPKINS", 1, "Pads") },
+        { 1189L, () => new PendingItem(ItemKind.KeyItem, "I_PERIOD_MUSHROOM", 1, "Moon Blossom") },
+        { 1190L, () => new PendingItem(ItemKind.KeyItem, "I_GIRL_DIARY", 1, "Lhey's Diary") },
+        { 1191L, () => new PendingItem(ItemKind.KeyItem, "I_LARGE_SEED", 1, "Large Seed") },
+        { 1192L, () => new PendingItem(ItemKind.KeyItem, "I_GASOLINE", 1, "Gallon of Gasoline") },
+        { 1193L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_DIARRHOEA", 1, "Banana Leaves") },
+        { 1194L, () => new PendingItem(ItemKind.KeyItem, "I_COUGHING_SYRUP", 1, "Ultra Fast Cough Syrup") },
 
 
         // ===== Puppy gifts =====

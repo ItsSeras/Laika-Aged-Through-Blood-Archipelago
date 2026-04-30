@@ -998,7 +998,16 @@ public partial class LaikaMod
 
         if (item.Id == "I_PUPPY_FLOWER")
         {
-            TryForceHeartglazeFlowerProgression(sourceTag);
+            if (SessionState != null)
+            {
+                SessionState.HeartglazeFlowerReceivedFromAP = true;
+                SaveSessionState();
+            }
+
+            AnnounceHeartglazeDeferredNoticeOnce(sourceTag);
+
+            LogInfo($"{sourceTag}: Heartglaze Flower received from AP. Deferring actual vanilla inventory grant until physical flower pickup.");
+            return true;
         }
 
         try
@@ -1039,38 +1048,6 @@ public partial class LaikaMod
         {
             LogError($"{sourceTag}: exception while granting key item {item.Id}:\n{ex}");
             return false;
-        }
-    }
-
-    internal static void TryForceHeartglazeFlowerProgression(string sourceTag)
-    {
-        try
-        {
-            var progressionManager = MonoSingleton<ProgressionManager>.Instance;
-
-            if (progressionManager == null || progressionManager.ProgressionData == null)
-            {
-                LogWarning($"{sourceTag}: could not force Heartglaze progression because ProgressionData is not ready.");
-                return;
-            }
-
-            progressionManager.ProgressionData.SetAchievement("B_BOSS_ROSCO_DEFEATED", true, false);
-
-            // These are deliberately conservative. They should let the post-boss flower/door flow continue
-            // without completing A Heart for Poochie by itself.
-            progressionManager.ProgressionData.SetAchievement("I_PUPPY_FLOWER", true, false);
-
-            try
-            {
-                MonoSingleton<PersistenceManager>.Instance.SaveGame();
-            }
-            catch { }
-
-            LogInfo($"{sourceTag}: forced Heartglaze Flower progression flags.");
-        }
-        catch (Exception ex)
-        {
-            LogWarning($"{sourceTag}: TryForceHeartglazeFlowerProgression failed:\n{ex}");
         }
     }
 
@@ -1787,6 +1764,24 @@ public partial class LaikaMod
         {
             LogError($"OnPlayerDeathDetected exception:\n{ex}");
         }
+    }
+
+    internal static void AnnounceHeartglazeDeferredNoticeOnce(string sourceTag)
+    {
+        if (SessionState == null)
+            return;
+
+        if (SessionState.HeartglazeFlowerDeferredNoticeShown)
+            return;
+
+        SessionState.HeartglazeFlowerDeferredNoticeShown = true;
+        SaveSessionState();
+
+        AnnounceAPWarning(
+            "[AP] Heartglaze Flower received. It will appear after you defeat Woodcrawler and pick up the flower."
+        );
+
+        LogInfo($"{sourceTag}: shown one-time Heartglaze deferred notice.");
     }
 
     // Evaluates whether the current local death should count toward DeathLink

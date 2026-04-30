@@ -101,6 +101,7 @@ public partial class LaikaMod : BaseUnityPlugin
 
         Log = Logger;
         LogInfo("AP LIFECYCLE: Awake() entered.");
+        EnsureCoroutineRunner();
 
         ActiveSaveSlotIndex = 0;
         LoadSessionStateForSlot(ActiveSaveSlotIndex);
@@ -138,6 +139,25 @@ public partial class LaikaMod : BaseUnityPlugin
         {
             LogInfo("PATCHED: " + method.DeclaringType.FullName + "." + method.Name);
         }
+    }
+
+    internal sealed class LaikaCoroutineRunner : MonoBehaviour
+    {
+    }
+
+    internal static MonoBehaviour CoroutineRunner;
+
+    internal static void EnsureCoroutineRunner()
+    {
+        if (CoroutineRunner != null)
+            return;
+
+        GameObject runnerObject = new GameObject("Laika AP Coroutine Runner");
+        UnityEngine.Object.DontDestroyOnLoad(runnerObject);
+
+        CoroutineRunner = runnerObject.AddComponent<LaikaCoroutineRunner>();
+
+        LogInfo("AP coroutine runner created.");
     }
 
     internal static void UpdateTitleScreenAPPanel()

@@ -29,6 +29,9 @@ public class APSaveState
 
     public APWorldOptions Options = new APWorldOptions();
 
+    public bool HeartglazeFlowerReceivedFromAP { get; set; } = false;
+    public bool HeartglazeFlowerDeferredNoticeShown { get; set; } = false;
+
     public int LastProcessedReceivedItemIndex = 0;
     public bool GoalReported = false;
 

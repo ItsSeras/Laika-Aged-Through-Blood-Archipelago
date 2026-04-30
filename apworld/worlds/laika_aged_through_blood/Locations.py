@@ -162,4 +162,18 @@ LOCATION_TABLE = {
     "1st Key To The Pit": 150024,
     "2nd Key To The Pit": 150025,
     "3rd Key To The Pit": 150026,
+    "Brand-New Notebook": 150027,
+    "Pads": 150028,
+    "Moon Blossom": 150029,
+    "Lhey's Diary": 150030,
+    "Large Seed": 150031,
+    "Gallon of Gasoline": 150032,
+    "Banana Leaves": 150033,
+    "Ultra Fast Cough Syrup": 150034,
+
+    # Weapon unique material / gun part checks
+    "Rusty Spring (Shotgun Material)": 150050,
+    "Magnifying Glass (Sniper Rifle Material)": 150051,
+    "Titanium Plates (Machine Gun Material)": 150052,
+    "Missile (Rocket Launcher Material)": 150053,
 }

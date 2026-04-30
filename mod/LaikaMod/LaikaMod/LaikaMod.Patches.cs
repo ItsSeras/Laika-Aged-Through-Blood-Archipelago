@@ -747,7 +747,7 @@ public partial class LaikaMod
             if (string.IsNullOrEmpty(name))
                 return;
 
-            if (!value)
+            if (!value || reset)
                 return;
 
             if (name != "B_BOSS_00_DEFEATED" &&
@@ -757,6 +757,12 @@ public partial class LaikaMod
                 name != "B_BOSS_03_DEFEATED" &&
                 name != "BOSS_04_DEFEATED")
             {
+                return;
+            }
+
+            if (LaikaMod.IsGrantingAPItem)
+            {
+                LaikaMod.LogInfo($"BOSS CLEAR IGNORED during AP item grant: name={name}, value={value}, reset={reset}");
                 return;
             }
 
@@ -796,10 +802,18 @@ public partial class LaikaMod
 
         try
         {
-
             if (!WaitingToRemoveHeartglazeFlowerAfterQuestUpdate)
             {
                 LogInfo($"{sourceTag}: Heartglaze cleanup skipped because cleanup is not armed.");
+                return;
+            }
+
+            if (SessionState != null && SessionState.HeartglazeFlowerReceivedFromAP)
+            {
+                HeartglazeFlowerCleanupDone = true;
+                WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = false;
+
+                LogInfo($"{sourceTag}: Heartglaze cleanup skipped because Heartglaze Flower was already received from AP.");
                 return;
             }
 
@@ -865,8 +879,30 @@ public partial class LaikaMod
     [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] { typeof(ItemData), typeof(int), typeof(Action), typeof(bool) })]
     public class InventoryManager_AddItem_APLocationPatch
     {
+        
         static bool Prefix(ItemData item, int amount, Action onAddedCallback, bool silent, ref bool __result)
         {
+            if (!LaikaMod.IsGrantingAPItem && item.id == "I_PUPPY_FLOWER")
+            {
+                APLocationDefinition flowerDefinition;
+                if (LaikaMod.TryGetLocationDefinition("I_PUPPY_FLOWER", out flowerDefinition))
+                {
+                    LaikaMod.TrySendLocationCheck(flowerDefinition, "InventoryManager_AddItem_APLocationPatch/PhysicalHeartglazePickup");
+                }
+
+                if (LaikaMod.SessionState != null && LaikaMod.SessionState.HeartglazeFlowerReceivedFromAP)
+                {
+                    LaikaMod.LogInfo("Physical Heartglaze pickup allowed to stay because Heartglaze Flower was already received from AP.");
+                    return true;
+                }
+
+                LaikaMod.HeartglazeFlowerCleanupDone = false;
+                LaikaMod.WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = true;
+
+                LaikaMod.LogInfo("Physical Heartglaze pickup detected. Cleanup armed after quest update.");
+                return true;
+            }
+
             try
             {
 
@@ -917,6 +953,47 @@ public partial class LaikaMod
                 LaikaMod.LogError($"InventoryManager_AddItem_APLocationPatch exception:\n{ex}");
                 return true;
             }
+        }
+    }
+
+    static void Postfix(ItemData item, int amount, Action onAddedCallback, bool silent, bool __result)
+    {
+        try
+        {
+            if (!__result || item == null || string.IsNullOrEmpty(item.id))
+                return;
+
+            if (LaikaMod.IsGrantingAPItem)
+                return;
+
+            string itemId = item.id;
+
+            APLocationDefinition definition;
+            if (!LaikaMod.TryGetLocationDefinition(itemId, out definition))
+                return;
+
+            if (definition.Category != "KeyItem")
+                return;
+
+            if (!LaikaMod.ShouldSuppressVanillaInventoryReward(definition))
+                return;
+
+            if (itemId == "I_PUPPY_FLOWER")
+                return;
+
+            LaikaMod.LogInfo(
+                $"ADD ITEM KEYITEM REMOVAL FALLBACK: id={itemId}, location={definition.DisplayName}"
+            );
+
+            LaikaMod.ScheduleDelayedVanillaRewardRemoval(
+                itemId,
+                1,
+                "InventoryManager_AddItem_APLocationPatch/PostfixFallback"
+            );
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogError($"InventoryManager_AddItem_APLocationPatch.Postfix exception:\n{ex}");
         }
     }
 
@@ -1041,6 +1118,19 @@ public partial class LaikaMod
                 {
                     if (itemId == "I_PUPPY_FLOWER")
                     {
+                        if (LaikaMod.SessionState != null &&
+                            LaikaMod.SessionState.HeartglazeFlowerReceivedFromAP)
+                        {
+                            LaikaMod.HeartglazeFlowerCleanupDone = true;
+                            LaikaMod.WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = false;
+
+                            LaikaMod.LogInfo(
+                                "Heartglaze cleanup not armed because Heartglaze Flower was already received from AP."
+                            );
+
+                            return;
+                        }
+
                         if (LaikaMod.IsGrantingAPItem)
                         {
                             LaikaMod.LogInfo("Heartglaze cleanup skipped because this flower came from AP grant.");
@@ -1054,14 +1144,12 @@ public partial class LaikaMod
 
                         return;
                     }
-                    else
-                    {
-                        LaikaMod.ScheduleDelayedVanillaRewardRemoval(
-                            itemId,
-                            1,
-                            "KeyItemLocationSourcePatch"
-                        );
-                    }
+
+                    LaikaMod.ScheduleDelayedVanillaRewardRemoval(
+                        itemId,
+                        1,
+                        "KeyItemLocationSourcePatch"
+                    );
                 }
             }
             catch (Exception ex)
@@ -1117,40 +1205,19 @@ public partial class LaikaMod
         }
     }
 
-    [HarmonyPatch(typeof(QuestLog), "UpdateQuest")]
-    public class QuestLog_UpdateQuest_HeartglazeCleanupPatch
-    {
-        static void Postfix(string questId)
-        {
-            try
-            {
-                LaikaMod.LogInfo($"QUEST UPDATE EVENT: questId={questId}");
-
-                if (questId != "Q_D_S_Flower")
-                    return;
-
-                LaikaMod.TryCleanupHeartglazeAfterQuestUpdate(
-                    "QuestLog.UpdateQuest/HeartglazeCleanup"
-                );
-            }
-            catch (Exception ex)
-            {
-                LaikaMod.LogError($"QuestLog_UpdateQuest_HeartglazeCleanupPatch exception:\n{ex}");
-            }
-        }
-    }
-
 
 
     internal static void StartHeartglazeQuestAwareCleanup(string sourceTag)
     {
-        if (Instance == null)
+        EnsureCoroutineRunner();
+
+        if (CoroutineRunner == null)
         {
-            LogWarning($"{sourceTag}: cannot start Heartglaze quest-aware cleanup because Instance is null.");
+            LogWarning($"{sourceTag}: cannot start Heartglaze quest-aware cleanup because CoroutineRunner is null.");
             return;
         }
 
-        Instance.StartCoroutine(HeartglazeQuestAwareCleanupCoroutine(sourceTag));
+        CoroutineRunner.StartCoroutine(HeartglazeQuestAwareCleanupCoroutine(sourceTag));
     }
 
     private static IEnumerator HeartglazeQuestAwareCleanupCoroutine(string sourceTag)
@@ -1241,10 +1308,19 @@ public partial class LaikaMod
 
     internal static void ScheduleDelayedVanillaRewardRemoval(string itemId, int amount, string sourceTag)
     {
-        if (Instance == null)
-            return;
+        EnsureCoroutineRunner();
 
-        Instance.StartCoroutine(DelayedVanillaRewardRemovalCoroutine(itemId, amount, sourceTag));
+        if (CoroutineRunner == null)
+        {
+            LogWarning($"{sourceTag}: could not schedule vanilla reward removal for {itemId}; CoroutineRunner is null.");
+            return;
+        }
+
+        LogInfo($"{sourceTag}: scheduled vanilla reward removal for {itemId} x{amount}.");
+
+        CoroutineRunner.StartCoroutine(
+            DelayedVanillaRewardRemovalCoroutine(itemId, amount, sourceTag)
+        );
     }
 
     private static System.Collections.IEnumerator DelayedVanillaRewardRemovalCoroutine(
@@ -1252,9 +1328,14 @@ public partial class LaikaMod
         int amount,
         string sourceTag)
     {
-        yield return new WaitForSecondsRealtime(0.35f);
+        yield return null;
+        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemovalFrame1");
 
-        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemoval");
+        yield return new WaitForSecondsRealtime(0.25f);
+        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemoval025");
+
+        yield return new WaitForSecondsRealtime(0.75f);
+        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemoval100");
     }
 
 

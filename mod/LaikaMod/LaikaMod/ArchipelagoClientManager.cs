@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Text;
 using static PendingItem;
 
@@ -98,6 +99,7 @@ public class ArchipelagoClientManager
 
             TryCaptureSlotMetadata(loginResult);
             ValidateSessionIdentityAndResetCacheIfNeeded(host, port, slotName, loginResult);
+            ImportServerCheckedLocations();
 
             LaikaMod.SessionState.APEnabled = true;
             LaikaMod.HasReconciledReceivedItemsThisConnection = false;
@@ -144,6 +146,73 @@ public class ArchipelagoClientManager
         finally
         {
             isConnecting = false;
+        }
+    }
+
+
+    private void ImportServerCheckedLocations()
+    {
+        try
+        {
+            if (session == null || LaikaMod.SessionState == null)
+                return;
+
+            if (LaikaMod.SessionState.SentLocationIds == null)
+                LaikaMod.SessionState.SentLocationIds = new List<long>();
+
+            object locationsHelper = TryReadObjectProperty(session, "Locations");
+
+            if (locationsHelper == null)
+            {
+                LaikaMod.LogWarning("AP CHECKS: session.Locations was null, could not import server checked locations.");
+                return;
+            }
+
+            object checkedLocationsObject = TryReadObjectPropertyOrField(
+                locationsHelper,
+                "CheckedLocations",
+                "AllLocationsChecked",
+                "CheckedLocationIds",
+                "Checked"
+            );
+
+            IEnumerable checkedLocations = checkedLocationsObject as IEnumerable;
+
+            if (checkedLocations == null)
+            {
+                LaikaMod.LogWarning(
+                    $"AP CHECKS: could not import server checked locations. Locations helper type={locationsHelper.GetType().FullName}"
+                );
+                return;
+            }
+
+            int imported = 0;
+
+            foreach (object rawLocationId in checkedLocations)
+            {
+                if (rawLocationId == null)
+                    continue;
+
+                long locationId = Convert.ToInt64(rawLocationId);
+
+                if (!LaikaMod.SessionState.SentLocationIds.Contains(locationId))
+                {
+                    LaikaMod.SessionState.SentLocationIds.Add(locationId);
+                    imported++;
+                }
+            }
+
+            if (imported > 0)
+                LaikaMod.SaveSessionState();
+
+            LaikaMod.LogInfo(
+                $"AP CHECKS: imported {imported} already-checked server locations. " +
+                $"Local sent cache now has {LaikaMod.SessionState.SentLocationIds.Count} checks."
+            );
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning($"AP CHECKS: failed to import server checked locations:\n{ex}");
         }
     }
 
@@ -292,6 +361,49 @@ public class ArchipelagoClientManager
             }
             catch
             {
+            }
+        }
+
+        return null;
+    }
+
+    private object TryReadObjectPropertyOrField(object instance, params string[] names)
+    {
+        if (instance == null)
+            return null;
+
+        Type type = instance.GetType();
+
+        foreach (string name in names)
+        {
+            PropertyInfo property = type.GetProperty(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (property != null)
+            {
+                try
+                {
+                    object value = property.GetValue(instance, null);
+                    if (value != null)
+                        return value;
+                }
+                catch
+                {
+                }
+            }
+
+            FieldInfo field = type.GetField(name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (field != null)
+            {
+                try
+                {
+                    object value = field.GetValue(instance);
+                    if (value != null)
+                        return value;
+                }
+                catch
+                {
+                }
             }
         }
 

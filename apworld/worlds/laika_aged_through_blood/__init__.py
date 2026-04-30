@@ -32,12 +32,28 @@ class LaikaWorld(World):
     def get_weapon_unlock_pool(self) -> list[str]:
         if self.options.weapon_mode.current_key == "crafting":
             return [
+                "Blueprint: Shotgun",
                 "Rusty Spring (Shotgun Material)",
+
+                "Blueprint: Sniper",
                 "Magnifying Glass (Sniper Rifle Material)",
+
+                "Blueprint: Machine Gun",
                 "Titanium Plates (Machine Gun Material)",
+
+                "Blueprint: Rocket Launcher",
                 "Missile (Rocket Launcher Material)",
+
                 "Crossbow (Weapon)",
             ]
+
+        return [
+            "Shotgun (Weapon)",
+            "Sniper Rifle (Weapon)",
+            "Machine Gun (Weapon)",
+            "Rocket Launcher (Weapon)",
+            "Crossbow (Weapon)",
+        ]
 
         return [
             "Shotgun (Weapon)",
@@ -51,50 +67,25 @@ class LaikaWorld(World):
         return random.choices(
             population=[
                 "Viscera x100",
-                "Beans", "Corn", "Worms", "Onion", "Chilly Pepper", "Ghost Pepper",
-                "Lemon", "Garlic", "Meat", "Jackfruit", "Sardine", "Coco",
-                "Coffee Beans", "Whiskey", "Tomato",
-                "Toy Bike", "Handheld Console", "Tangerine Tree", "Toy Animal",
-                "Great-Great-Grandma's Novella", "Dreamcatcher", "Ukulele",
-                "Cassette: Bloody Sunset", "Cassette: Playing in the Sun",
-                "Cassette: Lullaby of the Dead", "Cassette: Blue Limbo",
-                "Cassette: Trust Them", "Cassette: My Destiny",
-                "Cassette: The End of the Road", "Cassette: The Whisper",
-                "Cassette: Heartglaze Hope", "Cassette: The Hero",
-                "Cassette: Visions of Red", "Cassette: Through the Wind",
-                "Cassette: Heartbeat from the Last Century", "Cassette: Coming Home",
-                "Cassette: Mother", "Cassette: The Last Tear",
-                "Cassette: The Final Hours", "Cassette: Overthinker",
-                "Cassette: Recurring Dream", "Cassette: Lonely Mountain",
-                "Map: Where Our Bikes Growl", "Map: Where All Was Lost (Bottom)",
-                "Map: Where All Was Lost (Top)", "Map: Where Doom Fell",
-                "Map: Where Rust Weaves (Left)", "Map: Where Rust Weaves (Center)",
-                "Map: Where Rust Weaves (Right)",
-                "Map: Where Iron Caresses the Sky (Bottom)",
-                "Map: Where Iron Caresses the Sky (Top)",
-                "Map: Where the Waves Die (Left)", "Map: Where the Waves Die (Right)",
-                "Map: Where Our Ancestors Rest (Bottom)",
-                "Map: Where Our Ancestors Rest (Top)",
-                "Map: Where Birds Came From (Left/Bottom)",
-                "Map: Where Birds Came From (Right/Top)",
-                "Map: Where Birds Lurk (Left)", "Map: Where Birds Lurk (Right)",
-                "Map: Where Rock Bleeds (Left)", "Map: Where Rock Bleeds (Center)",
-                "Map: Where Rock Bleeds (Right)", "Map: Where Water Glistened (Borders)",
-                "Map: Where Water Glistened (1st Ship)",
-                "Map: Where Water Glistened (2nd Ship)",
-                "Map: Where Water Glistened (3rd Ship)",
-                "Map: Where Water Glistened (4th Ship)",
-                "Map: The Big Tree", "Map: Floating City (Control Area)",
-                "Map: Floating City (Old Town)", "Map: Floating City (Hangar)",
-                "Map: Floating City (Factory)", "Map: Floating City (City Facilities)",
+                "Beans",
+                "Corn",
+                "Worms",
+                "Onion",
+                "Chilly Pepper",
+                "Ghost Pepper",
+                "Lemon",
+                "Garlic",
+                "Meat",
+                "Jackfruit",
+                "Sardine",
+                "Coco",
+                "Coffee Beans",
+                "Whiskey",
+                "Tomato",
             ],
             weights=[
                 10,
                 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-                4, 4, 4, 4, 4, 4, 4,
-                3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-                2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
             ],
             k=1
         )[0]
@@ -119,7 +110,6 @@ class LaikaWorld(World):
         ]
 
         progression_key_items = [
-            "Blueprint: Shotgun",
             "Jakob's Ashes",
             "Guitar Strings",
             "Fogg's Drumstick",
@@ -142,18 +132,17 @@ class LaikaWorld(World):
             "1st Key To The Pit",
             "2nd Key To The Pit",
             "3rd Key To The Pit",
+            "Brand-New Notebook",
+            "Pads",
+            "Moon Blossom",
+            "Lhey's Diary",
+            "Large Seed",
+            "Gallon of Gasoline",
+            "Banana Leaves",
+            "Ultra Fast Cough Syrup",
         ]
 
         for item_name in progression_key_items:
-            pool.append(self.create_item(item_name))
-
-        useful_blueprints = [
-            "Blueprint: Sniper",
-            "Blueprint: Machine Gun",
-            "Blueprint: Rocket Launcher",
-        ]
-
-        for item_name in useful_blueprints:
             pool.append(self.create_item(item_name))
 
         for item_name in self.get_weapon_unlock_pool():
@@ -170,6 +159,75 @@ class LaikaWorld(World):
         ]
 
         for item_name in weapon_upgrades:
+            pool.append(self.create_item(item_name))
+
+        unique_filler_items = [
+            # Puppy gifts
+            "Toy Bike",
+            "Handheld Console",
+            "Tangerine Tree",
+            "Toy Animal",
+            "Great-Great-Grandma's Novella",
+            "Dreamcatcher",
+            "Ukulele",
+
+            # Cassettes
+            "Cassette: Bloody Sunset",
+            "Cassette: Playing in the Sun",
+            "Cassette: Lullaby of the Dead",
+            "Cassette: Blue Limbo",
+            "Cassette: Trust Them",
+            "Cassette: My Destiny",
+            "Cassette: The End of the Road",
+            "Cassette: The Whisper",
+            "Cassette: Heartglaze Hope",
+            "Cassette: The Hero",
+            "Cassette: Visions of Red",
+            "Cassette: Through the Wind",
+            "Cassette: Heartbeat from the Last Century",
+            "Cassette: Coming Home",
+            "Cassette: Mother",
+            "Cassette: The Last Tear",
+            "Cassette: The Final Hours",
+            "Cassette: Overthinker",
+            "Cassette: Recurring Dream",
+            "Cassette: Lonely Mountain",
+
+            # Map unlocks
+            "Map: Where Our Bikes Growl",
+            "Map: Where All Was Lost (Bottom)",
+            "Map: Where All Was Lost (Top)",
+            "Map: Where Doom Fell",
+            "Map: Where Rust Weaves (Left)",
+            "Map: Where Rust Weaves (Center)",
+            "Map: Where Rust Weaves (Right)",
+            "Map: Where Iron Caresses the Sky (Bottom)",
+            "Map: Where Iron Caresses the Sky (Top)",
+            "Map: Where the Waves Die (Left)",
+            "Map: Where the Waves Die (Right)",
+            "Map: Where Our Ancestors Rest (Bottom)",
+            "Map: Where Our Ancestors Rest (Top)",
+            "Map: Where Birds Came From (Left/Bottom)",
+            "Map: Where Birds Came From (Right/Top)",
+            "Map: Where Birds Lurk (Left)",
+            "Map: Where Birds Lurk (Right)",
+            "Map: Where Rock Bleeds (Left)",
+            "Map: Where Rock Bleeds (Center)",
+            "Map: Where Rock Bleeds (Right)",
+            "Map: Where Water Glistened (Borders)",
+            "Map: Where Water Glistened (1st Ship)",
+            "Map: Where Water Glistened (2nd Ship)",
+            "Map: Where Water Glistened (3rd Ship)",
+            "Map: Where Water Glistened (4th Ship)",
+            "Map: The Big Tree",
+            "Map: Floating City (Control Area)",
+            "Map: Floating City (Old Town)",
+            "Map: Floating City (Hangar)",
+            "Map: Floating City (Factory)",
+            "Map: Floating City (City Facilities)",
+        ]
+
+        for item_name in unique_filler_items:
             pool.append(self.create_item(item_name))
 
         total_locations = len(self.multiworld.get_unfilled_locations(self.player))
