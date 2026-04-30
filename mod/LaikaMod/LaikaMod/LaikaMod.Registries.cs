@@ -1122,7 +1122,7 @@ public partial class LaikaMod
                 "I_JAKOB_ASHES",
                 new APLocationDefinition(
                     150005L,
-                    "Jakob's Ashes",
+                    "Key Item: Jakob's Ashes",
                     "I_JAKOB_ASHES",
                     "KeyItem",
                     true
@@ -1132,7 +1132,7 @@ public partial class LaikaMod
                 "I_GUITAR_STRINGS",
                 new APLocationDefinition(
                     150006L,
-                    "Guitar Strings",
+                    "Key Item: Guitar Strings",
                     "I_GUITAR_STRINGS",
                     "KeyItem",
                     true
@@ -1142,7 +1142,7 @@ public partial class LaikaMod
                 "I_DRUMSTICKS",
                 new APLocationDefinition(
                     150007L,
-                    "Fogg's Drumstick",
+                    "Key Item: Fogg's Drumstick",
                     "I_DRUMSTICKS",
                     "KeyItem",
                     true
@@ -1152,7 +1152,7 @@ public partial class LaikaMod
                 "I_ALFREDO_COMIC",
                 new APLocationDefinition(
                     150008L,
-                    "Gutsy Gus's Gushing Gunfights",
+                    "Key Item: Gutsy Gus's Gushing Gunfights",
                     "I_ALFREDO_COMIC",
                     "KeyItem",
                     true
@@ -1162,7 +1162,7 @@ public partial class LaikaMod
                 "I_TOMB_FLOWER",
                 new APLocationDefinition(
                     150009L,
-                    "Iris",
+                    "Key Item: Iris",
                     "I_TOMB_FLOWER",
                     "KeyItem",
                     true
@@ -1172,7 +1172,7 @@ public partial class LaikaMod
                 "I_CAMILLA_HERBS",
                 new APLocationDefinition(
                     150010L,
-                    "Camilla's Special Herbs",
+                    "Key Item: Camilla's Special Herbs",
                     "I_CAMILLA_HERBS",
                     "KeyItem",
                     true
@@ -1182,7 +1182,7 @@ public partial class LaikaMod
                 "I_FLUTE_REED",
                 new APLocationDefinition(
                     150011L,
-                    "Flute Cleaning Brush",
+                    "Key Item: Flute Cleaning Brush",
                     "I_FLUTE_REED",
                     "KeyItem",
                     true
@@ -1192,7 +1192,7 @@ public partial class LaikaMod
                 "I_SPECIAL_BONES",
                 new APLocationDefinition(
                     150012L,
-                    "Vitamin-Coated Bones",
+                    "Key Item: Vitamin-Coated Bones",
                     "I_SPECIAL_BONES",
                     "KeyItem",
                     true
@@ -1202,7 +1202,7 @@ public partial class LaikaMod
                 "I_ERHU_STRINGS",
                 new APLocationDefinition(
                     150013L,
-                    "Erhu Strings",
+                    "Key Item: Erhu Strings",
                     "I_ERHU_STRINGS",
                     "KeyItem",
                     true
@@ -1212,7 +1212,7 @@ public partial class LaikaMod
                 "I_PARTITURES",
                 new APLocationDefinition(
                     150014L,
-                    "Sheet Music",
+                    "Key Item: Sheet Music",
                     "I_PARTITURES",
                     "KeyItem",
                     true
@@ -1222,7 +1222,7 @@ public partial class LaikaMod
                 "I_PETEY_PROPHECY",
                 new APLocationDefinition(
                     150015L,
-                    "Petey's Letter",
+                    "Key Item: Petey's Letter",
                     "I_PETEY_PROPHECY",
                     "KeyItem",
                     true
@@ -1232,7 +1232,7 @@ public partial class LaikaMod
                 "I_ANTI_NIGHTMARE",
                 new APLocationDefinition(
                     150016L,
-                    "Thistle Stems",
+                    "Key Item: Thistle Stems",
                     "I_ANTI_NIGHTMARE",
                     "KeyItem",
                     true
@@ -1242,7 +1242,7 @@ public partial class LaikaMod
                 "I_HILDA_BRAID",
                 new APLocationDefinition(
                     150017L,
-                    "Family Braid",
+                    "Key Item: Family Braid",
                     "I_HILDA_BRAID",
                     "KeyItem",
                     true
@@ -1252,7 +1252,7 @@ public partial class LaikaMod
                 "I_SUICIDE_BERRIES",
                 new APLocationDefinition(
                     150018L,
-                    "Bluelemon Berries",
+                    "Key Item: Bluelemon Berries",
                     "I_SUICIDE_BERRIES",
                     "KeyItem",
                     true
@@ -1262,7 +1262,7 @@ public partial class LaikaMod
                 "I_DICTIONARY",
                 new APLocationDefinition(
                     150019L,
-                    "Magical Book",
+                    "Key Item: Magical Book",
                     "I_DICTIONARY",
                     "KeyItem",
                     true
@@ -1272,7 +1272,7 @@ public partial class LaikaMod
                 "I_ANTI_URTICARIA",
                 new APLocationDefinition(
                     150020L,
-                    "Phalseria Sap",
+                    "Key Item: Phalseria Sap",
                     "I_ANTI_URTICARIA",
                     "KeyItem",
                     true
@@ -1282,7 +1282,7 @@ public partial class LaikaMod
                 "I_BUGS_JAR",
                 new APLocationDefinition(
                     150021L,
-                    "Jar Filled With Bugs",
+                    "Key Item: Jar Filled With Bugs",
                     "I_BUGS_JAR",
                     "KeyItem",
                     true
@@ -1292,7 +1292,7 @@ public partial class LaikaMod
                 "I_HILDA_SEASHELL",
                 new APLocationDefinition(
                     150022L,
-                    "Seashell",
+                    "Key Item: Seashell",
                     "I_HILDA_SEASHELL",
                     "KeyItem",
                     true
@@ -1302,7 +1302,7 @@ public partial class LaikaMod
                 "I_PUPPY_FLOWER",
                 new APLocationDefinition(
                     150023L,
-                    "Heartglaze Flower",
+                    "Key Item: Heartglaze Flower",
                     "I_PUPPY_FLOWER",
                     "KeyItem",
                     true
@@ -1312,7 +1312,7 @@ public partial class LaikaMod
                 "I_D_Dungeon_01_door_piece_1",
                 new APLocationDefinition(
                     150024L,
-                    "1st Key To The Pit",
+                    "Key Item: 1st Key To The Pit",
                     "I_D_Dungeon_01_door_piece_1",
                     "KeyItem",
                     true
@@ -1322,7 +1322,7 @@ public partial class LaikaMod
                 "I_D_Dungeon_01_door_piece_2",
                 new APLocationDefinition(
                     150025L,
-                    "2nd Key To The Pit",
+                    "Key Item: 2nd Key To The Pit",
                     "I_D_Dungeon_01_door_piece_2",
                     "KeyItem",
                     true
@@ -1332,7 +1332,7 @@ public partial class LaikaMod
                 "I_D_Dungeon_01_door_piece_3",
                 new APLocationDefinition(
                     150026L,
-                    "3rd Key To The Pit",
+                    "Key Item: 3rd Key To The Pit",
                     "I_D_Dungeon_01_door_piece_3",
                     "KeyItem",
                     true
@@ -1342,7 +1342,7 @@ public partial class LaikaMod
                 "I_DALIA_NOTEBOOK",
                 new APLocationDefinition(
                     150027,
-                    "Brand-New Notebook",
+                    "Key Item: Brand-New Notebook",
                     "I_DALIA_NOTEBOOK",
                     "KeyItem",
                     true
@@ -1353,7 +1353,7 @@ public partial class LaikaMod
                 "I_NAPKINS",
                 new APLocationDefinition(
                     150028,
-                    "Pads",
+                    "Key Item: Pads",
                     "I_NAPKINS",
                     "KeyItem",
                     true
@@ -1364,7 +1364,7 @@ public partial class LaikaMod
                 "I_PERIOD_MUSHROOM",
                 new APLocationDefinition(
                     150029,
-                    "Moon Blossom",
+                    "Key Item: Moon Blossom",
                     "I_PERIOD_MUSHROOM",
                     "KeyItem",
                     true
@@ -1375,7 +1375,7 @@ public partial class LaikaMod
                 "I_GIRL_DIARY",
                 new APLocationDefinition(
                     150030,
-                    "Lhey's Diary",
+                    "Key Item: Lhey's Diary",
                     "I_GIRL_DIARY",
                     "KeyItem",
                     true
@@ -1386,7 +1386,7 @@ public partial class LaikaMod
                 "I_LARGE_SEED",
                 new APLocationDefinition(
                     150031,
-                    "Large Seed",
+                    "Key Item: Large Seed",
                     "I_LARGE_SEED",
                     "KeyItem",
                     true
@@ -1397,7 +1397,7 @@ public partial class LaikaMod
                 "I_GASOLINE",
                 new APLocationDefinition(
                     150032,
-                    "Gallon of Gasoline",
+                    "Key Item: Gallon of Gasoline",
                     "I_GASOLINE",
                     "KeyItem",
                     true
@@ -1408,7 +1408,7 @@ public partial class LaikaMod
                 "I_ANTI_DIARRHOEA",
                 new APLocationDefinition(
                     150033,
-                    "Banana Leaves",
+                    "Key Item: Banana Leaves",
                     "I_ANTI_DIARRHOEA",
                     "KeyItem",
                     true
@@ -1419,7 +1419,7 @@ public partial class LaikaMod
                 "I_COUGHING_SYRUP",
                 new APLocationDefinition(
                     150034,
-                    "Ultra Fast Cough Syrup",
+                    "Key Item: Ultra Fast Cough Syrup",
                     "I_COUGHING_SYRUP",
                     "KeyItem",
                     true
@@ -1505,66 +1505,66 @@ public partial class LaikaMod
         { 1163L, () => GetRocketLauncherUnlockItem() },
 
         // ===== Special key/progression items =====
-        { 1165L, () => new PendingItem(ItemKind.KeyItem, "I_JAKOB_ASHES", 1, "Jakob's Ashes") },
-        { 1166L, () => new PendingItem(ItemKind.KeyItem, "I_GUITAR_STRINGS", 1, "Guitar Strings") },
-        { 1167L, () => new PendingItem(ItemKind.KeyItem, "I_DRUMSTICKS", 1, "Fogg's Drumstick") },
-        { 1168L, () => new PendingItem(ItemKind.KeyItem, "I_ALFREDO_COMIC", 1, "Gutsy Gus's Gushing Gunfights") },
-        { 1169L, () => new PendingItem(ItemKind.KeyItem, "I_TOMB_FLOWER", 1, "Iris") },
-        { 1170L, () => new PendingItem(ItemKind.KeyItem, "I_CAMILLA_HERBS", 1, "Camilla's Special Herbs") },
-        { 1171L, () => new PendingItem(ItemKind.KeyItem, "I_FLUTE_REED", 1, "Flute Cleaning Brush") },
-        { 1172L, () => new PendingItem(ItemKind.KeyItem, "I_SPECIAL_BONES", 1, "Vitamin-Coated Bones") },
-        { 1173L, () => new PendingItem(ItemKind.KeyItem, "I_ERHU_STRINGS", 1, "Erhu Strings") },
-        { 1174L, () => new PendingItem(ItemKind.KeyItem, "I_PARTITURES", 1, "Sheet Music") },
-        { 1175L, () => new PendingItem(ItemKind.KeyItem, "I_PETEY_PROPHECY", 1, "Petey's Letter") },
-        { 1176L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_NIGHTMARE", 1, "Thistle Stems") },
-        { 1177L, () => new PendingItem(ItemKind.KeyItem, "I_HILDA_BRAID", 1, "Family Braid") },
-        { 1178L, () => new PendingItem(ItemKind.KeyItem, "I_SUICIDE_BERRIES", 1, "Bluelemon Berries") },
-        { 1179L, () => new PendingItem(ItemKind.KeyItem, "I_DICTIONARY", 1, "Magical Book") },
-        { 1180L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_URTICARIA", 1, "Phalseria Sap") },
-        { 1181L, () => new PendingItem(ItemKind.KeyItem, "I_BUGS_JAR", 1, "Jar Filled With Bugs") },
-        { 1182L, () => new PendingItem(ItemKind.KeyItem, "I_HILDA_SEASHELL", 1, "Seashell") },
-        { 1183L, () => new PendingItem(ItemKind.KeyItem, "I_PUPPY_FLOWER", 1, "Heartglaze Flower") },
-        { 1184L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_1", 1, "1st Key To The Pit") },
-        { 1185L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_2", 1, "2nd Key To The Pit") },
-        { 1186L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_3", 1, "3rd Key To The Pit") },
-        { 1187L, () => new PendingItem(ItemKind.KeyItem, "I_DALIA_NOTEBOOK", 1, "Brand-New Notebook") },
-        { 1188L, () => new PendingItem(ItemKind.KeyItem, "I_NAPKINS", 1, "Pads") },
-        { 1189L, () => new PendingItem(ItemKind.KeyItem, "I_PERIOD_MUSHROOM", 1, "Moon Blossom") },
-        { 1190L, () => new PendingItem(ItemKind.KeyItem, "I_GIRL_DIARY", 1, "Lhey's Diary") },
-        { 1191L, () => new PendingItem(ItemKind.KeyItem, "I_LARGE_SEED", 1, "Large Seed") },
-        { 1192L, () => new PendingItem(ItemKind.KeyItem, "I_GASOLINE", 1, "Gallon of Gasoline") },
-        { 1193L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_DIARRHOEA", 1, "Banana Leaves") },
-        { 1194L, () => new PendingItem(ItemKind.KeyItem, "I_COUGHING_SYRUP", 1, "Ultra Fast Cough Syrup") },
+        { 1165L, () => new PendingItem(ItemKind.KeyItem, "I_JAKOB_ASHES", 1, "Key Item: Jakob's Ashes") },
+        { 1166L, () => new PendingItem(ItemKind.KeyItem, "I_GUITAR_STRINGS", 1, "Key Item: Guitar Strings") },
+        { 1167L, () => new PendingItem(ItemKind.KeyItem, "I_DRUMSTICKS", 1, "Key Item: Fogg's Drumstick") },
+        { 1168L, () => new PendingItem(ItemKind.KeyItem, "I_ALFREDO_COMIC", 1, "Key Item: Gutsy Gus's Gushing Gunfights") },
+        { 1169L, () => new PendingItem(ItemKind.KeyItem, "I_TOMB_FLOWER", 1, "Key Item: Iris") },
+        { 1170L, () => new PendingItem(ItemKind.KeyItem, "I_CAMILLA_HERBS", 1, "Key Item: Camilla's Special Herbs") },
+        { 1171L, () => new PendingItem(ItemKind.KeyItem, "I_FLUTE_REED", 1, "Key Item: Flute Cleaning Brush") },
+        { 1172L, () => new PendingItem(ItemKind.KeyItem, "I_SPECIAL_BONES", 1, "Key Item: Vitamin-Coated Bones") },
+        { 1173L, () => new PendingItem(ItemKind.KeyItem, "I_ERHU_STRINGS", 1, "Key Item: Erhu Strings") },
+        { 1174L, () => new PendingItem(ItemKind.KeyItem, "I_PARTITURES", 1, "Key Item: Sheet Music") },
+        { 1175L, () => new PendingItem(ItemKind.KeyItem, "I_PETEY_PROPHECY", 1, "Key Item: Petey's Letter") },
+        { 1176L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_NIGHTMARE", 1, "Key Item: Thistle Stems") },
+        { 1177L, () => new PendingItem(ItemKind.KeyItem, "I_HILDA_BRAID", 1, "Key Item: Family Braid") },
+        { 1178L, () => new PendingItem(ItemKind.KeyItem, "I_SUICIDE_BERRIES", 1, "Key Item: Bluelemon Berries") },
+        { 1179L, () => new PendingItem(ItemKind.KeyItem, "I_DICTIONARY", 1, "Key Item: Magical Book") },
+        { 1180L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_URTICARIA", 1, "Key Item: Phalseria Sap") },
+        { 1181L, () => new PendingItem(ItemKind.KeyItem, "I_BUGS_JAR", 1, "Key Item: Jar Filled With Bugs") },
+        { 1182L, () => new PendingItem(ItemKind.KeyItem, "I_HILDA_SEASHELL", 1, "Key Item: Seashell") },
+        { 1183L, () => new PendingItem(ItemKind.KeyItem, "I_PUPPY_FLOWER", 1, "Key Item: Heartglaze Flower") },
+        { 1184L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_1", 1, "Key Item: 1st Key To The Pit") },
+        { 1185L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_2", 1, "Key Item: 2nd Key To The Pit") },
+        { 1186L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_door_piece_3", 1, "Key Item: 3rd Key To The Pit") },
+        { 1187L, () => new PendingItem(ItemKind.KeyItem, "I_DALIA_NOTEBOOK", 1, "Key Item: Brand-New Notebook") },
+        { 1188L, () => new PendingItem(ItemKind.KeyItem, "I_NAPKINS", 1, "Key Item: Pads") },
+        { 1189L, () => new PendingItem(ItemKind.KeyItem, "I_PERIOD_MUSHROOM", 1, "Key Item: Moon Blossom") },
+        { 1190L, () => new PendingItem(ItemKind.KeyItem, "I_GIRL_DIARY", 1, "Key Item: Lhey's Diary") },
+        { 1191L, () => new PendingItem(ItemKind.KeyItem, "I_LARGE_SEED", 1, "Key Item: Large Seed") },
+        { 1192L, () => new PendingItem(ItemKind.KeyItem, "I_GASOLINE", 1, "Key Item: Gallon of Gasoline") },
+        { 1193L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_DIARRHOEA", 1, "Key Item: Banana Leaves") },
+        { 1194L, () => new PendingItem(ItemKind.KeyItem, "I_COUGHING_SYRUP", 1, "Key Item: Ultra Fast Cough Syrup") },
 
 
         // ===== Puppy gifts =====
-        { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Toy Bike") },
-        { 1901L, () => new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Handheld Console") },
-        { 1902L, () => new PendingItem(ItemKind.PuppyTreat, "I_PLANT_PUPPY", 1, "Tangerine Tree") },
-        { 1903L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_ANIMAL", 1, "Toy Animal") },
-        { 1904L, () => new PendingItem(ItemKind.PuppyTreat, "I_BOOK_MOTHER", 1, "Great-Great-Grandma's Novella") },
-        { 1905L, () => new PendingItem(ItemKind.PuppyTreat, "I_DREAMCATCHER", 1, "Dreamcatcher") },
-        { 1906L, () => new PendingItem(ItemKind.PuppyTreat, "I_UKULELE", 1, "Ukulele") },
+        { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Puppy Gift: Toy Bike") },
+        { 1901L, () => new PendingItem(ItemKind.PuppyTreat, "I_GAMEBOY", 1, "Puppy Gift: Handheld Console") },
+        { 1902L, () => new PendingItem(ItemKind.PuppyTreat, "I_PLANT_PUPPY", 1, "Puppy Gift: Tangerine Tree") },
+        { 1903L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_ANIMAL", 1, "Puppy Gift: Toy Animal") },
+        { 1904L, () => new PendingItem(ItemKind.PuppyTreat, "I_BOOK_MOTHER", 1, "Puppy Gift: Great-Great-Grandma's Novella") },
+        { 1905L, () => new PendingItem(ItemKind.PuppyTreat, "I_DREAMCATCHER", 1, "Puppy Gift: Dreamcatcher") },
+        { 1906L, () => new PendingItem(ItemKind.PuppyTreat, "I_UKULELE", 1, "Puppy Gift: Ukulele") },
 
         // ===== Currency =====
         { 1907L, () => new PendingItem(ItemKind.Currency, "VISCERA_100", 100, "Viscera x100") },
 
         // ===== Ingredients =====
-        { 1950L, () => new PendingItem(ItemKind.Ingredient, "I_C_BEANS", 1, "Beans") },
-        { 1951L, () => new PendingItem(ItemKind.Ingredient, "I_C_CORN", 1, "Corn") },
-        { 1952L, () => new PendingItem(ItemKind.Ingredient, "I_C_WORMS", 1, "Worms") },
-        { 1953L, () => new PendingItem(ItemKind.Ingredient, "I_C_ONION", 1, "Onion") },
-        { 1954L, () => new PendingItem(ItemKind.Ingredient, "I_C_CHILLY", 1, "Chilly Pepper") },
-        { 1955L, () => new PendingItem(ItemKind.Ingredient, "I_C_GHOSTPEPPER", 1, "Ghost Pepper") },
-        { 1956L, () => new PendingItem(ItemKind.Ingredient, "I_C_LEMON", 1, "Lemon") },
-        { 1957L, () => new PendingItem(ItemKind.Ingredient, "I_C_GARLIC", 1, "Garlic") },
-        { 1958L, () => new PendingItem(ItemKind.Ingredient, "I_C_MEAT", 1, "Meat") },
-        { 1959L, () => new PendingItem(ItemKind.Ingredient, "I_C_JACKFRUIT", 1, "Jackfruit") },
-        { 1960L, () => new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Sardine") },
-        { 1961L, () => new PendingItem(ItemKind.Ingredient, "I_C_COCO", 1, "Coco") },
-        { 1962L, () => new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 1, "Coffee Beans") },
-        { 1963L, () => new PendingItem(ItemKind.Ingredient, "I_C_WHISKEY", 1, "Whiskey") },
-        { 1964L, () => new PendingItem(ItemKind.Ingredient, "I_C_TOMATO", 1, "Tomato") },
+        { 1950L, () => new PendingItem(ItemKind.Ingredient, "I_C_BEANS", 1, "Ingredient: Beans") },
+        { 1951L, () => new PendingItem(ItemKind.Ingredient, "I_C_CORN", 1, "Ingredient: Corn") },
+        { 1952L, () => new PendingItem(ItemKind.Ingredient, "I_C_WORMS", 1, "Ingredient: Worms") },
+        { 1953L, () => new PendingItem(ItemKind.Ingredient, "I_C_ONION", 1, "Ingredient: Onion") },
+        { 1954L, () => new PendingItem(ItemKind.Ingredient, "I_C_CHILLY", 1, "Ingredient: Chilly Pepper") },
+        { 1955L, () => new PendingItem(ItemKind.Ingredient, "I_C_GHOSTPEPPER", 1, "Ingredient: Ghost Pepper") },
+        { 1956L, () => new PendingItem(ItemKind.Ingredient, "I_C_LEMON", 1, "Ingredient: Lemon") },
+        { 1957L, () => new PendingItem(ItemKind.Ingredient, "I_C_GARLIC", 1, "Ingredient: Garlic") },
+        { 1958L, () => new PendingItem(ItemKind.Ingredient, "I_C_MEAT", 1, "Ingredient: Meat") },
+        { 1959L, () => new PendingItem(ItemKind.Ingredient, "I_C_JACKFRUIT", 1, "Ingredient: Jackfruit") },
+        { 1960L, () => new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Ingredient: Sardine") },
+        { 1961L, () => new PendingItem(ItemKind.Ingredient, "I_C_COCO", 1, "Ingredient: Coco") },
+        { 1962L, () => new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 1, "Ingredient: Coffee Beans") },
+        { 1963L, () => new PendingItem(ItemKind.Ingredient, "I_C_WHISKEY", 1, "Ingredient: Whiskey") },
+        { 1964L, () => new PendingItem(ItemKind.Ingredient, "I_C_TOMATO", 1, "Ingredient: Tomato") },
 
         // ===== Cassettes =====
         { 1970L, () => new PendingItem(ItemKind.Collectible, "I_CASSETTE_1", 1, "Cassette: Bloody Sunset") },

@@ -123,186 +123,186 @@ ITEM_TABLE = {
     },
 
     # ===== Special key/progression items =====
-    "Jakob's Ashes": {
+    "Key Item: Jakob's Ashes": {
         "id": 1165,
         "classification": ItemClassification.progression,
         "internal_id": "I_JAKOB_ASHES",
         "kind": "KeyItem",
     },
-    "Guitar Strings": {
+    "Key Item: Guitar Strings": {
         "id": 1166,
         "classification": ItemClassification.progression,
         "internal_id": "I_GUITAR_STRINGS",
         "kind": "KeyItem",
     },
-    "Fogg's Drumstick": {
+    "Key Item: Fogg's Drumstick": {
         "id": 1167,
         "classification": ItemClassification.progression,
         "internal_id": "I_DRUMSTICKS",
         "kind": "KeyItem",
     },
-    "Gutsy Gus's Gushing Gunfights": {
+    "Key Item: Gutsy Gus's Gushing Gunfights": {
         "id": 1168,
         "classification": ItemClassification.progression,
         "internal_id": "I_ALFREDO_COMIC",
         "kind": "KeyItem",
     },
-    "Iris": {
+    "Key Item: Iris": {
         "id": 1169,
         "classification": ItemClassification.progression,
         "internal_id": "I_TOMB_FLOWER",
         "kind": "KeyItem",
     },
-    "Camilla's Special Herbs": {
+    "Key Item: Camilla's Special Herbs": {
         "id": 1170,
         "classification": ItemClassification.progression,
         "internal_id": "I_CAMILLA_HERBS",
         "kind": "KeyItem",
     },
-    "Flute Cleaning Brush": {
+    "Key Item: Flute Cleaning Brush": {
         "id": 1171,
         "classification": ItemClassification.progression,
         "internal_id": "I_FLUTE_REED",
         "kind": "KeyItem",
     },
-    "Vitamin-Coated Bones": {
+    "Key Item: Vitamin-Coated Bones": {
         "id": 1172,
         "classification": ItemClassification.progression,
         "internal_id": "I_SPECIAL_BONES",
         "kind": "KeyItem",
     },
-    "Erhu Strings": {
+    "Key Item: Erhu Strings": {
         "id": 1173,
         "classification": ItemClassification.progression,
         "internal_id": "I_ERHU_STRINGS",
         "kind": "KeyItem",
     },
-    "Sheet Music": {
+    "Key Item: Sheet Music": {
         "id": 1174,
         "classification": ItemClassification.progression,
         "internal_id": "I_PARTITURES",
         "kind": "KeyItem",
     },
-    "Petey's Letter": {
+    "Key Item: Petey's Letter": {
         "id": 1175,
         "classification": ItemClassification.progression,
         "internal_id": "I_PETEY_PROPHECY",
         "kind": "KeyItem",
     },
-    "Thistle Stems": {
+    "Key Item: Thistle Stems": {
         "id": 1176,
         "classification": ItemClassification.progression,
         "internal_id": "I_ANTI_NIGHTMARE",
         "kind": "KeyItem",
     },
-    "Family Braid": {
+    "Key Item: Family Braid": {
         "id": 1177,
         "classification": ItemClassification.progression,
         "internal_id": "I_HILDA_BRAID",
         "kind": "KeyItem",
     },
-    "Bluelemon Berries": {
+    "Key Item: Bluelemon Berries": {
         "id": 1178,
         "classification": ItemClassification.progression,
         "internal_id": "I_SUICIDE_BERRIES",
         "kind": "KeyItem",
     },
-    "Magical Book": {
+    "Key Item: Magical Book": {
         "id": 1179,
         "classification": ItemClassification.progression,
         "internal_id": "I_DICTIONARY",
         "kind": "KeyItem",
     },
-    "Phalseria Sap": {
+    "Key Item: Phalseria Sap": {
         "id": 1180,
         "classification": ItemClassification.progression,
         "internal_id": "I_ANTI_URTICARIA",
         "kind": "KeyItem",
     },
-    "Jar Filled With Bugs": {
+    "Key Item: Jar Filled With Bugs": {
         "id": 1181,
         "classification": ItemClassification.progression,
         "internal_id": "I_BUGS_JAR",
         "kind": "KeyItem",
     },
-    "Seashell": {
+    "Key Item: Seashell": {
         "id": 1182,
         "classification": ItemClassification.progression,
         "internal_id": "I_HILDA_SEASHELL",
         "kind": "KeyItem",
     },
-    "Heartglaze Flower": {
+    "Key Item: Heartglaze Flower": {
         "id": 1183,
         "classification": ItemClassification.progression,
         "internal_id": "I_PUPPY_FLOWER",
         "kind": "KeyItem",
     },
-    "1st Key To The Pit": {
+    "Key Item: 1st Key To The Pit": {
         "id": 1184,
         "classification": ItemClassification.progression,
         "internal_id": "I_D_Dungeon_01_door_piece_1",
         "kind": "KeyItem",
     },
-    "2nd Key To The Pit": {
+    "Key Item: 2nd Key To The Pit": {
         "id": 1185,
         "classification": ItemClassification.progression,
         "internal_id": "I_D_Dungeon_01_door_piece_2",
         "kind": "KeyItem",
     },
-    "3rd Key To The Pit": {
+    "Key Item: 3rd Key To The Pit": {
         "id": 1186,
         "classification": ItemClassification.progression,
         "internal_id": "I_D_Dungeon_01_door_piece_3",
         "kind": "KeyItem",
     },
-     "Brand-New Notebook": {
+    "Key Item: Brand-New Notebook": {
         "id": 1187,
         "classification": ItemClassification.progression,
         "internal_id": "I_DALIA_NOTEBOOK",
         "kind": "KeyItem",
-    },   
-     "Pads": {
+    },
+    "Key Item: Pads": {
         "id": 1188,
         "classification": ItemClassification.progression,
         "internal_id": "I_NAPKINS",
         "kind": "KeyItem",
-    },   
-     "Moon Blossom": {
+    },
+    "Key Item: Moon Blossom": {
         "id": 1189,
         "classification": ItemClassification.progression,
         "internal_id": "I_PERIOD_MUSHROOM",
         "kind": "KeyItem",
-    },   
-     "Lhey's Diary": {
+    },
+    "Key Item: Lhey's Diary": {
         "id": 1190,
         "classification": ItemClassification.progression,
         "internal_id": "I_GIRL_DIARY",
         "kind": "KeyItem",
-    },   
-     "Large Seed": {
+    },
+    "Key Item: Large Seed": {
         "id": 1191,
         "classification": ItemClassification.progression,
         "internal_id": "I_LARGE_SEED",
         "kind": "KeyItem",
-    },   
-     "Gallon of Gasoline": {
+    },
+    "Key Item: Gallon of Gasoline": {
         "id": 1192,
         "classification": ItemClassification.progression,
         "internal_id": "I_GASOLINE",
         "kind": "KeyItem",
-    },   
-     "Banana Leaves": {
+    },
+    "Key Item: Banana Leaves": {
         "id": 1193,
         "classification": ItemClassification.progression,
         "internal_id": "I_ANTI_DIARRHOEA",
         "kind": "KeyItem",
-    },   
-     "Ultra Fast Cough Syrup": {
+    },
+    "Key Item: Ultra Fast Cough Syrup": {
         "id": 1194,
         "classification": ItemClassification.progression,
         "internal_id": "I_COUGHING_SYRUP",
         "kind": "KeyItem",
-    },   
+    },
     # ===== Crafting-mode weapon material items =====
     "Rusty Spring (Shotgun Material)": {
         "id": 1150,
@@ -331,43 +331,43 @@ ITEM_TABLE = {
 
     # ===== Safe filler items already supported by the client =====
     # Puppy gifts are nice first-pass filler because the client already has a dedicated grant path for them.
-    "Toy Bike": {
+    "Puppy Gift: Toy Bike": {
         "id": 1900,
         "classification": ItemClassification.filler,
         "internal_id": "I_TOY_BIKE",
         "kind": "PuppyTreat",
     },
-    "Handheld Console": {
+    "Puppy Gift: Handheld Console": {
         "id": 1901,
         "classification": ItemClassification.filler,
         "internal_id": "I_GAMEBOY",
         "kind": "PuppyTreat",
     },
-    "Tangerine Tree": {
+    "Puppy Gift: Tangerine Tree": {
         "id": 1902,
         "classification": ItemClassification.filler,
         "internal_id": "I_PLANT_PUPPY",
         "kind": "PuppyTreat",
     },
-    "Toy Animal": {
+    "Puppy Gift: Toy Animal": {
         "id": 1903,
         "classification": ItemClassification.filler,
         "internal_id": "I_TOY_ANIMAL",
         "kind": "PuppyTreat",
     },
-    "Great-Great-Grandma's Novella": {
+    "Puppy Gift: Great-Great-Grandma's Novella": {
         "id": 1904,
         "classification": ItemClassification.filler,
         "internal_id": "I_BOOK_MOTHER",
         "kind": "PuppyTreat",
     },
-    "Dreamcatcher": {
+    "Puppy Gift: Dreamcatcher": {
         "id": 1905,
         "classification": ItemClassification.filler,
         "internal_id": "I_DREAMCATCHER",
         "kind": "PuppyTreat",
     },
-    "Ukulele": {
+    "Puppy Gift: Ukulele": {
         "id": 1906,
         "classification": ItemClassification.filler,
         "internal_id": "I_UKULELE",
@@ -383,91 +383,91 @@ ITEM_TABLE = {
         "kind": "Currency",
     },
     # Ingredient filler
-    "Beans": {
+    "Ingredient: Beans": {
         "id": 1950,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_BEANS",
         "kind": "Ingredient",
     },
-    "Corn": {
+    "Ingredient: Corn": {
         "id": 1951,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_CORN",
         "kind": "Ingredient",
     },
-    "Worms": {
+    "Ingredient: Worms": {
         "id": 1952,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_WORMS",
         "kind": "Ingredient",
     },
-    "Onion": {
+    "Ingredient: Onion": {
         "id": 1953,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_ONION",
         "kind": "Ingredient",
     },
-    "Chilly Pepper": {
+    "Ingredient: Chilly Pepper": {
         "id": 1954,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_CHILLY",
         "kind": "Ingredient",
     },
-    "Ghost Pepper": {
+    "Ingredient: Ghost Pepper": {
         "id": 1955,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_GHOSTPEPPER",
         "kind": "Ingredient",
     },
-    "Lemon": {
+    "Ingredient: Lemon": {
         "id": 1956,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_LEMON",
         "kind": "Ingredient",
     },
-    "Garlic": {
+    "Ingredient: Garlic": {
         "id": 1957,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_GARLIC",
         "kind": "Ingredient",
     },
-    "Meat": {
+    "Ingredient: Meat": {
         "id": 1958,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_MEAT",
         "kind": "Ingredient",
     },
-    "Jackfruit": {
+    "Ingredient: Jackfruit": {
         "id": 1959,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_JACKFRUIT",
         "kind": "Ingredient",
     },
-    "Sardine": {
+    "Ingredient: Sardine": {
         "id": 1960,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_SARDINE",
         "kind": "Ingredient",
     },
-    "Coco": {
+    "Ingredient: Coco": {
         "id": 1961,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_COCO",
         "kind": "Ingredient",
     },
-    "Coffee Beans": {
+    "Ingredient: Coffee Beans": {
         "id": 1962,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_COFFEE",
         "kind": "Ingredient",
     },
-    "Whiskey": {
+    "Ingredient: Whiskey": {
         "id": 1963,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_WHISKEY",
         "kind": "Ingredient",
     },
-    "Tomato": {
+    "Ingredient: Tomato": {
         "id": 1964,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_TOMATO",

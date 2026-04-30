@@ -1,5 +1,5 @@
 # Player name shown in the multiworld
-name: Seras
+name: Wastelander
 
 # The APWorld game name must match the world exactly
 game: "Laika: Aged Through Blood"
@@ -21,13 +21,15 @@ game: "Laika: Aged Through Blood"
 
   # How major weapons are represented in the seed.
   # "direct" = you receive the actual weapon from Archipelago.
-  # "crafting" = you receive that weapon's unique crafting material instead.
+  # "crafting" = you receive that weapon's unique crafting material and blueprint instead.
   # Crossbow currently stays direct even in crafting mode.
 
   weapon_mode: direct
 
   # If true, your death can be sent to other connected players,
-  # and their deaths can affect you, once live networking is in place.
+  # and their deaths can affect you. WARNING. MAY BREAK YOUR GAME
+  # WHEN ENABLED. USE WITH CAUTION.
+  # These death link options can also be toggled in game!
 
   death_link: false
 

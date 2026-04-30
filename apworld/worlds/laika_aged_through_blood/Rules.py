@@ -47,7 +47,7 @@ def set_rules(world):
         loc("Quest Complete: A Heart for Poochie"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-            and has(state, player, "Heartglaze Flower")
+            and has(state, player, "Key Item: Heartglaze Flower")
         )
     )
 
@@ -65,7 +65,7 @@ def set_rules(world):
         loc("Quest Complete: The Remnants"),
         lambda state: (
             post_rage(state)
-            and has(state, player, "Jakob's Ashes")
+            and has(state, player, "Key Item: Jakob's Ashes")
         )
     )
 
@@ -73,7 +73,7 @@ def set_rules(world):
         loc("Quest Complete: Shake Off the Dead Leaves"),
         lambda state: (
             post_rage(state)
-            and has(state, player, "Jakob's Ashes")
+            and has(state, player, "Key Item: Jakob's Ashes")
         )
     )
 
@@ -83,7 +83,7 @@ def set_rules(world):
     )
 
     set_rule(
-        loc("Heartglaze Flower"),
+        loc("Key Item: Heartglaze Flower"),
         lambda state: can_reach_loc(state, player, "Boss Defeated: A Long Lost Woodcrawler")
     )
 
@@ -103,7 +103,7 @@ def set_rules(world):
     )
 
     set_rule(
-        loc("Flute Cleaning Brush"),
+        loc("Key Item: Flute Cleaning Brush"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_shotgun_access(state, player)
@@ -153,7 +153,7 @@ def set_rules(world):
         lambda state: (
             war_chapter(state)
             and has_shotgun_access(state, player)
-            and has(state, player, "Brand-New Notebook")
+            and has(state, player, "Key Item: Brand-New Notebook")
         )
     )
 
@@ -161,9 +161,9 @@ def set_rules(world):
         loc("Boss Defeated: A Caterpillar Made of Sadness"),
         lambda state: (
             war_chapter(state)
-            and has(state, player, "1st Key To The Pit")
-            and has(state, player, "2nd Key To The Pit")
-            and has(state, player, "3rd Key To The Pit")
+            and has(state, player, "Key Item: 1st Key To The Pit")
+            and has(state, player, "Key Item: 2nd Key To The Pit")
+            and has(state, player, "Key Item: 3rd Key To The Pit")
         )
     )
 
@@ -215,7 +215,7 @@ def set_rules(world):
         loc("Quest Complete: A New Sheriff in Town"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Diplomacy")
-            and has(state, player, "Gutsy Gus's Gushing Gunfights")
+            and has(state, player, "Key Item: Gutsy Gus's Gushing Gunfights")
         )
     )
 
@@ -223,7 +223,7 @@ def set_rules(world):
         loc("Quest Complete: A Little Tomb Stone"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Diplomacy")
-            and has(state, player, "Iris")
+            and has(state, player, "Key Item: Iris")
         )
     )
 
@@ -231,8 +231,8 @@ def set_rules(world):
         loc("Quest Complete: First Blood"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: The Big Tree")
-            and has(state, player, "Pads")
-            and has(state, player, "Moon Blossom")
+            and has(state, player, "Key Item: Pads")
+            and has(state, player, "Key Item: Moon Blossom")
         )
     )
 
@@ -241,7 +241,7 @@ def set_rules(world):
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: The Big Tree")
             and has_shotgun_access(state, player)
-            and has(state, player, "Jar Filled With Bugs")
+            and has(state, player, "Key Item: Jar Filled With Bugs")
         )
     )
 
@@ -250,7 +250,7 @@ def set_rules(world):
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: The Big Tree")
             and has_shotgun_access(state, player)
-            and has(state, player, "Vitamin-Coated Bones")
+            and has(state, player, "Key Item: Vitamin-Coated Bones")
         )
     )
 
@@ -259,7 +259,7 @@ def set_rules(world):
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Diplomacy")
             and has_shotgun_access(state, player)
-            and has(state, player, "Camilla's Special Herbs")
+            and has(state, player, "Key Item: Camilla's Special Herbs")
         )
     )
 
@@ -267,7 +267,7 @@ def set_rules(world):
         loc("Quest Complete: From Mother to Daughter"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has(state, player, "Family Braid")
+            and has(state, player, "Key Item: Family Braid")
         )
     )
 
@@ -277,7 +277,7 @@ def set_rules(world):
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
             and has_shotgun_access(state, player)
             and has(state, player, "Hook (Bike Upgrade)")
-            and has(state, player, "Petey's Letter")
+            and has(state, player, "Key Item: Petey's Letter")
         )
     )
 
@@ -286,7 +286,7 @@ def set_rules(world):
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
             and has_shotgun_access(state, player)
-            and has(state, player, "Bluelemon Berries")
+            and has(state, player, "Key Item: Bluelemon Berries")
         )
     )
 
@@ -306,7 +306,7 @@ def set_rules(world):
         loc("Quest Complete: Just a little girl"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Childless")
-            and has(state, player, "Lhey's Diary")
+            and has(state, player, "Key Item: Lhey's Diary")
         )
     )
 
@@ -314,7 +314,7 @@ def set_rules(world):
         loc("Quest Complete: We'll Never Know"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Childless")
-            and has(state, player, "Large Seed")
+            and has(state, player, "Key Item: Large Seed")
         )
     )
 
@@ -322,7 +322,7 @@ def set_rules(world):
         loc("Quest Complete: High Spirits"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Childless")
-            and has(state, player, "Gallon of Gasoline")
+            and has(state, player, "Key Item: Gallon of Gasoline")
         )
     )
 
@@ -331,7 +331,7 @@ def set_rules(world):
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Childless")
             and has_shotgun_access(state, player)
-            and has(state, player, "Seashell")
+            and has(state, player, "Key Item: Seashell")
         )
     )
 
@@ -340,7 +340,7 @@ def set_rules(world):
         loc("Quest Complete: Worse than Nightmares"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has(state, player, "Thistle Stems")
+            and has(state, player, "Key Item: Thistle Stems")
         )
     )
 
@@ -348,7 +348,7 @@ def set_rules(world):
         loc("Quest Complete: Worse than Hives"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has(state, player, "Phalseria Sap")
+            and has(state, player, "Key Item: Phalseria Sap")
         )
     )
 
@@ -356,7 +356,7 @@ def set_rules(world):
         loc("Quest Complete: Worse than Stomach Flu"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has(state, player, "Banana Leaves")
+            and has(state, player, "Key Item: Banana Leaves")
         )
     )
 
@@ -365,7 +365,7 @@ def set_rules(world):
         loc("Quest Complete: Fogg's Only Wish"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has(state, player, "Fogg's Drumstick")
+            and has(state, player, "Key Item: Fogg's Drumstick")
         )
     )
 
@@ -375,7 +375,7 @@ def set_rules(world):
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has(state, player, "Hook (Bike Upgrade)")
             and has_shotgun_access(state, player)
-            and has(state, player, "Erhu Strings")
+            and has(state, player, "Key Item: Erhu Strings")
         )
     )
 
@@ -384,7 +384,7 @@ def set_rules(world):
         lambda state: (
             war_chapter(state)
             and has_shotgun_access(state, player)
-            and has(state, player, "Flute Cleaning Brush")
+            and has(state, player, "Key Item: Flute Cleaning Brush")
         )
     )
 
@@ -392,7 +392,7 @@ def set_rules(world):
         loc("Quest Complete: Desperately in Need of Music"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has(state, player, "Guitar Strings")
+            and has(state, player, "Key Item: Guitar Strings")
         )
     )
 
@@ -400,7 +400,7 @@ def set_rules(world):
         loc("Quest Complete: Sober Up"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has(state, player, "Sheet Music")
+            and has(state, player, "Key Item: Sheet Music")
         )
     )
 
@@ -408,7 +408,7 @@ def set_rules(world):
         loc("Quest Complete: Oooo Ooo Oo O Ooo"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has(state, player, "Ultra Fast Cough Syrup")
+            and has(state, player, "Key Item: Ultra Fast Cough Syrup")
         )
     )
 
@@ -601,64 +601,64 @@ def set_rules(world):
 
     # Post Rage and Sorrow key items
     for name in [
-        "Jakob's Ashes",
-        "Guitar Strings",
+        "Key Item: Jakob's Ashes",
+        "Key Item: Guitar Strings",
     ]:
         set_rule(loc(name), lambda state: post_rage(state))
 
     # War chapter key items
     for name in [
-        "Fogg's Drumstick",
-        "Gutsy Gus's Gushing Gunfights",
-        "Iris",
-        "Erhu Strings",
-        "Sheet Music",
-        "Ultra Fast Cough Syrup",
-        "Brand-New Notebook",
-        "1st Key To The Pit",
-        "2nd Key To The Pit",
-        "3rd Key To The Pit",
+        "Key Item: Fogg's Drumstick",
+        "Key Item: Gutsy Gus's Gushing Gunfights",
+        "Key Item: Iris",
+        "Key Item: Erhu Strings",
+        "Key Item: Sheet Music",
+        "Key Item: Ultra Fast Cough Syrup",
+        "Key Item: Brand-New Notebook",
+        "Key Item: 1st Key To The Pit",
+        "Key Item: 2nd Key To The Pit",
+        "Key Item: 3rd Key To The Pit",
     ]:
         set_rule(loc(name), lambda state: war_chapter_access(state))
 
     # Diplomacy side quest key items
     for name in [
-        "Petey's Letter",
+        "Key Item: Petey's Letter",
     ]:
         set_rule(loc(name), lambda state: post_diplomacy(state))
 
     # The Big Tree side quest key items
     for name in [
-        "Camilla's Special Herbs",
-        "Vitamin-Coated Bones",
-        "Jar Filled With Bugs",
-        "Pads",
-        "Moon Blossom",
+        "Key Item: Camilla's Special Herbs",
+        "Key Item: Vitamin-Coated Bones",
+        "Key Item: Jar Filled With Bugs",
+        "Key Item: Pads",
+        "Key Item: Moon Blossom",
     ]:
         set_rule(loc(name), lambda state: post_big_tree(state))
 
     # Radio Silence side quest key items
     for name in [
-        "Family Braid",
-        "Bluelemon Berries",
-        "Thistle Stems",
-        "Phalseria Sap",
-        "Banana Leaves",
+        "Key Item: Family Braid",
+        "Key Item: Bluelemon Berries",
+        "Key Item: Thistle Stems",
+        "Key Item: Phalseria Sap",
+        "Key Item: Banana Leaves",
     ]:
         set_rule(loc(name), lambda state: post_radio_silence(state))
 
     # Childless side quest key items
     for name in [
-        "Lhey's Diary",
-        "Large Seed",
-        "Gallon of Gasoline",
-        "Seashell",
+        "Key Item: Lhey's Diary",
+        "Key Item: Large Seed",
+        "Key Item: Gallon of Gasoline",
+        "Key Item: Seashell",
     ]:
         set_rule(loc(name), lambda state: post_childless(state))
 
     # Hook / Big Tree area key items
     set_rule(
-        loc("Magical Book"),
+        loc("Key Item: Magical Book"),
         lambda state: post_big_tree(state) and has_hook_access(state)
     )
 
