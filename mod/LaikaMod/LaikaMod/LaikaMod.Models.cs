@@ -5,8 +5,8 @@ using System.Collections.Generic;
 public class APConnectionState
 {
     public string Host = "archipelago.gg";
-    public int Port = 36979;
-    public string SlotName = "Seras";
+    public int Port = 12345;
+    public string SlotName = "Wastelander";
     public string Password = "";
 
     public bool IsConnected = false;
@@ -25,6 +25,9 @@ public class APSaveState
     public string SessionIdentityKey = "";
     public string SessionSeedName = "";
 
+    public List<string> ReceivedAPItemKeys = new List<string>();
+    public List<string> VanillaConsumedAPItemKeys = new List<string>();
+
     public APConnectionState Connection = new APConnectionState();
 
     public APWorldOptions Options = new APWorldOptions();
@@ -35,10 +38,18 @@ public class APSaveState
     public int LastProcessedReceivedItemIndex = 0;
     public bool GoalReported = false;
 
+    public bool HarpoonPieceDeferredDeliveryNoticeShown = false;
+
     public List<long> SentLocationIds = new List<long>();
 
     public int SessionDeaths = 0;
     public int DeathsSinceLastDeathLink = 0;
+
+    public List<string> APUnlockedMapAreaIds { get; set; } = new List<string>();
+
+    public bool HarpoonPiece1ReceivedFromAP { get; set; } = false;
+    public bool HarpoonPiece2ReceivedFromAP { get; set; } = false;
+    public bool HarpoonPieceDeferredNoticeShown { get; set; } = false;
 }
 
 public enum ItemKind
@@ -75,6 +86,7 @@ public class PendingItem
     public string Id { get; private set; }
     public int Amount { get; private set; }
     public string DisplayName { get; private set; }
+    public long ApItemId { get; private set; } = -1;
 
     public PendingItem(ItemKind kind, string id, int amount, string displayName)
     {
@@ -84,6 +96,11 @@ public class PendingItem
         DisplayName = displayName;
     }
 
+    public void SetApItemId(long apItemId)
+    {
+        ApItemId = apItemId;
+    }
+
     public void AddAmount(int amount)
     {
         Amount += amount;
@@ -91,7 +108,7 @@ public class PendingItem
 
     public override string ToString()
     {
-        return $"Kind={Kind}, Id={Id}, Amount={Amount}, DisplayName={DisplayName}";
+        return $"Kind={Kind}, Id={Id}, Amount={Amount}, DisplayName={DisplayName}, ApItemId={ApItemId}";
     }
 }
 

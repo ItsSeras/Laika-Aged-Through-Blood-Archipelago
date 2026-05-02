@@ -132,6 +132,9 @@ class LaikaWorld(World):
             "Key Item: Gallon of Gasoline",
             "Key Item: Banana Leaves",
             "Key Item: Ultra Fast Cough Syrup",
+            "Key Item: Carved Whale Tooth",
+            "Key Item: Long Rope",
+            "Key Item: Mountainheart Card",
         ]
 
         for item_name in progression_key_items:

@@ -1,13 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Reflection;
+﻿using BepInEx;
 using Laika.Cassettes;
 using Laika.Economy;
 using Laika.Inventory;
+using Laika.Persistence;
 using Laika.Quests;
 using Laika.Quests.Goals;
-using Laika.Persistence;
-using BepInEx;
+using System;
+using System.Collections.Generic;
+using System.Reflection;
+using UnityEngine;
 
 // Pending item queue, item granting, reconciliation, and DeathLink helpers.
 public partial class LaikaMod
@@ -102,8 +103,7 @@ public partial class LaikaMod
                     queuedItem.Kind == ItemKind.WeaponUpgrade &&
                     queuedItem.Id == item.Id)
                 {
-                    queuedItem.AddAmount(item.Amount);
-                    LogInfo($"QUEUE: merged pending weapon upgrade -> {queuedItem}");
+                    LogInfo($"QUEUE: weapon upgrade already pending, not stacking duplicate reconcile entry -> {queuedItem}");
                     return;
                 }
             }
@@ -159,7 +159,25 @@ public partial class LaikaMod
                     if (granted)
                     {
                         LaikaMod.LogInfo($"{sourceTag}: grant succeeded -> {item}");
-                        LaikaMod.AnnounceAPSuccess($"[AP] Granted: {item.DisplayName}");
+
+                        bool isReconcileRestore =
+                            sourceTag != null &&
+                            (
+                                sourceTag.Contains("APSceneReconcile") ||
+                                sourceTag.Contains("AP Reconcile") ||
+                                sourceTag.Contains("WeaponsOverlayInitializeQueueProcess")
+                            );
+
+                        if (isReconcileRestore)
+                        {
+                            LaikaMod.LogInfo($"{sourceTag}: restored AP item silently without duplicate overlay popup -> {item.DisplayName}");
+                        }
+                        else
+                        {
+                            LaikaMod.AnnounceAPActivity(
+                                LaikaMod.BuildGrantedOverlayLine(item.DisplayName, item.ApItemId)
+                            );
+                        }
                     }
                     else
                     {
@@ -171,7 +189,7 @@ public partial class LaikaMod
 
                             if (DeferredUpgradeNoticesShown.Add(noticeKey))
                             {
-                                LaikaMod.AnnounceAPActivity($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
+                                LaikaMod.AnnounceAPWarning($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
                             }
                         }
                         else
@@ -335,6 +353,27 @@ public partial class LaikaMod
     {
         missingItem = null;
 
+        if (WasVanillaConsumedAPItem(expectedItem.Kind, expectedItem.Id))
+        {
+            LogInfo(
+                $"AP RECONCILE: not restoring {expectedItem.Id} because vanilla consumed this AP item."
+            );
+
+            return false;
+        }
+
+        if (expectedItem.Kind == ItemKind.KeyItem && IsHarpoonPieceId(expectedItem.Id))
+        {
+            if (WasHarpoonPieceReceivedFromAP(expectedItem.Id))
+            {
+                LogInfo(
+                    $"AP RECONCILE: deferred harpoon piece already recorded from AP, not restoring to vanilla inventory yet -> {expectedItem.Id}"
+                );
+
+                return false;
+            }
+        }
+
         var inventory = Singleton<InventoryManager>.Instance;
         if (inventory == null)
             return false;
@@ -388,17 +427,35 @@ public partial class LaikaMod
     {
         missingItem = null;
 
-        var progressionManager = MonoSingleton<ProgressionManager>.Instance;
-        if (progressionManager == null || progressionManager.ProgressionData == null)
+        if (expectedItem == null || string.IsNullOrEmpty(expectedItem.Id))
             return false;
 
-        bool alreadyUnlocked = progressionManager.ProgressionData.HasMapAreaUnlocked(expectedItem.Id);
+        bool apVisualUnlocked = HasAPMapUnlock(expectedItem.Id);
 
-        if (alreadyUnlocked)
+        var progressionManager = MonoSingleton<ProgressionManager>.Instance;
+        bool vanillaUnlocked =
+            progressionManager != null &&
+            progressionManager.ProgressionData != null &&
+            progressionManager.ProgressionData.HasMapAreaUnlocked(expectedItem.Id);
+
+        if (apVisualUnlocked)
         {
             RefreshMapAreaVisuals(expectedItem.Id);
-            LogInfo($"AP RECONCILE: map area already unlocked, refreshed visuals -> {expectedItem.Id}");
+
+            LogInfo(
+                $"AP RECONCILE: AP map area already available, refreshed visuals -> {expectedItem.Id} " +
+                $"apVisualUnlocked={apVisualUnlocked}, vanillaUnlocked={vanillaUnlocked}"
+            );
+
             return false;
+        }
+
+        if (vanillaUnlocked)
+        {
+            LogInfo(
+                $"AP RECONCILE: vanilla has map area unlocked, but AP has not granted it yet -> {expectedItem.Id}. " +
+                $"Treating as missing for AP visual state."
+            );
         }
 
         missingItem = new PendingItem(
@@ -418,6 +475,8 @@ public partial class LaikaMod
     {
         if (item == null)
             return false;
+
+        RememberReceivedAPItem(item);
 
         IsGrantingAPItem = true;
 
@@ -619,9 +678,74 @@ public partial class LaikaMod
         if (ownedAfter && item.Id == "I_W_SHOTGUN")
         {
             LogImportantQuestSnapshots($"{sourceTag}: shotgun grant follow-up");
+            ScheduleShotgunQuestReconcile(sourceTag + "/ShotgunGrant");
         }
 
         return ownedAfter;
+    }
+
+
+    internal static void ScheduleShotgunQuestReconcile(string sourceTag)
+    {
+        EnsureCoroutineRunner();
+
+        if (CoroutineRunner == null)
+        {
+            LogWarning($"{sourceTag}: could not schedule shotgun quest reconcile because CoroutineRunner is null.");
+            return;
+        }
+
+        CoroutineRunner.StartCoroutine(ShotgunQuestReconcileCoroutine(sourceTag));
+    }
+
+    private static System.Collections.IEnumerator ShotgunQuestReconcileCoroutine(string sourceTag)
+    {
+        yield return null;
+        TryReconcileKnownQuestSoftlocks(sourceTag + "/Frame1");
+
+        yield return new WaitForSecondsRealtime(0.15f);
+        TryReconcileKnownQuestSoftlocks(sourceTag + "/Delay015");
+
+        yield return new WaitForSecondsRealtime(0.5f);
+        TryReconcileKnownQuestSoftlocks(sourceTag + "/Delay050");
+    }
+
+    internal static void ScheduleSceneLoadedAPReconcile(string sourceTag)
+    {
+        EnsureCoroutineRunner();
+
+        if (CoroutineRunner == null)
+        {
+            LogWarning($"{sourceTag}: could not schedule scene-load AP reconcile because CoroutineRunner is null.");
+            return;
+        }
+
+        CoroutineRunner.StartCoroutine(SceneLoadedAPReconcileCoroutine(sourceTag));
+    }
+
+    private static System.Collections.IEnumerator SceneLoadedAPReconcileCoroutine(string sourceTag)
+    {
+        yield return null;
+        yield return null;
+
+        if (ArchipelagoClientManager.Instance != null && ArchipelagoClientManager.Instance.IsConnected)
+        {
+            ArchipelagoClientManager.Instance.ForceReconcileReceivedItems(sourceTag + "/Frame2");
+        }
+
+        yield return new WaitForSecondsRealtime(0.25f);
+
+        if (ArchipelagoClientManager.Instance != null && ArchipelagoClientManager.Instance.IsConnected)
+        {
+            ArchipelagoClientManager.Instance.ForceReconcileReceivedItems(sourceTag + "/Delay025");
+        }
+
+        yield return new WaitForSecondsRealtime(1.0f);
+
+        if (ArchipelagoClientManager.Instance != null && ArchipelagoClientManager.Instance.IsConnected)
+        {
+            ArchipelagoClientManager.Instance.ForceReconcileReceivedItems(sourceTag + "/Delay100");
+        }
     }
 
     // Grants weapon upgrades as additional upgrade steps from the weapon's current level.
@@ -996,6 +1120,11 @@ public partial class LaikaMod
             return false;
         }
 
+        if (IsHarpoonPieceId(item.Id))
+        {
+            return TryGrantHarpoonPiece(item, sourceTag);
+        }
+
         if (item.Id == "I_PUPPY_FLOWER")
         {
             if (SessionState != null)
@@ -1054,43 +1183,64 @@ public partial class LaikaMod
 
     // Map pieces are just progression unlocks under the hood,
     // so I can grant them straight through ProgressionData using the internal map ID.
-    internal static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
+    private static bool TryGrantMapUnlock(PendingItem item, string sourceTag)
     {
-        LogInfo($"{sourceTag}: granting {item.DisplayName}");
-
-        var progressionManager = MonoSingleton<ProgressionManager>.Instance;
-
-        if (progressionManager == null)
-        {
-            LogWarning($"{sourceTag}: map unlock grant failed, ProgressionManager is null.");
-            return false;
-        }
-
         try
         {
-            // Ask the game to unlock the target map area directly.
-            progressionManager.ProgressionData.UnlockMapArea(item.Id);
+            if (item == null || string.IsNullOrEmpty(item.Id))
+                return false;
+
+            LogInfo($"{sourceTag}: granting AP map visual unlock {item.DisplayName}");
+
+            RememberAPMapUnlock(item.Id);
 
             RefreshMapAreaVisuals(item.Id);
 
             try
             {
                 MonoSingleton<PersistenceManager>.Instance.SaveGame();
-                LogInfo($"{sourceTag}: forced save after UnlockMapArea({item.Id}).");
+                LogInfo($"{sourceTag}: forced save after AP map visual unlock {item.Id}.");
             }
-            catch (Exception saveEx)
+            catch (Exception ex)
             {
-                LogWarning($"{sourceTag}: could not force save after map unlock:\n{saveEx}");
+                LogWarning($"{sourceTag}: save failed after AP map visual unlock {item.Id}:\n{ex}");
             }
 
-            LogInfo($"{sourceTag}: UnlockMapArea({item.Id}) called successfully.");
             return true;
         }
         catch (Exception ex)
         {
-            LogError($"{sourceTag}: exception while unlocking map area {item.Id}:\n{ex}");
+            LogWarning($"{sourceTag}: TryGrantMapUnlock failed for {item}:\n{ex}");
             return false;
         }
+    }
+
+    internal static void RememberAPMapUnlock(string mapAreaId)
+    {
+        if (SessionState == null || string.IsNullOrEmpty(mapAreaId))
+            return;
+
+        if (SessionState.APUnlockedMapAreaIds == null)
+            SessionState.APUnlockedMapAreaIds = new List<string>();
+
+        if (!SessionState.APUnlockedMapAreaIds.Contains(mapAreaId))
+        {
+            SessionState.APUnlockedMapAreaIds.Add(mapAreaId);
+            SaveSessionState();
+
+            LogInfo($"AP MAP STATE: remembered AP map unlock {mapAreaId}.");
+        }
+    }
+
+    internal static bool HasAPMapUnlock(string mapAreaId)
+    {
+        if (SessionState == null || string.IsNullOrEmpty(mapAreaId))
+            return false;
+
+        if (SessionState.APUnlockedMapAreaIds == null)
+            return false;
+
+        return SessionState.APUnlockedMapAreaIds.Contains(mapAreaId);
     }
 
     // ===== Progression helpers =====
@@ -1272,7 +1422,10 @@ public partial class LaikaMod
 
     // Centralized check-send path for all AP-style locations.
     // This is the one place that should handle duplicate suppression and persistent sent-state.
-    internal static void TrySendLocationCheck(APLocationDefinition definition, string sourceTag)
+    internal static void TrySendLocationCheck(
+        APLocationDefinition definition,
+        string sourceTag,
+        bool consumeVanillaReward = true)
     {
         if (definition == null)
         {
@@ -1289,12 +1442,93 @@ public partial class LaikaMod
         if (ArchipelagoClientManager.Instance != null)
         {
             ArchipelagoClientManager.Instance.SendLocationCheck(definition);
-            TryConsumeVanillaLocationReward(definition, sourceTag);
+
+            if (consumeVanillaReward)
+                TryConsumeVanillaLocationReward(definition, sourceTag);
         }
         else
         {
             LogWarning($"{sourceTag}: ArchipelagoClientManager missing, check not sent -> {definition.DisplayName}");
         }
+    }
+
+    internal static string MakeAPItemKey(ItemKind kind, string itemId)
+    {
+        return $"{kind}|{itemId}";
+    }
+
+    internal static void RememberReceivedAPItem(PendingItem item)
+    {
+        if (item == null || SessionState == null || string.IsNullOrEmpty(item.Id))
+            return;
+
+        if (SessionState.ReceivedAPItemKeys == null)
+            SessionState.ReceivedAPItemKeys = new List<string>();
+
+        string key = MakeAPItemKey(item.Kind, item.Id);
+
+        if (!SessionState.ReceivedAPItemKeys.Contains(key))
+        {
+            SessionState.ReceivedAPItemKeys.Add(key);
+            SaveSessionState();
+
+            LogInfo($"AP STATE: remembered received AP item -> {key}");
+        }
+    }
+
+    internal static bool HasReceivedAPItem(ItemKind kind, string itemId)
+    {
+        if (SessionState == null || SessionState.ReceivedAPItemKeys == null)
+            return false;
+
+        return SessionState.ReceivedAPItemKeys.Contains(MakeAPItemKey(kind, itemId));
+    }
+
+    internal static void RememberVanillaConsumedAPItem(ItemKind kind, string itemId)
+    {
+        if (SessionState == null || string.IsNullOrEmpty(itemId))
+            return;
+
+        if (SessionState.VanillaConsumedAPItemKeys == null)
+            SessionState.VanillaConsumedAPItemKeys = new List<string>();
+
+        string key = MakeAPItemKey(kind, itemId);
+
+        if (!SessionState.VanillaConsumedAPItemKeys.Contains(key))
+        {
+            SessionState.VanillaConsumedAPItemKeys.Add(key);
+            SaveSessionState();
+
+            LogInfo($"AP STATE: vanilla consumed AP item, reconcile will not restore it -> {key}");
+        }
+    }
+
+    internal static bool WasVanillaConsumedAPItem(ItemKind kind, string itemId)
+    {
+        if (SessionState == null || SessionState.VanillaConsumedAPItemKeys == null)
+            return false;
+
+        return SessionState.VanillaConsumedAPItemKeys.Contains(MakeAPItemKey(kind, itemId));
+    }
+
+    internal static bool TryGetItemKindForInventoryLocation(string itemId, out ItemKind kind)
+    {
+        kind = ItemKind.Unknown;
+
+        APLocationDefinition definition;
+        if (!TryGetLocationDefinition(itemId, out definition))
+            return false;
+
+        if (definition.Category == "KeyItem")
+            kind = ItemKind.KeyItem;
+        else if (definition.Category == "Material")
+            kind = ItemKind.Material;
+        else if (definition.Category == "PuppyGift")
+            kind = ItemKind.PuppyTreat;
+        else
+            return false;
+
+        return true;
     }
 
     // Attempts to remove vanilla item rewwards from the player.
@@ -1343,7 +1577,19 @@ public partial class LaikaMod
 
         try
         {
-            bool removed = inventory.RemoveItem(itemId, amount, true);
+            bool previousSuppressState = SuppressVanillaConsumeTracking;
+            SuppressVanillaConsumeTracking = true;
+
+            bool removed;
+
+            try
+            {
+                removed = inventory.RemoveItem(itemId, amount, true);
+            }
+            finally
+            {
+                SuppressVanillaConsumeTracking = previousSuppressState;
+            }
 
             LogInfo($"{sourceTag}: remove vanilla inventory reward {itemId} x{amount} -> {removed}");
 
@@ -1458,6 +1704,13 @@ public partial class LaikaMod
         if (definition.Category == "Quest" || definition.Category == "Boss")
             return false;
 
+        // Bonehead hook parts are location checks only.
+        // Head can be consumed. Body should stay because it is the final vanilla hook-construction pickup.
+        if (IsBoneheadHookPartLocationId(definition.InternalId))
+        {
+            return !ShouldKeepBoneheadHookPartAfterLocationCheck(definition.InternalId);
+        }
+
         return (
             definition.Category == "PuppyGift" ||
             definition.Category == "KeyItem" ||
@@ -1470,6 +1723,11 @@ public partial class LaikaMod
     // If the gift came from AP instead of being found naturally, suppression eats it here
     // so the player does not get a fake local check for an item they were only sent.
     internal static void TryHandlePuppyGiftLocationCheck(string giftId, string sourceTag)
+    {
+        TryHandlePuppyGiftLocationCheck(giftId, sourceTag, true);
+    }
+
+    internal static void TryHandlePuppyGiftLocationCheck(string giftId, string sourceTag, bool consumeVanillaReward)
     {
         if (string.IsNullOrEmpty(giftId))
         {
@@ -1499,7 +1757,7 @@ public partial class LaikaMod
             return;
         }
 
-        TrySendLocationCheck(locationDefinition, sourceTag);
+        TrySendLocationCheck(locationDefinition, sourceTag, consumeVanillaReward);
     }
 
     // Looks for one active quest by id.
@@ -1536,10 +1794,65 @@ public partial class LaikaMod
 
             TryReconcileOldWarfareShotgunGoal(questLog, sourceTag);
             TryReconcileTutorialHookGoal(questLog, sourceTag);
+            TryReconcileDeferredHarpoonPieces(questLog, sourceTag);
         }
         catch (Exception ex)
         {
             LogError($"{sourceTag}: exception while reconciling known quest softlocks:\n{ex}");
+        }
+    }
+
+    internal static void TryReconcileDeferredHarpoonPieces(QuestLog questLog, string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null)
+                return;
+
+            if (!IsRadioSilenceReadyForHarpoonPieces())
+                return;
+
+            bool grantedAny = false;
+
+            if (SessionState.HarpoonPiece1ReceivedFromAP)
+            {
+                grantedAny |= TryGrantDeferredHarpoonPieceNow(
+                    "I_HARPOON_PIECE_1",
+                    "Key Item: Carved Whale Tooth",
+                    sourceTag + "/HarpoonPiece1"
+                );
+            }
+
+            if (SessionState.HarpoonPiece2ReceivedFromAP)
+            {
+                grantedAny |= TryGrantDeferredHarpoonPieceNow(
+                    "I_HARPOON_PIECE_2",
+                    "Key Item: Long Rope",
+                    sourceTag + "/HarpoonPiece2"
+                );
+            }
+
+            if (grantedAny)
+            {
+                LogInfo($"{sourceTag}: deferred harpoon part delivered for Radio Silence.");
+
+                if (!SessionState.HarpoonPieceDeferredDeliveryNoticeShown)
+                {
+                    SessionState.HarpoonPieceDeferredDeliveryNoticeShown = true;
+                    SaveSessionState();
+
+                    AnnounceAPActivity(
+                        OverlayColor("#00E676", "[AP] Granted: ") +
+                        OverlayColor("#FFD166", "Deferred harpoon parts delivered for Radio Silence.")
+                    );
+                }
+
+                LogImportantQuestSnapshots(sourceTag + "/AfterDeferredHarpoonGrant");
+            }
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TryReconcileDeferredHarpoonPieces failed:\n{ex}");
         }
     }
 
@@ -1777,11 +2090,186 @@ public partial class LaikaMod
         SessionState.HeartglazeFlowerDeferredNoticeShown = true;
         SaveSessionState();
 
-        AnnounceAPWarning(
-            "[AP] Heartglaze Flower received. It will appear after you defeat Woodcrawler and pick up the flower."
+        AnnounceAPActivity(
+            OverlayColor("#FFD166", "The Heartglaze Flower was temporarily removed for game function. It will appear after you defeat Woodcrawler and pick up the flower.")
         );
 
         LogInfo($"{sourceTag}: shown one-time Heartglaze deferred notice.");
+    }
+
+    internal static bool IsHarpoonPieceId(string itemId)
+    {
+        return itemId == "I_HARPOON_PIECE_1" || itemId == "I_HARPOON_PIECE_2";
+    }
+
+    internal static bool IsBoneheadHookPartLocationId(string itemId)
+    {
+        return itemId == "I_HOOK_HEAD" || itemId == "I_HOOK_BODY";
+    }
+
+    internal static bool ShouldKeepBoneheadHookPartAfterLocationCheck(string itemId)
+    {
+        // The hook head is only the early pickup and can be removed after sending its AP check.
+        if (itemId == "I_HOOK_HEAD")
+            return false;
+
+        // The hook body is the later construction/unlock pickup.
+        // Keep it so our cleanup does not interfere with the vanilla quest completion moment.
+        if (itemId == "I_HOOK_BODY")
+            return true;
+
+        return false;
+    }
+
+    internal static void MarkHarpoonPieceReceivedFromAP(string itemId, string sourceTag)
+    {
+        if (SessionState == null)
+            return;
+
+        if (itemId == "I_HARPOON_PIECE_1")
+            SessionState.HarpoonPiece1ReceivedFromAP = true;
+        else if (itemId == "I_HARPOON_PIECE_2")
+            SessionState.HarpoonPiece2ReceivedFromAP = true;
+
+        SaveSessionState();
+
+        LogInfo($"{sourceTag}: recorded deferred AP harpoon piece {itemId}.");
+    }
+
+    internal static bool WasHarpoonPieceReceivedFromAP(string itemId)
+    {
+        if (SessionState == null)
+            return false;
+
+        if (itemId == "I_HARPOON_PIECE_1")
+            return SessionState.HarpoonPiece1ReceivedFromAP;
+
+        if (itemId == "I_HARPOON_PIECE_2")
+            return SessionState.HarpoonPiece2ReceivedFromAP;
+
+        return false;
+    }
+
+    internal static bool IsRadioSilenceReadyForHarpoonPieces()
+    {
+        try
+        {
+            QuestInstance quest = FindActiveQuest("Q_D_2_Lighthouse");
+
+            if (quest == null)
+                return false;
+
+            QuestGoal currentGoal = quest.GetCurrentGoal();
+
+            if (currentGoal == null)
+                return false;
+
+            return currentGoal.GoalId == "FixHarpoon";
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"IsRadioSilenceReadyForHarpoonPieces failed:\n{ex}");
+            return false;
+        }
+    }
+
+    internal static void AnnounceHarpoonDeferredNoticeOnce(string sourceTag)
+    {
+        if (SessionState == null)
+            return;
+
+        if (SessionState.HarpoonPieceDeferredNoticeShown)
+            return;
+
+        SessionState.HarpoonPieceDeferredNoticeShown = true;
+        SaveSessionState();
+
+        AnnounceAPWarning(
+            "[AP] Harpoon part received. It will appear when Radio Silence reaches the harpoon repair step."
+        );
+
+        LogInfo($"{sourceTag}: shown one-time deferred harpoon notice.");
+    }
+
+    internal static bool TryGrantHarpoonPiece(PendingItem item, string sourceTag)
+    {
+        if (item == null || string.IsNullOrEmpty(item.Id))
+            return false;
+
+        MarkHarpoonPieceReceivedFromAP(item.Id, sourceTag);
+
+        if (!IsRadioSilenceReadyForHarpoonPieces())
+        {
+            AnnounceHarpoonDeferredNoticeOnce(sourceTag);
+
+            LogInfo(
+                $"{sourceTag}: {item.DisplayName} received from AP. Deferring vanilla inventory grant until Radio Silence reaches FixHarpoon."
+            );
+
+            return true;
+        }
+
+        return TryGrantDeferredHarpoonPieceNow(item.Id, item.DisplayName, sourceTag);
+    }
+
+    internal static bool TryGrantDeferredHarpoonPieceNow(string itemId, string displayName, string sourceTag)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(itemId))
+                return false;
+
+            if (!WasHarpoonPieceReceivedFromAP(itemId))
+                return false;
+
+            var inventory = Singleton<InventoryManager>.Instance;
+
+            if (inventory == null)
+            {
+                LogWarning($"{sourceTag}: cannot grant deferred harpoon piece {itemId}; InventoryManager is null.");
+                return false;
+            }
+
+            if (inventory.HasItem(itemId, 1))
+            {
+                LogInfo($"{sourceTag}: deferred harpoon piece {itemId} already in inventory.");
+                return true;
+            }
+
+            bool previousGrantingState = IsGrantingAPItem;
+            IsGrantingAPItem = true;
+
+            bool addResult;
+
+            try
+            {
+                addResult = inventory.AddItem(itemId, 1, null, false);
+            }
+            finally
+            {
+                IsGrantingAPItem = previousGrantingState;
+            }
+
+            LogInfo($"{sourceTag}: deferred harpoon AddItem({itemId}) returned {addResult}.");
+
+            if (addResult)
+            {
+                try
+                {
+                    MonoSingleton<PersistenceManager>.Instance.SaveGame();
+                }
+                catch
+                {
+                }
+            }
+
+            return addResult;
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TryGrantDeferredHarpoonPieceNow failed for {itemId}:\n{ex}");
+            return false;
+        }
     }
 
     // Evaluates whether the current local death should count toward DeathLink

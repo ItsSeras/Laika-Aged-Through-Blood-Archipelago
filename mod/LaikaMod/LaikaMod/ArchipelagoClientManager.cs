@@ -614,6 +614,8 @@ public class ArchipelagoClientManager
                 PendingItem pendingItem;
                 if (LaikaMod.TryCreatePendingItemFromApItemId(apItemId, out pendingItem))
                 {
+                    pendingItem.SetApItemId(apItemId);
+
                     LaikaMod.LogInfo($"AP ITEMS: mapped AP item id {apItemId} -> {pendingItem}");
 
                     LaikaMod.EnqueueItem(pendingItem);
@@ -666,6 +668,35 @@ public class ArchipelagoClientManager
         {
             LaikaMod.LogError($"AP ITEMS: PumpReceivedItems failed:\n{ex}");
             LaikaMod.AnnounceAPError("[AP] Error while processing received items.");
+        }
+    }
+
+    public void ForceReconcileReceivedItems(string sourceTag)
+    {
+        try
+        {
+            if (session == null || session.Items == null)
+            {
+                LaikaMod.LogInfo($"{sourceTag}: AP reconcile skipped because session/items are not ready.");
+                return;
+            }
+
+            var allItems = session.Items.AllItemsReceived;
+
+            if (allItems == null)
+            {
+                LaikaMod.LogInfo($"{sourceTag}: AP reconcile skipped because AllItemsReceived is null.");
+                return;
+            }
+
+            LaikaMod.LogInfo($"{sourceTag}: forcing AP received-item reconciliation after scene/inventory reload.");
+
+            ReconcileImportantReceivedItems(allItems);
+            LaikaMod.ProcessPendingItemQueue(sourceTag + "/APSceneReconcile");
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning($"{sourceTag}: ForceReconcileReceivedItems failed:\n{ex}");
         }
     }
 
@@ -892,11 +923,11 @@ public class ArchipelagoClientManager
         switch (colorName.Trim().ToLowerInvariant())
         {
             case "red": return "#FF6B6B";
-            case "green": return "#7CFF7C";
+            case "green": return "#00E676";
             case "yellow": return "#FFD166";
-            case "blue": return "#7FDBFF";
+            case "blue": return "#5F7FFF";
             case "magenta": return "#C792EA";
-            case "cyan": return "#7FDBFF";
+            case "cyan": return "#00D9FF";
             case "white": return "#FFFFFF";
             case "orange": return "#FFA94D";
             case "plum": return "#DDA0DD";
@@ -934,6 +965,7 @@ public class ArchipelagoClientManager
 
         foreach (object part in parts)
         {
+            string partType = ReadStringProperty(part, "Type", "type");
             string text = ReadStringProperty(part, "Text", "text");
             string color = ReadStringProperty(part, "Color", "color");
 
@@ -967,6 +999,7 @@ public class ArchipelagoClientManager
         string itemName = null;
         long itemId = -1;
         string locationName = null;
+        string itemColorHex = null;
 
         StringBuilder plainTextBuilder = new StringBuilder();
 
@@ -977,6 +1010,7 @@ public class ArchipelagoClientManager
 
             string partType = ReadStringProperty(part, "Type", "type");
             string text = ReadStringProperty(part, "Text", "text");
+            string color = ReadStringProperty(part, "Color", "color");
 
             if (!string.IsNullOrWhiteSpace(text))
                 plainTextBuilder.Append(text);
@@ -993,6 +1027,7 @@ public class ArchipelagoClientManager
                 case "item_id":
                     itemName = text;
                     itemId = ReadLongProperty(part, "ItemId", "Item", "item", "Id", "id");
+                    itemColorHex = MapAPColorToUnityRichText(color);
                     break;
 
                 case "location_id":
@@ -1017,14 +1052,16 @@ public class ArchipelagoClientManager
                 return LaikaMod.BuildFoundYourOwnItemOverlayLine(
                     itemName,
                     itemId,
-                    locationName
+                    locationName,
+                    itemColorHex
                 );
             }
 
             return LaikaMod.BuildFoundYourOwnItemOverlayLine(
                 itemName,
                 itemId,
-                locationName
+                locationName,
+                itemColorHex
             );
         }
 
@@ -1039,7 +1076,8 @@ public class ArchipelagoClientManager
                 itemName,
                 itemId,
                 receiverName,
-                locationName
+                locationName,
+                itemColorHex
             );
         }
 

@@ -58,7 +58,6 @@ public partial class LaikaMod
             };
         }
     }
-
     internal static string BuildSaveSlotAPSummary(int slotIndex)
     {
         APSaveState state = PeekSessionStateForSlot(slotIndex);

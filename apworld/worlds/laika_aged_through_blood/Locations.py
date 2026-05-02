@@ -170,6 +170,11 @@ LOCATION_TABLE = {
     "Key Item: Gallon of Gasoline": 150032,
     "Key Item: Banana Leaves": 150033,
     "Key Item: Ultra Fast Cough Syrup": 150034,
+    "Key Item: Carved Whale Tooth": 150035,
+    "Key Item: Long Rope": 150036,
+    "Key Item: Mountainheart Card": 150037,
+    "Key Item: Hook Head": 150038,
+    "Key Item: Hook Body": 150039,
 
     # Weapon unique material / gun part checks
     "Rusty Spring (Shotgun Material)": 150050,

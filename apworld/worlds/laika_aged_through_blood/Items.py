@@ -303,6 +303,25 @@ ITEM_TABLE = {
         "internal_id": "I_COUGHING_SYRUP",
         "kind": "KeyItem",
     },
+    "Key Item: Carved Whale Tooth": {
+        "id": 1195,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_HARPOON_PIECE_1",
+        "kind": "KeyItem",
+    },
+    "Key Item: Long Rope": {
+        "id": 1196,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_HARPOON_PIECE_2",
+        "kind": "KeyItem",
+    },
+    "Key Item: Mountainheart Card": {
+        "id": 1197,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_D_Dungeon_01_key",
+        "kind": "KeyItem",
+    },
+
     # ===== Crafting-mode weapon material items =====
     "Rusty Spring (Shotgun Material)": {
         "id": 1150,
@@ -328,6 +347,7 @@ ITEM_TABLE = {
         "internal_id": "I_MATERIAL_ROCKETLAUNCHER",
         "kind": "Material",
     },
+
 
     # ===== Safe filler items already supported by the client =====
     # Puppy gifts are nice first-pass filler because the client already has a dedicated grant path for them.

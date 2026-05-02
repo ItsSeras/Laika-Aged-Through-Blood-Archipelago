@@ -111,10 +111,19 @@ def set_rules(world):
     )
 
     set_rule(
+        loc("Key Item: Mountainheart Card"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+        )
+    )
+
+    set_rule(
         loc("Quest Complete: Radio Silence"),
         lambda state: (
             war_chapter(state)
             and has_shotgun_access(state, player)
+            and has(state, player, "Key Item: Carved Whale Tooth")
+            and has(state, player, "Key Item: Long Rope")
         )
     )
 
@@ -169,11 +178,26 @@ def set_rules(world):
 
     set_rule(
         loc("Quest Complete: The Bonehead's Hook"),
-        lambda state: (
+        lambda state:
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_shotgun_access(state, player)
             and has(state, player, "Hook (Bike Upgrade)")
-        )
+    )
+
+    set_rule(
+        loc("Key Item: Hook Head"),
+        lambda state:
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+            and has(state, player, "Hook (Bike Upgrade)")
+    )
+
+    set_rule(
+        loc("Key Item: Hook Body"),
+        lambda state:
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+            and has(state, player, "Hook (Bike Upgrade)")
     )
 
     set_rule(
@@ -285,9 +309,14 @@ def set_rules(world):
         loc("Quest Complete: Last Meal"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has_shotgun_access(state, player)
-            and has(state, player, "Key Item: Bluelemon Berries")
+            and has(state, player, "Bluelemon Berries")
         )
+    )
+
+    set_rule(
+        loc("Key Item: Bluelemon Berries"),
+        lambda state:
+            can_reach_loc(state, player, "Quest Complete: Radio Silence")
     )
 
     # Childless side branch
@@ -540,14 +569,31 @@ def set_rules(world):
             and has_hook_access(state)
         )
 
-    # ===== Shotgun level 2 / uncertain shotgun level collectibles =====
+    # ===== Shotgun-gated post-Heartglaze collectibles =====
     for name in [
         "Cassette Tape: Coming Home",
         "Titanium Plates (Machine Gun Material)",
     ]:
         set_rule(
             loc(name),
-            lambda state: post_diplomacy(state) and has_shotgun_level_2(state, player)
+            lambda state: (
+                can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+                and has_shotgun_access(state, player)
+            )
+        )
+
+    # Radio Silence harpoon pieces.
+    # These are physically found during Radio Silence after reaching Roy's boat/lighthouse route.
+    for name in [
+        "Key Item: Carved Whale Tooth",
+        "Key Item: Long Rope",
+    ]:
+        set_rule(
+            loc(name),
+            lambda state: (
+                can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+                and has_shotgun_access(state, player)
+            )
         )
 
     # ===== Post-diplomacy loose collectibles =====
@@ -555,13 +601,42 @@ def set_rules(world):
         "Cassette Tape: The Last Tear",
         "Cassette Tape: Through the Wind",
         "Map Piece: Where Birds Lurk (Left)",
-        "Map Piece: Where Rust Weaves (Left)",
-        "Map Piece: Where Rust Weaves (Center)",
-        "Map Piece: Where Rust Weaves (Right)",
     ]:
         set_rule(loc(name), lambda state: post_diplomacy(state))
 
     # ===== Later chapter collectibles =====
+    set_rule(
+        loc("Map Piece: Where Rust Weaves (Left)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_rule(
+        loc("Map Piece: Where Rust Weaves (Center)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_rule(
+        loc("Map Piece: Where Rust Weaves (Right)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_rule(
+        loc("Map Piece: Where Rust Weaves (Center)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
     set_rule(
         loc("Map Piece: Floating City (Control Area)"),
         lambda state: post_childless(state)
@@ -589,7 +664,10 @@ def set_rules(world):
 
     set_rule(
         loc("Missile (Rocket Launcher Material)"),
-        lambda state: post_childless(state) and has_dash_access(state)
+        lambda state:
+            has(state, player, "Dash (Bike Upgrade)")
+            and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
     )
 
     set_rule(
@@ -640,7 +718,6 @@ def set_rules(world):
     # Radio Silence side quest key items
     for name in [
         "Key Item: Family Braid",
-        "Key Item: Bluelemon Berries",
         "Key Item: Thistle Stems",
         "Key Item: Phalseria Sap",
         "Key Item: Banana Leaves",

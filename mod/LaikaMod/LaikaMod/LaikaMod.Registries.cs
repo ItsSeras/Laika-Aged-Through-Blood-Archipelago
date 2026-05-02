@@ -1425,7 +1425,56 @@ public partial class LaikaMod
                     true
                 )
             },
-
+            {
+                "I_HARPOON_PIECE_1",
+                new APLocationDefinition(
+                    150035L,
+                    "Key Item: Carved Whale Tooth",
+                    "I_HARPOON_PIECE_1",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_HARPOON_PIECE_2",
+                new APLocationDefinition(
+                    150036L,
+                    "Key Item: Long Rope",
+                    "I_HARPOON_PIECE_2",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_D_Dungeon_01_key",
+                new APLocationDefinition(
+                    150037L,
+                    "Key Item: Mountainheart Card",
+                    "I_D_Dungeon_01_key",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_HOOK_HEAD",
+                new APLocationDefinition(
+                    150038L,
+                    "Key Item: Hook Head",
+                    "I_HOOK_HEAD",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_HOOK_BODY",
+                new APLocationDefinition(
+                    150039L,
+                    "Key Item: Hook Body",
+                    "I_HOOK_BODY",
+                    "KeyItem",
+                    true
+                )
+            },
             {
                 "I_MATERIAL_SHOTGUN",
                 new APLocationDefinition(
@@ -1535,7 +1584,9 @@ public partial class LaikaMod
         { 1192L, () => new PendingItem(ItemKind.KeyItem, "I_GASOLINE", 1, "Key Item: Gallon of Gasoline") },
         { 1193L, () => new PendingItem(ItemKind.KeyItem, "I_ANTI_DIARRHOEA", 1, "Key Item: Banana Leaves") },
         { 1194L, () => new PendingItem(ItemKind.KeyItem, "I_COUGHING_SYRUP", 1, "Key Item: Ultra Fast Cough Syrup") },
-
+        { 1195L, () => new PendingItem(ItemKind.KeyItem, "I_HARPOON_PIECE_1", 1, "Key Item: Carved Whale Tooth") },
+        { 1196L, () => new PendingItem(ItemKind.KeyItem, "I_HARPOON_PIECE_2", 1, "Key Item: Long Rope") },
+        { 1197L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_key", 1, "Key Item: Mountainheart Card") },
 
         // ===== Puppy gifts =====
         { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Puppy Gift: Toy Bike") },

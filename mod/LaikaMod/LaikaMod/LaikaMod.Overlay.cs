@@ -76,56 +76,130 @@ public partial class LaikaMod
         return $"<color={hexColor}>{text}</color>";
     }
 
-    internal static string GetItemRarityColorHex(long itemId)
+    internal static bool IsLaikaApItemId(long itemId)
     {
-        // Filler
-        if (itemId >= 1900L)
-            return "#6EC1FF"; // blue
+        return ItemFactoriesByApId != null &&
+               ItemFactoriesByApId.ContainsKey(itemId);
+    }
 
-        // Progression / useful / key-style
-        if ((itemId >= 1000L && itemId < 1200L) || itemId == 1970L)
-            return "#C792EA"; // purple/pink
+    internal static string GetOverlayItemColorHex(long itemId, string apProvidedColorHex)
+    {
+        if (IsLaikaApItemId(itemId))
+            return GetItemRarityColorHex(itemId);
 
-        // Default fallback
+        if (!string.IsNullOrWhiteSpace(apProvidedColorHex))
+            return apProvidedColorHex;
+
         return "#FFFFFF";
     }
 
-    internal static string BuildCheckSentOverlayLine(string playerName, string itemName, long itemId, string locationName)
+    internal static string GetItemRarityColorHex(long itemId)
+    {
+        // Progression, required for main route / major access.
+        if (
+            itemId == 1000L || // Dash
+            itemId == 1001L || // Hook
+            itemId == 1002L || // Maya's Pendant
+
+            itemId == 1100L || // Shotgun weapon-mode unlock
+
+            itemId == 1150L || // Rusty Spring, shotgun material
+            itemId == 1160L    // Shotgun recipe / blueprint
+        )
+        {
+            return "#C792EA"; // progression lavender
+        }
+
+        // Useful weapons, weapon upgrades, non-shotgun recipes/materials,
+        // and useful quest/key items.
+        if (
+            (itemId >= 1101L && itemId <= 1140L) || // non-shotgun weapon unlocks
+            (itemId >= 1110L && itemId <= 1114L) || // weapon upgrades
+            (itemId >= 1151L && itemId <= 1153L) || // non-shotgun crafting materials
+            (itemId >= 1161L && itemId <= 1163L) || // non-shotgun recipes
+            (itemId >= 1165L && itemId <= 1197L)    // quest/key items not already caught above
+        )
+        {
+            return "#FFD166"; // useful gold/yellow
+        }
+
+        // Puppy gifts.
+        if (itemId >= 1900L && itemId <= 1906L)
+            return "#FFB86C"; // puppy gift orange
+
+        // Currency / filler / general resource.
+        if (itemId == 1907L)
+            return "#82AAFF"; // periwinkle blue
+
+        // Ingredients.
+        if (itemId >= 1950L && itemId <= 1964L)
+            return "#2EC4B6"; // teal
+
+        // Cassettes.
+        if (itemId >= 1970L && itemId <= 1989L)
+            return "#FF80AB"; // cassette pink
+
+        // Map unlocks.
+        if (itemId >= 2000L && itemId <= 2030L)
+            return "#A3E635"; // lime/chartreuse
+
+        return "#FFFFFF";
+    }
+
+    internal static string BuildCheckSentOverlayLine(
+        string playerName,
+        string itemName,
+        long itemId,
+        string locationName,
+        string apProvidedItemColorHex = null)
     {
         string playerPart = OverlayColor("#C792EA", playerName);
         string verbPart = OverlayColor("#FFFFFF", " found their ");
-        string itemPart = OverlayColor(GetItemRarityColorHex(itemId), itemName);
+        string itemPart = OverlayColor(GetOverlayItemColorHex(itemId, apProvidedItemColorHex), itemName);
         string locationPart = OverlayColor("#00E676", $" ({locationName})");
 
         return $"{playerPart}{verbPart}{itemPart}{locationPart}";
     }
 
-    internal static string BuildFoundYourOwnItemOverlayLine(string itemName, long itemId, string locationName)
+    internal static string BuildFoundYourOwnItemOverlayLine(
+        string itemName,
+        long itemId,
+        string locationName,
+        string apProvidedItemColorHex = null)
     {
         string prefixPart = OverlayColor("#FFFFFF", "You found your ");
-        string itemPart = OverlayColor(GetItemRarityColorHex(itemId), itemName);
+        string itemPart = OverlayColor(GetOverlayItemColorHex(itemId, apProvidedItemColorHex), itemName);
         string fromPart = OverlayColor("#FFFFFF", " from ");
-        string locationPart = OverlayColor("#00E676", locationName);
-        string exclaimPart = OverlayColor("#FFFFFF", "!");
+        string locationPart = OverlayColor("#00E676", locationName + "!");
 
-        return $"{prefixPart}{itemPart}{fromPart}{locationPart}{exclaimPart}";
+        return $"{prefixPart}{itemPart}{fromPart}{locationPart}";
     }
 
-    internal static string BuildSentToOtherPlayerFromLocationOverlayLine(string senderName, string itemName, long itemId, string receiverName, string locationName)
+    internal static string BuildSentToOtherPlayerFromLocationOverlayLine(
+        string senderName,
+        string itemName,
+        long itemId,
+        string receiverName,
+        string locationName,
+        string apProvidedItemColorHex = null)
     {
         string senderPart = OverlayColor("#C792EA", senderName);
         string sentPart = OverlayColor("#FFFFFF", " sent ");
-        string itemPart = OverlayColor(GetItemRarityColorHex(itemId), itemName);
+        string itemPart = OverlayColor(GetOverlayItemColorHex(itemId, apProvidedItemColorHex), itemName);
         string toPart = OverlayColor("#FFFFFF", " to ");
         string receiverPart = OverlayColor("#C792EA", receiverName);
         string fromPart = OverlayColor("#FFFFFF", " from ");
-        string locationPart = OverlayColor("#00E676", locationName);
-        string exclaimPart = OverlayColor("#FFFFFF", "!");
+        string locationPart = OverlayColor("#00E676", locationName + "!");
 
-        return $"{senderPart}{sentPart}{itemPart}{toPart}{receiverPart}{fromPart}{locationPart}{exclaimPart}";
+        return $"{senderPart}{sentPart}{itemPart}{toPart}{receiverPart}{fromPart}{locationPart}";
     }
 
-    internal static string BuildReceivedFromOtherPlayerOverlayLine(string itemName, long itemId, string senderName, string locationName)
+    internal static string BuildReceivedFromOtherPlayerOverlayLine(
+        string itemName,
+        long itemId,
+        string senderName,
+        string locationName,
+        string apProvidedItemColorHex = null)
     {
         string localPlayerName =
             SessionState != null &&
@@ -139,43 +213,60 @@ public partial class LaikaMod
             !string.IsNullOrWhiteSpace(senderName) &&
             string.Equals(localPlayerName, senderName, StringComparison.OrdinalIgnoreCase);
 
-        string itemPart = OverlayColor(GetItemRarityColorHex(itemId), itemName);
+        string itemPart = OverlayColor(GetOverlayItemColorHex(itemId, apProvidedItemColorHex), itemName);
 
         if (isSelfSend)
         {
             string prefixPart = OverlayColor("#FFFFFF", "You found your ");
             string fromPart = OverlayColor("#FFFFFF", " from ");
-            string locationPart = OverlayColor("#00E676", locationName);
-            string exclaimPart = OverlayColor("#FFFFFF", "!");
+            string locationPart = OverlayColor("#00E676", locationName + "!");
 
-            return $"{prefixPart}{itemPart}{fromPart}{locationPart}{exclaimPart}";
+            return $"{prefixPart}{itemPart}{fromPart}{locationPart}";
         }
 
-        string youPart = OverlayColor("#FFFFFF", "You received ");
         string senderPart = OverlayColor("#C792EA", senderName);
 
         if (!string.IsNullOrWhiteSpace(locationName))
         {
+            string prefixPart = OverlayColor("#FFFFFF", "You received ");
             string fromPart = OverlayColor("#FFFFFF", " from ");
-            string fromTheirPart = OverlayColor("#FFFFFF", " from their ");
-            string locationPart = OverlayColor("#00E676", locationName);
-            string exclaimPart = OverlayColor("#FFFFFF", "!");
+            string atPart = OverlayColor("#FFFFFF", " at ");
+            string locationPart = OverlayColor("#00E676", locationName + "!");
 
-            return $"{youPart}{itemPart}{fromPart}{senderPart}{fromTheirPart}{locationPart}{exclaimPart}";
+            return $"{prefixPart}{itemPart}{fromPart}{senderPart}{atPart}{locationPart}";
         }
 
-        return $"{youPart}{itemPart}{OverlayColor("#FFFFFF", " from ")}{senderPart}{OverlayColor("#FFFFFF", "!")}";
+        return
+            OverlayColor("#FFFFFF", "You received ") +
+            itemPart +
+            OverlayColor("#FFFFFF", " from ") +
+            senderPart +
+            OverlayColor("#FFFFFF", "!");
     }
 
+    internal static string BuildGrantedOverlayLine(string itemName, long itemId)
+    {
+        string prefixPart = OverlayColor("#00E676", "[AP] Granted: ");
+        string itemPart = OverlayColor(GetItemRarityColorHex(itemId), itemName + ".");
+
+        return $"{prefixPart}{itemPart}";
+    }
     internal static string BuildItemReceivedOverlayLine(string itemName, long itemId, string senderName)
     {
         string prefixPart = OverlayColor("#FFFFFF", "[AP] Received ");
         string itemPart = OverlayColor(GetItemRarityColorHex(itemId), itemName);
-        string senderPart = string.IsNullOrWhiteSpace(senderName)
-            ? string.Empty
-            : OverlayColor("#C792EA", $" from {senderName}");
 
-        return $"{prefixPart}{itemPart}{senderPart}";
+        if (string.IsNullOrWhiteSpace(senderName))
+        {
+            string itemPeriodPart = OverlayColor(GetItemRarityColorHex(itemId), ".");
+            return $"{prefixPart}{itemPart}{itemPeriodPart}";
+        }
+
+        string fromPart = OverlayColor("#FFFFFF", " from ");
+        string senderPart = OverlayColor("#C792EA", senderName);
+        string whitePeriodPart = OverlayColor("#FFFFFF", ".");
+
+        return $"{prefixPart}{itemPart}{fromPart}{senderPart}{whitePeriodPart}";
     }
 
     internal static void AnnounceAPInfo(string message)
@@ -345,6 +436,48 @@ public partial class LaikaMod
         LogInfo(sb.ToString());
     }
 
+    internal static void ApplyDevOverlaySafeRootScale()
+    {
+        if (DevOverlaySafeRoot == null)
+            return;
+
+        float scaleX = UnityEngine.Screen.width / 2560f;
+        float scaleY = UnityEngine.Screen.height / 1440f;
+
+        float safeScale = Mathf.Min(scaleX, scaleY);
+
+        DevOverlaySafeRoot.localScale = new Vector3(safeScale, safeScale, 1f);
+        DevOverlaySafeRoot.anchoredPosition = Vector2.zero;
+        DevOverlaySafeRoot.sizeDelta = new Vector2(2560f, 1440f);
+
+        LastDevOverlayScreenWidth = UnityEngine.Screen.width;
+        LastDevOverlayScreenHeight = UnityEngine.Screen.height;
+    }
+
+    internal static void UpdateDevOverlaySafeRootForResolutionChange()
+    {
+        if (DevOverlaySafeRoot == null)
+            return;
+
+        int width = UnityEngine.Screen.width;
+        int height = UnityEngine.Screen.height;
+
+        if (width == LastDevOverlayScreenWidth &&
+            height == LastDevOverlayScreenHeight)
+        {
+            return;
+        }
+
+        LastDevOverlayScreenWidth = width;
+        LastDevOverlayScreenHeight = height;
+
+        ApplyDevOverlaySafeRootScale();
+
+        Canvas.ForceUpdateCanvases();
+
+        LogInfo($"DEV OVERLAY SCALE: resolution changed to {width}x{height}; reapplied 16:9 safe-root scale.");
+    }
+
     // Creates the developer overlay canvas if it does not already exist.
     internal static void EnsureDevOverlayCanvas()
     {
@@ -365,14 +498,25 @@ public partial class LaikaMod
         canvas.targetDisplay = 0;
 
         CanvasScaler scaler = DevOverlayCanvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        scaler.scaleFactor = 1f;
 
         DevOverlayCanvasObject.AddComponent<GraphicRaycaster>();
+        GameObject safeRootObject = new GameObject("LaikaAPDevOverlaySafeRoot");
+        safeRootObject.transform.SetParent(DevOverlayCanvasObject.transform, false);
+
+        DevOverlaySafeRoot = safeRootObject.AddComponent<RectTransform>();
+        DevOverlaySafeRoot.anchorMin = new Vector2(0.5f, 0.5f);
+        DevOverlaySafeRoot.anchorMax = new Vector2(0.5f, 0.5f);
+        DevOverlaySafeRoot.pivot = new Vector2(0.5f, 0.5f);
+        DevOverlaySafeRoot.sizeDelta = new Vector2(2560f, 1440f);
+        DevOverlaySafeRoot.anchoredPosition = Vector2.zero;
+
+        ApplyDevOverlaySafeRootScale();
 
         // ===== Permanent status panel =====
         GameObject statusPanel = new GameObject("OverlayStatusPanel");
-        statusPanel.transform.SetParent(DevOverlayCanvasObject.transform, false);
+        statusPanel.transform.SetParent(DevOverlaySafeRoot, false);
 
         Image statusBg = statusPanel.AddComponent<Image>();
         statusBg.color = new Color(0f, 0f, 0f, 0f);
@@ -382,7 +526,7 @@ public partial class LaikaMod
         statusPanelRect.anchorMin = new Vector2(0f, 1f);
         statusPanelRect.anchorMax = new Vector2(0f, 1f);
         statusPanelRect.pivot = new Vector2(0f, 1f);
-        statusPanelRect.anchoredPosition = new Vector2(24f, -8f);
+        statusPanelRect.anchoredPosition = new Vector2(24f, -24f);
         statusPanelRect.sizeDelta = new Vector2(620f, 42f);
 
         GameObject statusTextObj = new GameObject("OverlayStatusText");
@@ -406,7 +550,7 @@ public partial class LaikaMod
 
         // ===== Recent log panel =====
         GameObject logPanel = new GameObject("OverlayRecentLogPanel");
-        logPanel.transform.SetParent(DevOverlayCanvasObject.transform, false);
+        logPanel.transform.SetParent(DevOverlaySafeRoot, false);
 
         Image logBg = logPanel.AddComponent<Image>();
         logBg.color = new Color(0f, 0f, 0f, 0.65f);
@@ -415,7 +559,7 @@ public partial class LaikaMod
         logPanelRect.anchorMin = new Vector2(0f, 0f);
         logPanelRect.anchorMax = new Vector2(0f, 0f);
         logPanelRect.pivot = new Vector2(0f, 0f);
-        logPanelRect.anchoredPosition = new Vector2(20f, 20f);
+        logPanelRect.anchoredPosition = new Vector2(24f, 24f);
         logPanelRect.sizeDelta = new Vector2(700f, 240f);
 
         GameObject logTextObj = new GameObject("OverlayRecentLogText");
@@ -447,6 +591,10 @@ public partial class LaikaMod
     {
         if (DevOverlayCanvasObject == null || DevOverlayStatusText == null || DevOverlayRecentLogText == null)
             return;
+
+        ApplyDevOverlaySafeRootScale();
+
+        bool vanillaSettingsOpen = IsVanillaSettingsScreenOpen();
 
         string connectionState = "Not Connected";
 
@@ -481,12 +629,12 @@ public partial class LaikaMod
             SessionState != null &&
             SessionState.APEnabled;
 
-        DevOverlayStatusText.transform.parent.gameObject.SetActive(shouldShowStatus);
+        DevOverlayStatusText.transform.parent.gameObject.SetActive(shouldShowStatus && !vanillaSettingsOpen);
         bool shouldShowRecentLog =
             ShowRecentLogOverlay &&
             ShouldShowAPActivityOverlay();
 
-        DevOverlayRecentLogText.transform.parent.gameObject.SetActive(shouldShowRecentLog);
+        DevOverlayRecentLogText.transform.parent.gameObject.SetActive(shouldShowRecentLog && !vanillaSettingsOpen);
 
         if (ShowRecentLogOverlay)
         {
@@ -498,6 +646,67 @@ public partial class LaikaMod
         {
             DevOverlayRecentLogText.text = string.Empty;
         }
+    }
+
+    internal static bool IsVanillaSettingsScreenOpen()
+    {
+        try
+        {
+            // TMP text path
+            foreach (TMPro.TMP_Text tmp in Resources.FindObjectsOfTypeAll<TMPro.TMP_Text>())
+            {
+                if (tmp == null || tmp.text == null || tmp.gameObject == null)
+                    continue;
+
+                if (!tmp.gameObject.activeInHierarchy)
+                    continue;
+
+                string text = tmp.text.Trim().ToUpperInvariant();
+
+                if (IsVanillaSettingsMarkerText(text))
+                    return true;
+            }
+
+            // Unity UI Text path
+            foreach (UnityEngine.UI.Text uiText in Resources.FindObjectsOfTypeAll<UnityEngine.UI.Text>())
+            {
+                if (uiText == null || uiText.text == null || uiText.gameObject == null)
+                    continue;
+
+                if (!uiText.gameObject.activeInHierarchy)
+                    continue;
+
+                string text = uiText.text.Trim().ToUpperInvariant();
+
+                if (IsVanillaSettingsMarkerText(text))
+                    return true;
+            }
+        }
+        catch
+        {
+        }
+
+        return false;
+    }
+
+    private static bool IsVanillaSettingsMarkerText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        return
+            text == "SCREEN RESOLUTION" ||
+            text == "FULLSCREEN" ||
+            text == "V-SYNC" ||
+            text == "FRAME RATE CAP" ||
+            text == "LANGUAGE" ||
+            text == "SCREEN SHAKE" ||
+            text == "CONTROLLER RUMBLE" ||
+            text == "GAMEPAD BIKE SENSITIVITY" ||
+            text == "ACCESSIBILITY" ||
+            text == "AUTO AIM" ||
+            text == "WALKIE SLOW TIME" ||
+            text == "RESET DEFAULTS";
     }
 
     // This parameter is only used as a safe creation hook.
@@ -614,6 +823,8 @@ public partial class LaikaMod
 
             if (!initialized)
                 InitializeOverlay();
+
+            LaikaMod.UpdateDevOverlaySafeRootForResolutionChange();
 
             if (!updateLoggedOnce)
             {

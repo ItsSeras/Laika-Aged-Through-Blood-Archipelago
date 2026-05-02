@@ -60,14 +60,24 @@ public partial class LaikaMod : BaseUnityPlugin
     // Later this can be filled directly from a live AP Connected packet.
     internal static APWorldOptions WorldOptions = new APWorldOptions();
 
+    internal static HashSet<string> TemporarilyRemovedForVanillaReAdd = new HashSet<string>();
+
+    internal static HashSet<string> TemporarilyRemovedCassettesForVanillaCollectionReAdd = new HashSet<string>();
+
     // Development stress test toggle.
     // I turn this on when I want to force a batch of received items through the queue without needing a live AP send.
     internal static bool EnableDevelopmentStressTest = false;
 
+    internal static bool SuppressVanillaConsumeTracking = false;
+
     // Canvas-based dev overlay objects.
     internal static GameObject DevOverlayCanvasObject;
+    internal static RectTransform DevOverlaySafeRoot;
     internal static Text DevOverlayStatusText;
     internal static Text DevOverlayRecentLogText;
+
+    internal static int LastDevOverlayScreenWidth = -1;
+    internal static int LastDevOverlayScreenHeight = -1;
 
     internal static GameObject TitleAPPanelCanvasObject;
     internal static GameObject TitleAPPanelObject;
@@ -172,9 +182,9 @@ public partial class LaikaMod : BaseUnityPlugin
             return;
         }
 
-        //LogInfo("AP TITLE PANEL: UpdateTitleScreenAPPanel running.");
-
         EnsureTitleScreenAPPanelExists();
+
+        ApplyTitleAPSafeRootScale();
 
         if (TitleAPPanelCanvasObject != null && !TitleAPPanelCanvasObject.activeSelf)
             TitleAPPanelCanvasObject.SetActive(true);
@@ -231,7 +241,7 @@ public partial class LaikaMod : BaseUnityPlugin
             connectionColor = "#FFD166";
 
         TitleAPPanelText.text =
-        "<size=68><b>Archipelago Edition</b></size>\n" +
+        "<size=56><b>Archipelago Edition</b></size>\n" +
             "Save Slot " + (slotIndex + 1) + "\n\n" +
             "Status: <color=" + statusColor + ">" + statusText + "</color>\n" +
             "Connection: <color=" + connectionColor + ">" + apConnectionState + "</color>\n" +
@@ -302,11 +312,26 @@ public partial class LaikaMod : BaseUnityPlugin
         canvas.overrideSorting = true;
         canvas.sortingOrder = 32767;
 
-        TitleAPPanelCanvasObject.AddComponent<CanvasScaler>();
+        CanvasScaler scaler = TitleAPPanelCanvasObject.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+        scaler.scaleFactor = 1f;
+
         TitleAPPanelCanvasObject.AddComponent<GraphicRaycaster>();
 
+        GameObject safeRootObject = new GameObject("Laika AP Title Safe 16x9 Root");
+        safeRootObject.transform.SetParent(TitleAPPanelCanvasObject.transform, false);
+
+        TitleAPSafeRoot = safeRootObject.AddComponent<RectTransform>();
+        TitleAPSafeRoot.anchorMin = new Vector2(0.5f, 0.5f);
+        TitleAPSafeRoot.anchorMax = new Vector2(0.5f, 0.5f);
+        TitleAPSafeRoot.pivot = new Vector2(0.5f, 0.5f);
+        TitleAPSafeRoot.sizeDelta = new Vector2(2560f, 1440f);
+        TitleAPSafeRoot.anchoredPosition = Vector2.zero;
+
+        ApplyTitleAPSafeRootScale();
+
         TitleAPPanelObject = new GameObject("LaikaAPTitlePanel");
-        TitleAPPanelObject.transform.SetParent(TitleAPPanelCanvasObject.transform, false);
+        TitleAPPanelObject.transform.SetParent(TitleAPSafeRoot, false);
 
         RectTransform panelRect = TitleAPPanelObject.AddComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(1f, 0.5f);
@@ -330,7 +355,7 @@ public partial class LaikaMod : BaseUnityPlugin
         TitleAPPanelText = textObject.AddComponent<TMPro.TextMeshProUGUI>();
 
         GameObject buttonObject = new GameObject("LaikaAPTitleSettingsButton");
-        buttonObject.transform.SetParent(TitleAPPanelCanvasObject.transform, false);
+        buttonObject.transform.SetParent(TitleAPSafeRoot, false);
 
         RectTransform buttonRect = buttonObject.AddComponent<RectTransform>();
         buttonRect.anchorMin = new Vector2(1f, 0f);
@@ -389,7 +414,7 @@ public partial class LaikaMod : BaseUnityPlugin
 
 
 
-        TitleAPPanelText.fontSize = 48;
+        TitleAPPanelText.fontSize = 42;
         TitleAPPanelText.characterSpacing = 3.5f;
         TitleAPPanelText.lineSpacing = 1.0f;
         TitleAPPanelText.enableWordWrapping = false;
@@ -398,6 +423,49 @@ public partial class LaikaMod : BaseUnityPlugin
         TitleAPPanelText.enableWordWrapping = false;
         TitleAPPanelText.overflowMode = TMPro.TextOverflowModes.Overflow;
         TitleAPPanelText.color = Color.white;
+    }
+
+    private static void ApplyTitleAPSafeRootScale()
+    {
+        if (TitleAPSafeRoot == null)
+            return;
+
+        float scaleX = UnityEngine.Screen.width / 2560f;
+        float scaleY = UnityEngine.Screen.height / 1440f;
+
+        float safeScale = Mathf.Min(scaleX, scaleY);
+
+        TitleAPSafeRoot.localScale = new Vector3(safeScale, safeScale, 1f);
+        TitleAPSafeRoot.anchoredPosition = Vector2.zero;
+        TitleAPSafeRoot.sizeDelta = new Vector2(2560f, 1440f);
+
+        LastTitleAPScreenWidth = UnityEngine.Screen.width;
+        LastTitleAPScreenHeight = UnityEngine.Screen.height;
+    }
+
+    private static int LastTitleAPScreenWidth = -1;
+    private static int LastTitleAPScreenHeight = -1;
+
+    private static void UpdateTitleAPSafeRootForResolutionChange()
+    {
+        if (TitleAPSafeRoot == null)
+            return;
+
+        int width = UnityEngine.Screen.width;
+        int height = UnityEngine.Screen.height;
+
+        if (width == LastTitleAPScreenWidth &&
+            height == LastTitleAPScreenHeight)
+        {
+            return;
+        }
+
+        LastTitleAPScreenWidth = width;
+        LastTitleAPScreenHeight = height;
+
+        ApplyTitleAPSafeRootScale();
+
+        LogInfo($"TITLE AP SCALE: resolution changed to {width}x{height}; reapplied 16:9 safe-root scale.");
     }
 
     internal static void OpenTitleScreenAPSettingsForHighlightedSlot()
@@ -438,7 +506,7 @@ public partial class LaikaMod : BaseUnityPlugin
             EnsureTitleScreenAPPanelExists();
 
         APSettingsPanelObject = new GameObject("LaikaAPSettingsPanel");
-        APSettingsPanelObject.transform.SetParent(TitleAPPanelCanvasObject.transform, false);
+        APSettingsPanelObject.transform.SetParent(TitleAPSafeRoot, false);
 
         RectTransform panelRect = APSettingsPanelObject.AddComponent<RectTransform>();
         panelRect.anchorMin = new Vector2(0f, 1f);
@@ -1124,6 +1192,8 @@ public partial class LaikaMod : BaseUnityPlugin
     private const int VK_F1 = 0x70;
     private static bool LastF1Down = false;
 
+    private static RectTransform TitleAPSafeRoot;
+
     private static bool GetF1PressedRaw()
     {
         bool isDown = (GetAsyncKeyState(VK_F1) & 0x8000) != 0;
@@ -1248,6 +1318,10 @@ public partial class LaikaMod : BaseUnityPlugin
     private void Update()
     {
         PollTitleScreenAPHotkey();
+
+        UpdateTitleAPSafeRootForResolutionChange();
+        UpdateDevOverlaySafeRootForResolutionChange();
+        RefreshDevOverlay();
 
         bool shouldLockTitleScreen = ShowAPSettingsPopup;
 
