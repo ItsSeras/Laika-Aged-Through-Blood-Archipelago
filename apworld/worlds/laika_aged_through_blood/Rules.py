@@ -94,6 +94,120 @@ def set_rules(world):
             and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
         )
 
+    def has_dash_access(state) -> bool:
+        return has(state, player, "Dash (Bike Upgrade)")
+
+
+    def has_hook_access(state) -> bool:
+        return has(state, player, "Hook (Bike Upgrade)")
+
+
+    def has_radio_silence_route(state) -> bool:
+        return (
+            has_dash_access(state)
+            or (
+                has(state, player, "Key Item: Carved Whale Tooth")
+                and has(state, player, "Key Item: Long Rope")
+            )
+        )
+
+    for name in [
+        "Radio Silence: Destroy Antenna 1",
+        "Radio Silence: Destroy Antenna 2",
+        "Radio Silence: Destroy Antenna 3",
+        "Radio Silence: Destroy Antenna 4",
+    ]:
+        set_rule(
+            loc(name),
+            lambda state: (
+                can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+                and has_shotgun_access(state, player)
+                and (
+                    has(state, player, "Dash (Bike Upgrade)")
+                    or (
+                        has(state, player, "Key Item: Carved Whale Tooth")
+                        and has(state, player, "Key Item: Long Rope")
+                    )
+                )
+            )
+        )
+
+    for name in [
+        "The Big Tree: Collapse Floor A",
+        "The Big Tree: Collapse Floor B",
+        "The Big Tree: Collapse Floor C",
+        "The Big Tree: Collapse Floor D",
+    ]:
+        set_rule(
+            loc(name),
+            lambda state: (
+                can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+                and can_reach_loc(state, player, "Quest Complete: The Bonehead's Hook")
+                and has(state, player, "Hook (Bike Upgrade)")
+                and has_shotgun_access(state, player)
+            )
+        )
+
+    def main_quest_diplomacy(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: Diplomacy")
+
+
+    def main_quest_big_tree(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: The Big Tree")
+
+
+    def main_quest_radio_silence(state) -> bool:
+        return (
+            war_chapter(state)
+            and has_shotgun_access(state, player)
+            and has_radio_silence_route(state)
+        )
+
+
+    def completed_main_quest_count(state) -> int:
+        count = 0
+
+        if main_quest_diplomacy(state):
+            count += 1
+
+        if main_quest_big_tree(state):
+            count += 1
+
+        if main_quest_radio_silence(state):
+            count += 1
+
+        return count
+
+
+    def any_main_quest_complete(state) -> bool:
+        return completed_main_quest_count(state) >= 1
+
+
+    def two_main_quests_complete(state) -> bool:
+        return completed_main_quest_count(state) >= 2
+
+
+    def all_three_main_quests_complete(state) -> bool:
+        return completed_main_quest_count(state) >= 3
+
+    def post_rage(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
+
+    def war_chapter_access(state) -> bool:
+        return war_chapter(state)
+
+    def post_diplomacy(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: Diplomacy")
+
+    def post_radio_silence(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: Radio Silence")
+
+    def post_big_tree(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: The Big Tree")
+
+    def post_childless(state) -> bool:
+        return can_reach_loc(state, player, "Quest Complete: Childless")
+
     set_rule(
         loc("Quest Complete: Diplomacy"),
         lambda state: (
@@ -119,12 +233,7 @@ def set_rules(world):
 
     set_rule(
         loc("Quest Complete: Radio Silence"),
-        lambda state: (
-            war_chapter(state)
-            and has_shotgun_access(state, player)
-            and has(state, player, "Key Item: Carved Whale Tooth")
-            and has(state, player, "Key Item: Long Rope")
-        )
+        lambda state: main_quest_radio_silence(state)
     )
 
     set_rule(
@@ -281,7 +390,7 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: A Break for Camilla"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: Diplomacy")
+            can_reach_loc(state, player, "Quest Complete: The Big Tree")
             and has_shotgun_access(state, player)
             and has(state, player, "Key Item: Camilla's Special Herbs")
         )
@@ -298,9 +407,7 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: The Prophecy"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has_shotgun_access(state, player)
-            and has(state, player, "Hook (Bike Upgrade)")
+            main_quest_radio_silence(state)
             and has(state, player, "Key Item: Petey's Letter")
         )
     )
@@ -309,7 +416,7 @@ def set_rules(world):
         loc("Quest Complete: Last Meal"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Radio Silence")
-            and has(state, player, "Bluelemon Berries")
+            and has(state, player, "Key Item: Bluelemon Berries")
         )
     )
 
@@ -402,16 +509,16 @@ def set_rules(world):
         loc("Quest Complete: The Last Erhu"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has(state, player, "Hook (Bike Upgrade)")
+            and can_reach_loc(state, player, "Quest Complete: The Bonehead's Hook")
+            and has_hook_access(state)
             and has_shotgun_access(state, player)
             and has(state, player, "Key Item: Erhu Strings")
         )
     )
-
     set_rule(
         loc("Quest Complete: Clean Your Beak"),
         lambda state: (
-            war_chapter(state)
+            all_three_main_quests_complete(state)
             and has_shotgun_access(state, player)
             and has(state, player, "Key Item: Flute Cleaning Brush")
         )
@@ -437,27 +544,34 @@ def set_rules(world):
         loc("Quest Complete: Oooo Ooo Oo O Ooo"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_dash_access(state)
             and has(state, player, "Key Item: Ultra Fast Cough Syrup")
         )
     )
 
+
     # Flashbacks
+    # One flashback unlocks per completed main quest.
     set_rule(
         loc("Quest Complete: Where We Used to Live"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: Diplomacy")
+        lambda state: any_main_quest_complete(state)
     )
 
     set_rule(
         loc("Quest Complete: Target Practice"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            two_main_quests_complete(state)
             and can_reach_loc(state, player, "Quest Complete: Where We Used to Live")
         )
     )
 
     set_rule(
         loc("Quest Complete: Ava"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: The Big Tree")
+        lambda state: (
+            all_three_main_quests_complete(state)
+            and can_reach_loc(state, player, "Quest Complete: Where We Used to Live")
+            and can_reach_loc(state, player, "Quest Complete: Target Practice")
+        )
     )
 
     # Final boss goal
@@ -470,30 +584,6 @@ def set_rules(world):
             and has_shotgun_access(state, player)
         )
     )
-
-    def has_hook_access(state) -> bool:
-        return has(state, player, "Hook (Bike Upgrade)")
-
-    def has_dash_access(state) -> bool:
-        return has(state, player, "Dash (Bike Upgrade)")
-
-    def post_rage(state) -> bool:
-        return can_reach_loc(state, player, "Quest Complete: Rage and Sorrow")
-
-    def war_chapter_access(state) -> bool:
-        return war_chapter(state)
-
-    def post_diplomacy(state) -> bool:
-        return can_reach_loc(state, player, "Quest Complete: Diplomacy")
-
-    def post_radio_silence(state) -> bool:
-        return can_reach_loc(state, player, "Quest Complete: Radio Silence")
-
-    def post_big_tree(state) -> bool:
-        return can_reach_loc(state, player, "Quest Complete: The Big Tree")
-
-    def post_childless(state) -> bool:
-        return can_reach_loc(state, player, "Quest Complete: Childless")
 
     # ===== Post Rage and Sorrow collectibles =====
     for name in [
@@ -518,8 +608,6 @@ def set_rules(world):
         "Map Piece: Where Doom Fell",
         "Map Piece: Where Rock Bleeds (Left)",
         "Map Piece: Where Rock Bleeds (Center)",
-        "Map Piece: Where Rock Bleeds (Right)",
-        "Puppy Gift: Tangerine Tree",
         "Rusty Spring (Shotgun Material)",
     ]:
         set_rule(loc(name), lambda state: war_chapter_access(state))
@@ -528,20 +616,70 @@ def set_rules(world):
     for name in [
         "Cassette Tape: Heartbeat from the Last Century",
         "Map Piece: Where Iron Caresses the Sky (Top)",
-        "Map Piece: Where the Waves Die (Left)",
-        "Map Piece: Where the Waves Die (Right)",
-        "Map Piece: Where Water Glistened (Borders)",
-        "Map Piece: Where Water Glistened (1st Ship)",
-        "Map Piece: Where Water Glistened (2nd Ship)",
-        "Map Piece: Where Water Glistened (3rd Ship)",
-        "Map Piece: Where Water Glistened (4th Ship)",
-        "Puppy Gift: Great-Great-Grandma's Novella",
         "Blueprint: Sniper",
     ]:
         set_rule(
             loc(name),
             lambda state: post_diplomacy(state) and has_shotgun_access(state, player)
         )
+
+    def has_radio_silence_vertical_access(state) -> bool:
+        return (
+            has_dash_access(state)
+            or (
+                has(state, player, "Key Item: Carved Whale Tooth")
+                and has(state, player, "Key Item: Long Rope")
+            )
+        )
+
+
+    for water_glistened_ship_map in [
+        "Map Piece: Where Water Glistened (1st Ship)",
+        "Map Piece: Where Water Glistened (2nd Ship)",
+        "Map Piece: Where Water Glistened (3rd Ship)",
+        "Map Piece: Where Water Glistened (4th Ship)",
+    ]:
+        set_rule(
+            loc(water_glistened_ship_map),
+            lambda state: (
+                can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+                and has_shotgun_access(state, player)
+                and has_radio_silence_vertical_access(state)
+            )
+        )
+
+    set_rule(
+        loc("Map Piece: Where the Waves Die (Left)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_rule(
+        loc("Map Piece: Where the Waves Die (Right)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
+
+    set_rule(
+        loc("Map Piece: Where Water Glistened (Borders)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_rule(
+        loc("Puppy Gift: Great-Great-Grandma's Novella"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
 
     # ===== Hook-gated collectibles =====
     for name in [
@@ -598,11 +736,25 @@ def set_rules(world):
 
     # ===== Post-diplomacy loose collectibles =====
     for name in [
-        "Cassette Tape: The Last Tear",
-        "Cassette Tape: Through the Wind",
         "Map Piece: Where Birds Lurk (Left)",
     ]:
         set_rule(loc(name), lambda state: post_diplomacy(state))
+
+    set_rule(
+        loc("Cassette Tape: The Last Tear"),
+        lambda state: (
+            can_reach_loc(state, player, "Boss Defeated: A Long Lost Woodcrawler")
+            and has_shotgun_access(state, player)
+        )
+    )
+ 
+    set_rule(
+        loc("Cassette Tape: Through the Wind"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+        )
+    )
 
     # ===== Later chapter collectibles =====
     set_rule(
@@ -630,10 +782,10 @@ def set_rules(world):
     )
 
     set_rule(
-        loc("Map Piece: Where Rust Weaves (Center)"),
+        loc("Map Piece: Where Rock Bleeds (Right)"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
+            war_chapter_access(state)
+            and has(state, player, "Key Item: Mountainheart Card")
         )
     )
 
@@ -687,23 +839,54 @@ def set_rules(world):
     # War chapter key items
     for name in [
         "Key Item: Fogg's Drumstick",
-        "Key Item: Gutsy Gus's Gushing Gunfights",
         "Key Item: Iris",
-        "Key Item: Erhu Strings",
         "Key Item: Sheet Music",
-        "Key Item: Ultra Fast Cough Syrup",
         "Key Item: Brand-New Notebook",
+    ]:
+        set_rule(loc(name), lambda state: war_chapter_access(state))
+
+    # Diplomacy Access
+    for name in [
         "Key Item: 1st Key To The Pit",
         "Key Item: 2nd Key To The Pit",
         "Key Item: 3rd Key To The Pit",
     ]:
-        set_rule(loc(name), lambda state: war_chapter_access(state))
+        set_rule(
+            loc(name),
+            lambda state: (
+                war_chapter_access(state)
+                and has(state, player, "Key Item: Mountainheart Card")
+            )
+        )
+
+    set_rule(
+        loc("Key Item: Erhu Strings"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and can_reach_loc(state, player, "Quest Complete: The Bonehead's Hook")
+            and has_hook_access(state)
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_rule(
+        loc("Key Item: Ultra Fast Cough Syrup"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_dash_access(state)
+        )
+    )
 
     # Diplomacy side quest key items
     for name in [
         "Key Item: Petey's Letter",
     ]:
         set_rule(loc(name), lambda state: post_diplomacy(state))
+
+    set_rule(
+        loc("Key Item: Gutsy Gus's Gushing Gunfights"),
+        lambda state: can_reach_loc(state, player, "Quest Complete: Diplomacy")
+    )
 
     # The Big Tree side quest key items
     for name in [
@@ -749,6 +932,14 @@ def set_rules(world):
             and can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
             and can_reach_loc(state, player, "Quest Complete: Sober Up")
             and can_reach_loc(state, player, "Quest Complete: Oooo Ooo Oo O Ooo")
+        )
+    )
+
+    set_rule(
+        loc("Puppy Gift: Tangerine Tree"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
         )
     )
 

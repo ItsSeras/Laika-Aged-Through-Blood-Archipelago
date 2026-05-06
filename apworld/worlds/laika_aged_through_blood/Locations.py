@@ -181,4 +181,14 @@ LOCATION_TABLE = {
     "Magnifying Glass (Sniper Rifle Material)": 150051,
     "Titanium Plates (Machine Gun Material)": 150052,
     "Missile (Rocket Launcher Material)": 150053,
+    
+    # Events
+    "Radio Silence: Destroy Antenna 1": 160000,
+    "Radio Silence: Destroy Antenna 2": 160001,
+    "Radio Silence: Destroy Antenna 3": 160002,
+    "Radio Silence: Destroy Antenna 4": 160003,
+    "The Big Tree: Collapse Floor A": 160004,
+    "The Big Tree: Collapse Floor B": 160005,
+    "The Big Tree: Collapse Floor C": 160006,
+    "The Big Tree: Collapse Floor D": 160007,
 }

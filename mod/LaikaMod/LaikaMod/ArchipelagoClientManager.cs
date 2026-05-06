@@ -1041,6 +1041,29 @@ public class ArchipelagoClientManager
         if (string.IsNullOrWhiteSpace(itemName) || string.IsNullOrWhiteSpace(locationName))
             return null;
 
+        if (plainText.IndexOf("hint", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            string hinterName = playerNames.Count >= 1 ? playerNames[0] : "Someone";
+            string ownerName = playerNames.Count >= 2 ? playerNames[1] : localPlayerName;
+
+            if (string.IsNullOrWhiteSpace(ownerName))
+                ownerName = "Unknown player";
+
+            string prefixPart = LaikaMod.OverlayColor("#FFFFFF", "[Hint] ");
+            string hinterPart = LaikaMod.OverlayColor("#C792EA", hinterName);
+            string hintedPart = LaikaMod.OverlayColor("#FFFFFF", " hinted ");
+            string ownerPart = LaikaMod.OverlayColor("#C792EA", ownerName);
+            string possessivePart = LaikaMod.OverlayColor("#FFFFFF", "'s ");
+            string itemPart = LaikaMod.OverlayColor(
+                LaikaMod.GetOverlayItemColorHex(itemId, null),
+                itemName
+            );
+            string atPart = LaikaMod.OverlayColor("#FFFFFF", " at ");
+            string locationPart = LaikaMod.OverlayColor("#00E676", locationName + ".");
+
+            return $"{prefixPart}{hinterPart}{hintedPart}{ownerPart}{possessivePart}{itemPart}{atPart}{locationPart}";
+        }
+
         // AP self-find line
         if (plainText.Contains(" found their ") && playerNames.Count >= 1)
         {

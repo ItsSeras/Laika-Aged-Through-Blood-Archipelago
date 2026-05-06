@@ -353,6 +353,12 @@ public partial class LaikaMod
     {
         missingItem = null;
 
+        if (expectedItem != null && expectedItem.Id == "I_MAYA_PENDANT")
+        {
+            if (HasProgressionFlag("G_FREE_TELEPORTS_UNLOCKED"))
+                return false;
+        }
+
         if (WasVanillaConsumedAPItem(expectedItem.Kind, expectedItem.Id))
         {
             LogInfo(
@@ -402,6 +408,215 @@ public partial class LaikaMod
         return true;
     }
 
+    internal static bool HasReceivedOrConsumedAPQuestItem(ItemKind kind, string itemId)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(itemId))
+                return false;
+
+            if (HasReceivedAPItem(kind, itemId))
+                return true;
+
+            if (WasVanillaConsumedAPItem(kind, itemId))
+                return true;
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"HasReceivedOrConsumedAPQuestItem failed for {kind}:{itemId}\n{ex}");
+            return false;
+        }
+    }
+
+    internal static void TrySendFetchItemLocationIfAPTurnedIn(
+        string questId,
+        string itemId,
+        ItemKind itemKind,
+        string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (string.IsNullOrEmpty(questId) || string.IsNullOrEmpty(itemId))
+                return;
+
+            if (!HasReceivedOrConsumedAPQuestItem(itemKind, itemId))
+                return;
+
+            APLocationDefinition itemLocation;
+            if (!TryGetLocationDefinition(itemId, out itemLocation))
+            {
+                LogWarning($"{sourceTag}: no AP location definition for fetch item {itemId} tied to quest {questId}.");
+                return;
+            }
+
+            if (HasLocationBeenSent(itemLocation.LocationId))
+            {
+                LogInfo($"{sourceTag}: fetch-item location already sent for {itemId} tied to quest {questId}.");
+                return;
+            }
+
+            TrySendLocationCheck(
+                itemLocation,
+                $"{sourceTag}/FetchItemAutoCheck/{questId}",
+                false
+            );
+
+            LogInfo(
+                $"{sourceTag}: auto-sent fetch-item location {itemLocation.DisplayName} because AP-provided item {itemId} was turned in for quest {questId}."
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TrySendFetchItemLocationIfAPTurnedIn failed for quest={questId}, item={itemId}\n{ex}");
+        }
+    }
+
+    internal static void TrySendFetchItemLocationsForCompletedQuest(string questId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(questId))
+            return;
+
+        switch (questId)
+        {
+            case "Q_D_S_TutorialHook":
+                // If AP gave the real Hook upgrade early, the player can finish Bonehead's Hook
+                // without ever collecting the vanilla Hook Head location.
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_HOOK_HEAD", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_MusiciansErhu":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_ERHU_STRINGS", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_MusiciansVoice":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_COUGHING_SYRUP", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_MusiciansFlute":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_FLUTE_REED", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_MusiciansGuitar":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_GUITAR_STRINGS", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_MusiciansDrums":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_DRUMSTICKS", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_MusiciansPiano":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_PARTITURES", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_NewSheriff":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_ALFREDO_COMIC", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_Tombstone":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_TOMB_FLOWER", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_CamillasJoint":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_CAMILLA_HERBS", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_BoneFlour":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_SPECIAL_BONES", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_EntomBrother":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_BUGS_JAR", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_FirstPeriod":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_NAPKINS", ItemKind.KeyItem, sourceTag);
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_MOON_BLOSSOM", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_LastMeal":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_SUICIDE_BERRIES", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_Prophecy":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_PETEY_PROPHECY", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_OldCamp":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_HILDA_BRAID", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_Seashell":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_HILDA_SEASHELL", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_NightmaresOne":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_ANTI_NIGHTMARE", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_NightmaresTwo":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_ANTI_URTICARIA", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_A_Dictionary":
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_DICTIONARY", ItemKind.KeyItem, sourceTag);
+                break;
+
+            case "Q_D_S_Flower":
+                // Backup only. Normal Heartglaze handling should still happen at the physical flower.
+                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_PUPPY_FLOWER", ItemKind.KeyItem, sourceTag);
+                break;
+        }
+    }
+
+    internal static bool IsPuppyGiftPlacedInHouse(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId))
+            return false;
+
+        string achievementId = null;
+
+        switch (itemId)
+        {
+            case "I_UKULELE":
+                achievementId = "D_A_GiftsPuppy_Ukulele_Intro";
+                break;
+
+            case "I_DREAMCATCHER":
+                achievementId = "D_A_GiftsPuppy_Dreamcatcher";
+                break;
+
+            case "I_TOY_BIKE":
+                achievementId = "D_A_GiftsPuppy_Bike_Intro";
+                break;
+
+            case "I_BOOK_MOTHER":
+                achievementId = "D_A_GiftsPuppy_BookMother_Intro";
+                break;
+
+            case "I_TOY_ANIMAL":
+                achievementId = "D_A_GiftsPuppy_ToyAnimal";
+                break;
+
+            case "I_GAMEBOY":
+                achievementId = "D_A_GiftsPuppy_GameBoy_Intro";
+                break;
+
+            case "I_PLANT_PUPPY":
+                achievementId = "D_A_GiftsPuppy_Plant_Intro";
+                break;
+        }
+
+        if (string.IsNullOrEmpty(achievementId))
+            return false;
+
+        return HasProgressionFlag(achievementId);
+    }
+
     private static bool TryBuildMissingCassetteReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
     {
         missingItem = null;
@@ -421,6 +636,37 @@ public partial class LaikaMod
         );
 
         return true;
+    }
+
+    internal static void ArmCassetteLocationCheck(string cassetteId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(cassetteId))
+            return;
+
+        ArmedCassetteLocationChecks.Add(cassetteId);
+        LogInfo($"{sourceTag}: armed cassette location check for {cassetteId}.");
+    }
+
+    internal static bool ConsumeArmedCassetteLocationCheck(string cassetteId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(cassetteId))
+            return false;
+
+        if (!ArmedCassetteLocationChecks.Remove(cassetteId))
+            return false;
+
+        LogInfo($"{sourceTag}: consumed armed cassette location check for {cassetteId}.");
+        return true;
+    }
+
+    internal static bool IsJakobCollectionCassetteId(string cassetteId)
+    {
+        return
+            cassetteId == "I_CASSETTE_1" ||
+            cassetteId == "I_CASSETTE_2" ||
+            cassetteId == "I_CASSETTE_3" ||
+            cassetteId == "I_CASSETTE_4" ||
+            cassetteId == "I_CASSETTE_5";
     }
 
     private static bool TryBuildMissingMapUnlockReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
@@ -528,6 +774,16 @@ public partial class LaikaMod
     {
         if (item == null)
             return false;
+
+        if (item.Kind == ItemKind.Currency)
+        {
+            return Singleton<EconomyManager>.Instance == null;
+        }
+
+        if (item.Kind == ItemKind.Ingredient || item.Kind == ItemKind.Material)
+        {
+            return Singleton<InventoryManager>.Instance == null;
+        }
 
         if (item.Kind == ItemKind.MapUnlock)
         {
@@ -1795,6 +2051,7 @@ public partial class LaikaMod
             TryReconcileOldWarfareShotgunGoal(questLog, sourceTag);
             TryReconcileTutorialHookGoal(questLog, sourceTag);
             TryReconcileDeferredHarpoonPieces(questLog, sourceTag);
+            TryReconcileRadioSilenceDashBypass(questLog, sourceTag);
         }
         catch (Exception ex)
         {
@@ -1814,7 +2071,34 @@ public partial class LaikaMod
 
             bool grantedAny = false;
 
-            if (SessionState.HarpoonPiece1ReceivedFromAP)
+            bool piece1FromAP = SessionState.HarpoonPiece1ReceivedFromAP;
+            bool piece2FromAP = SessionState.HarpoonPiece2ReceivedFromAP;
+
+            bool piece1InInventory = InventoryHasItemSafe("I_HARPOON_PIECE_1");
+            bool piece2InInventory = InventoryHasItemSafe("I_HARPOON_PIECE_2");
+
+            // Do not deliver only one AP harpoon piece into the FixHarpoon step unless the other
+            // piece is already available. One-piece delivery can leave Radio Silence in a bad partial state.
+            bool canDeliverPiece1 =
+                piece1FromAP &&
+                (piece2FromAP || piece2InInventory);
+
+            bool canDeliverPiece2 =
+                piece2FromAP &&
+                (piece1FromAP || piece1InInventory);
+
+            if (!canDeliverPiece1 && !canDeliverPiece2)
+            {
+                LogInfo(
+                    $"{sourceTag}: deferred harpoon pieces held because only one side is available. " +
+                    $"piece1FromAP={piece1FromAP}, piece2FromAP={piece2FromAP}, " +
+                    $"piece1Inventory={piece1InInventory}, piece2Inventory={piece2InInventory}"
+                );
+
+                return;
+            }
+
+            if (canDeliverPiece1)
             {
                 grantedAny |= TryGrantDeferredHarpoonPieceNow(
                     "I_HARPOON_PIECE_1",
@@ -1823,7 +2107,7 @@ public partial class LaikaMod
                 );
             }
 
-            if (SessionState.HarpoonPiece2ReceivedFromAP)
+            if (canDeliverPiece2)
             {
                 grantedAny |= TryGrantDeferredHarpoonPieceNow(
                     "I_HARPOON_PIECE_2",
@@ -1853,6 +2137,107 @@ public partial class LaikaMod
         catch (Exception ex)
         {
             LogWarning($"{sourceTag}: TryReconcileDeferredHarpoonPieces failed:\n{ex}");
+        }
+    }
+
+    internal static bool InventoryHasItemSafe(string itemId)
+    {
+        try
+        {
+            InventoryManager inventory = Singleton<InventoryManager>.Instance;
+
+            if (inventory == null || string.IsNullOrEmpty(itemId))
+                return false;
+
+            return inventory.HasItem(itemId, 1);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    internal static bool HasDashUnlockedForRadioSilenceBypass()
+    {
+        try
+        {
+            if (HasProgressionFlag("G_DASH_UNLOCKED"))
+                return true;
+
+            InventoryManager inventory = Singleton<InventoryManager>.Instance;
+
+            if (inventory != null && inventory.HasItem("I_DASH", 1))
+                return true;
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"HasDashUnlockedForRadioSilenceBypass failed:\n{ex}");
+            return false;
+        }
+    }
+
+    internal static void TryReconcileRadioSilenceDashBypass(QuestLog questLog, string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (questLog == null)
+                return;
+
+            QuestInstance quest = FindActiveQuest("Q_D_2_Lighthouse");
+
+            if (quest == null)
+                return;
+
+            QuestGoal currentGoal = quest.GetCurrentGoal();
+
+            if (currentGoal == null)
+                return;
+
+            if (currentGoal.GoalId != "FixHarpoon")
+                return;
+
+            if (!HasDashUnlockedForRadioSilenceBypass())
+                return;
+
+            bool hasPiece1 = WasHarpoonPieceReceivedFromAP("I_HARPOON_PIECE_1");
+            bool hasPiece2 = WasHarpoonPieceReceivedFromAP("I_HARPOON_PIECE_2");
+
+            if (hasPiece1 && hasPiece2)
+                return;
+
+            LogInfo(
+                $"{sourceTag}: Radio Silence dash bypass detected. " +
+                $"Advancing past FixHarpoon because Dash is unlocked and harpoon pieces are not both available. " +
+                $"hasPiece1={hasPiece1}, hasPiece2={hasPiece2}"
+            );
+
+            bool fixedHarpoon = questLog.TryCompleteQuestGoal("Q_D_2_Lighthouse", "FixHarpoon");
+
+            LogInfo(
+                $"{sourceTag}: Radio Silence dash bypass TryCompleteQuestGoal(FixHarpoon) returned {fixedHarpoon}."
+            );
+
+            if (!SessionState.RadioSilenceDashBypassNoticeShown)
+            {
+                SessionState.RadioSilenceDashBypassNoticeShown = true;
+                SaveSessionState();
+
+                AnnounceAPActivity(
+                    OverlayColor("#00E676", "[AP] Radio Silence updated: ") +
+                    OverlayColor("#FFD166", "Dash route bypassed the harpoon repair step.")
+                );
+            }
+
+            LogImportantQuestSnapshots(sourceTag + "/AfterRadioSilenceDashBypass");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TryReconcileRadioSilenceDashBypass failed:\n{ex}");
         }
     }
 
@@ -1925,34 +2310,92 @@ public partial class LaikaMod
     // I only complete GetHook so the rest of the quest can still play out normally.
     internal static void TryReconcileTutorialHookGoal(QuestLog questLog, string sourceTag)
     {
-        QuestInstance quest = FindActiveQuest("Q_D_S_TutorialHook");
-
-        if (quest == null)
-            return;
-
-        QuestGoal currentGoal = quest.GetCurrentGoal();
-
-        if (currentGoal == null)
-            return;
-
-        if (currentGoal.GoalId != "GetHook")
-            return;
-
-        InventoryManager inventory = Singleton<InventoryManager>.Instance;
-
-        if (inventory == null)
+        try
         {
-            LogWarning($"{sourceTag}: could not reconcile TutorialHook because InventoryManager is null.");
-            return;
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (questLog == null)
+                return;
+
+            QuestInstance quest = FindActiveQuest("Q_D_S_TutorialHook");
+
+            if (quest == null)
+                return;
+
+            QuestGoal currentGoal = quest.GetCurrentGoal();
+
+            if (currentGoal == null)
+                return;
+
+            if (!HasAPHookUnlocked())
+            {
+                LogInfo(
+                    $"{sourceTag}: TutorialHook reconcile skipped. CurrentGoal={currentGoal.GoalId}, AP Hook is not unlocked."
+                );
+
+                return;
+            }
+
+            LogInfo(
+                $"{sourceTag}: TutorialHook reconcile check. CurrentGoal={currentGoal.GoalId}, AP Hook is unlocked."
+            );
+
+            if (currentGoal.GoalId == "GetHook")
+            {
+                LogInfo(
+                    $"{sourceTag}: reconciling Bonehead's Hook by completing GetHook because AP Hook is already unlocked."
+                );
+
+                bool completedGetHook = questLog.TryCompleteQuestGoal(
+                    "Q_D_S_TutorialHook",
+                    "GetHook"
+                );
+
+                LogInfo(
+                    $"{sourceTag}: TryCompleteQuestGoal(Q_D_S_TutorialHook, GetHook) returned {completedGetHook}."
+                );
+
+                if (completedGetHook)
+                {
+                    AnnounceAPActivity(
+                        OverlayColor("#00E676", "[AP] Bonehead's Hook updated: ") +
+                        OverlayColor("#FFD166", "Hook step completed because you already had Hook.")
+                    );
+
+                    LogImportantQuestSnapshots(sourceTag + "/AfterTutorialHookGetHook");
+                }
+
+                // Refresh quest/current goal immediately after completing GetHook.
+                // This helps avoid Hectist dialogue reading the old goal state during the same interaction chain.
+                quest = FindActiveQuest("Q_D_S_TutorialHook");
+
+                if (quest == null)
+                    return;
+
+                currentGoal = quest.GetCurrentGoal();
+
+                if (currentGoal == null)
+                    return;
+
+                LogInfo(
+                    $"{sourceTag}: TutorialHook current goal after GetHook reconcile -> {currentGoal.GoalId}"
+                );
+            }
+
+            // Do not force-close later goals yet. We need one more log from the broken state first.
+            // If Hectist still softlocks, this log tells us the exact goalId to handle next.
+            if (currentGoal.GoalId != "GetHook")
+            {
+                LogInfo(
+                    $"{sourceTag}: TutorialHook reconcile finished. CurrentGoal={currentGoal.GoalId}."
+                );
+            }
         }
-
-        if (!inventory.HasItem("I_E_HOOK"))
-            return;
-
-        LogInfo($"{sourceTag}: reconciling Bonehead's Hook softlock by completing GetHook because the player already owns the hook.");
-        AnnounceAPActivity("[AP] Bonehead's Hook updated because you already had the hook.");
-
-        questLog.TryCompleteQuestGoal("Q_D_S_TutorialHook", "GetHook");
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TryReconcileTutorialHookGoal failed:\n{ex}");
+        }
     }
 
     // ===== Weapon mode helpers =====
@@ -2091,7 +2534,7 @@ public partial class LaikaMod
         SaveSessionState();
 
         AnnounceAPActivity(
-            OverlayColor("#FFD166", "The Heartglaze Flower was temporarily removed for game function. It will appear after you defeat Woodcrawler and pick up the flower.")
+            OverlayColor("#FFD166", "The Heartglaze Flower was temporarily deferred for game function. It will appear after you defeat Woodcrawler and pick up the flower.")
         );
 
         LogInfo($"{sourceTag}: shown one-time Heartglaze deferred notice.");

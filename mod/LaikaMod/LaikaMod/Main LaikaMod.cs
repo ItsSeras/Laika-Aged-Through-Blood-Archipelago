@@ -1438,6 +1438,16 @@ public partial class LaikaMod : BaseUnityPlugin
         }
     }
 
+    internal static System.Collections.IEnumerator SkipRageCreditsToCampCoroutine(CreditsDirector creditsDirector)
+    {
+        yield return null;
+
+        if (creditsDirector == null)
+            yield break;
+
+        creditsDirector.LoadCampScene();
+    }
+
     internal static void ScheduleHeartglazeFlowerRemovalAfterDelay(string sourceTag)
     {
         HeartglazeFlowerCleanupDone = false;

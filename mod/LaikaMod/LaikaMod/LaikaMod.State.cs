@@ -19,6 +19,9 @@ public partial class LaikaMod
     internal static bool HeartglazeFlowerCleanupDone = false;
     internal static float HeartglazeFlowerCleanupReadyAt = 0f;
 
+    internal static readonly HashSet<string> ArmedCassetteLocationChecks =
+     new HashSet<string>();
+
     internal static APSaveState PeekSessionStateForSlot(int slotIndex)
     {
         try

@@ -877,6 +877,11 @@ public partial class LaikaMod
 
             LaikaMod.LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
 
+            LaikaMod.TrySendFetchItemLocationsForCompletedQuest(
+                questId,
+                "QuestClosePatch"
+            );
+
             if (questId == "Q_D_S_Flower")
             {
                 LaikaMod.TryCleanupHeartglazeAfterQuestUpdate("QuestClosePatch");
@@ -1169,6 +1174,12 @@ public partial class LaikaMod
 
                 string cassetteId = cassette.id;
 
+                if (string.IsNullOrEmpty(cassetteId))
+                {
+                    LaikaMod.LogWarning("CassetteInventoryRealSourcePatch: cassetteId was null or empty.");
+                    return;
+                }
+
                 if (LaikaMod.IsGrantingAPItem)
                 {
                     LaikaMod.SuppressedCassetteChecks.Remove(cassetteId);
@@ -1179,12 +1190,6 @@ public partial class LaikaMod
                 if (LaikaMod.SuppressedCassetteChecks.Remove(cassetteId))
                 {
                     LaikaMod.LogInfo($"CassetteInventoryRealSourcePatch: suppressed cassette check for AP-granted cassette {cassetteId}.");
-                    return;
-                }
-
-                if (string.IsNullOrEmpty(cassetteId))
-                {
-                    LaikaMod.LogWarning("CassetteInventoryRealSourcePatch: cassetteId was null or empty.");
                     return;
                 }
 
@@ -1227,27 +1232,187 @@ public partial class LaikaMod
                     return;
                 }
 
+                if (LaikaMod.ConsumeArmedCassetteLocationCheck(cassetteId, "CassetteInventoryRealSourcePatch"))
+                {
+                    LaikaMod.LogInfo(
+                        $"CASSETTE INVENTORY SOURCE DETECTED FROM ARMED SOURCE: id={cassetteId}, silent={silent}, result={__result}"
+                    );
+
+                    LaikaMod.TryHandleCassetteLocationCheck(
+                        cassetteId,
+                        "CassetteInventoryRealSourcePatch/ArmedSource"
+                    );
+
+                    return;
+                }
+
+                if (silent && LaikaMod.IsJakobCollectionCassetteId(cassetteId))
+                {
+                    LaikaMod.LogInfo(
+                        $"CASSETTE INVENTORY SOURCE DETECTED FROM JAKOB COLLECTION: id={cassetteId}, silent={silent}, result={__result}"
+                    );
+
+                    LaikaMod.TryHandleCassetteLocationCheck(
+                        cassetteId,
+                        "CassetteInventoryRealSourcePatch/JakobCollection"
+                    );
+
+                    return;
+                }
+
+                if (silent)
+                {
+                    LaikaMod.LogInfo(
+                        $"CassetteInventoryRealSourcePatch: ignored silent non-Jakob cassette add {cassetteId}; not trusted as a location source."
+                    );
+
+                    return;
+                }
+
+                if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
+                {
+                    LaikaMod.LogInfo(
+                        $"CassetteInventoryRealSourcePatch: ignored unarmed already-AP-owned cassette add {cassetteId}; waiting for explicit shop/boombox source."
+                    );
+
+                    return;
+                }
+
                 LaikaMod.LogInfo(
-                    $"CASSETTE INVENTORY SOURCE DETECTED: id={cassetteId}, silent={silent}, result={__result}"
+                    $"CassetteInventoryRealSourcePatch: ignored unarmed cassette add {cassetteId}; not trusted as a location source."
                 );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogError($"CassetteInventoryRealSourcePatch exception:\n{ex}");
+            }
+        }
+    }
 
-                LaikaMod.TryHandleCassetteLocationCheck(cassetteId, "CassetteInventoryRealSourcePatch");
-
-                APLocationDefinition definition;
-                if (!LaikaMod.TryGetLocationDefinition(cassetteId, out definition))
+    [HarmonyPatch(typeof(Laika.UI.InGame.Shop.ShopScreen), "OnBuySucceded")]
+    public class ShopScreen_OnBuySucceded_APLocationPatch
+    {
+        static void Prefix(ItemData itemData, int amount)
+        {
+            try
+            {
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
                     return;
 
-                if (LaikaMod.ShouldSuppressVanillaInventoryReward(definition))
+                if (itemData == null)
+                    return;
+
+                if (itemData is CassetteData)
                 {
-                    LaikaMod.TryRemoveCassetteReward(
+                    string cassetteId = itemData.id;
+
+                    if (string.IsNullOrEmpty(cassetteId))
+                        return;
+
+                    APLocationDefinition definition;
+                    if (!LaikaMod.TryGetLocationDefinition(cassetteId, out definition))
+                        return;
+
+                    if (definition.Category != "Cassette")
+                        return;
+
+                    // If the player already owns the cassette from AP, vanilla may not truly add it again.
+                    // Send the location at purchase time so shop cassettes like Overthinker still work.
+                    if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
+                    {
+                        LaikaMod.LogInfo(
+                            $"SHOP CASSETTE PURCHASE DETECTED FOR AP-OWNED CASSETTE: id={cassetteId}, location={definition.DisplayName}"
+                        );
+
+                        if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
+                        {
+                            LaikaMod.LogInfo(
+                                $"SHOP CASSETTE PURCHASE DETECTED FOR AP-OWNED CASSETTE: id={cassetteId}, location={definition.DisplayName}"
+                            );
+
+                            LaikaMod.TrySendLocationCheck(
+                                definition,
+                                "ShopScreen_OnBuySucceded_APLocationPatch/APOwnedCassettePurchase",
+                                false
+                            );
+
+                            return;
+                        }
+                    }
+
+                    LaikaMod.ArmCassetteLocationCheck(
                         cassetteId,
-                        "CassetteInventoryRealSourcePatch"
+                        "ShopScreen_OnBuySucceded_APLocationPatch/CassettePurchase"
+                    );
+
+                    return;
+                }
+
+                APLocationDefinition itemDefinition;
+                if (!LaikaMod.TryGetLocationDefinition(itemData.id, out itemDefinition))
+                    return;
+
+                // Same idea for AP-owned shop key items. If AddItem refuses because the player already owns it,
+                // the generic AddItem patch may never see a successful add.
+                if (
+                    itemDefinition.Category == "KeyItem" &&
+                    LaikaMod.HasReceivedAPItem(ItemKind.KeyItem, itemData.id)
+                )
+                {
+                    LaikaMod.LogInfo(
+                        $"SHOP KEY ITEM PURCHASE DETECTED FOR AP-OWNED ITEM: id={itemData.id}, location={itemDefinition.DisplayName}"
+                    );
+
+                    LaikaMod.TrySendLocationCheck(
+                        itemDefinition,
+                        "ShopScreen_OnBuySucceded_APLocationPatch/APOwnedKeyItemPurchase",
+                        false
                     );
                 }
             }
             catch (Exception ex)
             {
-                LaikaMod.LogError($"CassetteInventoryRealSourcePatch exception:\n{ex}");
+                LaikaMod.LogError($"ShopScreen_OnBuySucceded_APLocationPatch exception:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CreditsDirector), "Start")]
+    public class CreditsDirector_Start_APSkipRageCreditsPatch
+    {
+        static bool Prefix(CreditsDirector __instance)
+        {
+            try
+            {
+                if (__instance == null)
+                    return true;
+
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return true;
+
+                LaikaMod.LogInfo("AP CREDITS SKIP: skipping Where We Say Who / Rage and Sorrow credits scene.");
+
+                Singleton<QuestLog>.Instance.TryCloseQuest("Q_D_0_Tutorial", true);
+
+                LaikaMod.EnsureCoroutineRunner();
+
+                if (LaikaMod.CoroutineRunner != null)
+                {
+                    LaikaMod.CoroutineRunner.StartCoroutine(
+                        LaikaMod.SkipRageCreditsToCampCoroutine(__instance)
+                    );
+                }
+                else
+                {
+                    __instance.LoadCampScene();
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"CreditsDirector_Start_APSkipRageCreditsPatch exception:\n{ex}");
+                return true;
             }
         }
     }
@@ -1414,6 +1579,156 @@ public partial class LaikaMod
             }
 
             LaikaMod.TrySendLocationCheck(locationDefinition, "BossAchievementPatch");
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_01_Manager), "Restart")]
+    public class Boss01Manager_Restart_APPreventRestartAfterDefeatPatch
+    {
+        static bool Prefix(Boss_01_Manager __instance)
+        {
+            try
+            {
+                if (__instance == null)
+                    return true;
+
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return true;
+
+                if (MonoSingleton<ProgressionManager>.Instance == null ||
+                    MonoSingleton<ProgressionManager>.Instance.ProgressionData == null)
+                    return true;
+
+                if (MonoSingleton<ProgressionManager>.Instance.ProgressionData.GetAchievementCompleted("B_BOSS_01_DEFEATED"))
+                {
+                    LaikaMod.LogInfo(
+                        "BOSS_01: blocked Restart because Caterpillar is already defeated. " +
+                        "This prevents post-kill transition/restart looping."
+                    );
+
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"Boss01Manager_Restart_APPreventRestartAfterDefeatPatch exception:\n{ex}");
+                return true;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Boss_01_Launcher), "Interact")]
+    public class Boss01Launcher_Interact_APPreventRelaunchAfterDefeatPatch
+    {
+        static bool Prefix()
+        {
+            try
+            {
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return true;
+
+                if (MonoSingleton<ProgressionManager>.Instance == null ||
+                    MonoSingleton<ProgressionManager>.Instance.ProgressionData == null)
+                    return true;
+
+                if (MonoSingleton<ProgressionManager>.Instance.ProgressionData.GetAchievementCompleted("B_BOSS_01_DEFEATED"))
+                {
+                    LaikaMod.LogInfo("BOSS_01: blocked launcher interaction because Caterpillar is already defeated.");
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"Boss01Launcher_Interact_APPreventRelaunchAfterDefeatPatch exception:\n{ex}");
+                return true;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(Q_D_2_Antennas), "OnAntennaDestroyed")]
+    public class QD2Antennas_OnAntennaDestroyed_APLocationPatch
+    {
+        static void Postfix(string antennaID)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(antennaID))
+                    return;
+
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return;
+
+                APLocationDefinition definition;
+                if (!LaikaMod.TryGetLocationDefinition(antennaID, out definition))
+                    return;
+
+                LaikaMod.TrySendLocationCheck(
+                    definition,
+                    "QD2Antennas_OnAntennaDestroyed_APLocationPatch",
+                    false
+                );
+
+                LaikaMod.LogInfo(
+                    $"RADIO SILENCE ANTENNA CHECK: sent/confirmed AP check for {antennaID} -> {definition.DisplayName}"
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"QD2Antennas_OnAntennaDestroyed_APLocationPatch exception:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PyramidCenterController), "OnPillarDestroyed")]
+    public class PyramidCenterController_OnPillarDestroyed_APLocationPatch
+    {
+        static void Postfix()
+        {
+            try
+            {
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return;
+
+                if (MonoSingleton<ProgressionManager>.Instance == null ||
+                    MonoSingleton<ProgressionManager>.Instance.ProgressionData == null)
+                    return;
+
+                string[] floorAchievementIds =
+                {
+                "N_D_03_CENTER_A_BROKEN",
+                "N_D_03_CENTER_B_BROKEN",
+                "N_D_03_CENTER_C_BROKEN",
+                "N_D_03_CENTER_D_BROKEN"
+            };
+
+                foreach (string achievementId in floorAchievementIds)
+                {
+                    if (!MonoSingleton<ProgressionManager>.Instance.ProgressionData.GetAchievementCompleted(achievementId))
+                        continue;
+
+                    APLocationDefinition definition;
+                    if (!LaikaMod.TryGetLocationDefinition(achievementId, out definition))
+                        continue;
+
+                    LaikaMod.TrySendLocationCheck(
+                        definition,
+                        "PyramidCenterController_OnPillarDestroyed_APLocationPatch",
+                        false
+                    );
+
+                    LaikaMod.LogInfo(
+                        $"BIG TREE FLOOR CHECK: sent/confirmed AP check for {achievementId} -> {definition.DisplayName}"
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"PyramidCenterController_OnPillarDestroyed_APLocationPatch exception:\n{ex}");
+            }
         }
     }
 
@@ -2201,6 +2516,21 @@ public partial class LaikaMod
                 if (LaikaMod.HasSentLocationCheck(definition))
                     return;
 
+                if (LaikaMod.IsPuppyGiftPlacedInHouse(gift.id))
+                {
+                    LaikaMod.TrySendLocationCheck(
+                        definition,
+                        "PuppyGiftPickItem_CanInteract/AlreadyPlacedInHouse",
+                        false
+                    );
+
+                    LaikaMod.LogInfo(
+                        $"PUPPY GIFT PICKUP: sent AP check for already-placed puppy gift -> {gift.id}, location={definition.DisplayName}"
+                    );
+
+                    return;
+                }
+
                 if (!LaikaMod.HasReceivedAPItem(ItemKind.PuppyTreat, gift.id))
                     return;
 
@@ -2259,6 +2589,21 @@ public partial class LaikaMod
 
                 if (LaikaMod.HasSentLocationCheck(definition))
                     return;
+
+                if (LaikaMod.IsPuppyGiftPlacedInHouse(gift.id))
+                {
+                    LaikaMod.TrySendLocationCheck(
+                        definition,
+                        "PuppyGiftPickItem_CanInteract/AlreadyPlacedInHouse",
+                        false
+                    );
+
+                    LaikaMod.LogInfo(
+                        $"PUPPY GIFT PICKUP: sent AP check for already-placed puppy gift -> {gift.id}, location={definition.DisplayName}"
+                    );
+
+                    return;
+                }
 
                 if (!LaikaMod.HasReceivedAPItem(ItemKind.PuppyTreat, gift.id))
                     return;

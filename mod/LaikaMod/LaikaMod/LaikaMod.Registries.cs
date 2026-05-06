@@ -1515,6 +1515,86 @@ public partial class LaikaMod
                     true
                 )
             },
+            {
+                "Antenna_0",
+                new APLocationDefinition(
+                    160000L,
+                    "Radio Silence: Destroy Antenna 1",
+                    "Antenna_0",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "Antenna_1",
+                new APLocationDefinition(
+                    160001L,
+                    "Radio Silence: Destroy Antenna 2",
+                    "Antenna_1",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "Antenna_2",
+                new APLocationDefinition(
+                    160002L,
+                    "Radio Silence: Destroy Antenna 3",
+                    "Antenna_2",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "Antenna_3",
+                new APLocationDefinition(
+                    160003L,
+                    "Radio Silence: Destroy Antenna 4",
+                    "Antenna_3",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "N_D_03_CENTER_A_BROKEN",
+                new APLocationDefinition(
+                    160004L,
+                    "The Big Tree: Collapse Floor A",
+                    "N_D_03_CENTER_A_BROKEN",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "N_D_03_CENTER_B_BROKEN",
+                new APLocationDefinition(
+                    160005L,
+                    "The Big Tree: Collapse Floor B",
+                    "N_D_03_CENTER_B_BROKEN",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "N_D_03_CENTER_C_BROKEN",
+                new APLocationDefinition(
+                    160006L,
+                    "The Big Tree: Collapse Floor C",
+                    "N_D_03_CENTER_C_BROKEN",
+                    "Event",
+                    true
+                )
+            },
+            {
+                "N_D_03_CENTER_D_BROKEN",
+                new APLocationDefinition(
+                    160007L,
+                    "The Big Tree: Collapse Floor D",
+                    "N_D_03_CENTER_D_BROKEN",
+                    "Event",
+                    true
+                )
+            },
         };
 
     internal static Dictionary<long, Func<PendingItem>> ItemFactoriesByApId =
