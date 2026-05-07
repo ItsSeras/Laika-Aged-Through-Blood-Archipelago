@@ -175,6 +175,7 @@ LOCATION_TABLE = {
     "Key Item: Mountainheart Card": 150037,
     "Key Item: Hook Head": 150038,
     "Key Item: Hook Body": 150039,
+    "Key Item: Birthday Invitation": 150040,
 
     # Weapon unique material / gun part checks
     "Rusty Spring (Shotgun Material)": 150050,

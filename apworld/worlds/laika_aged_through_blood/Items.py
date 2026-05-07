@@ -321,7 +321,13 @@ ITEM_TABLE = {
         "internal_id": "I_D_Dungeon_01_key",
         "kind": "KeyItem",
     },
-
+    "Key Item: Birthday Invitation": {
+        "id": 1198,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_ENTOM_INVITATION",
+        "kind": "KeyItem",
+    },
+    
     # ===== Crafting-mode weapon material items =====
     "Rusty Spring (Shotgun Material)": {
         "id": 1150,

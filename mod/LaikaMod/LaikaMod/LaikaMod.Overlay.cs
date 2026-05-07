@@ -117,7 +117,7 @@ public partial class LaikaMod
             (itemId >= 1110L && itemId <= 1114L) || // weapon upgrades
             (itemId >= 1151L && itemId <= 1153L) || // non-shotgun crafting materials
             (itemId >= 1161L && itemId <= 1163L) || // non-shotgun recipes
-            (itemId >= 1165L && itemId <= 1197L)    // quest/key items not already caught above
+            (itemId >= 1165L && itemId <= 1198L)    // quest/key items not already caught above
         )
         {
             return "#FFD166"; // useful gold/yellow

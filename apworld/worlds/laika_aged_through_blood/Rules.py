@@ -372,8 +372,9 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: Life of the Party"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: The Big Tree")
+            post_big_tree(state)
             and has_shotgun_access(state, player)
+            and has(state, player, "Key Item: Birthday Invitation")
             and has(state, player, "Key Item: Jar Filled With Bugs")
         )
     )
@@ -407,7 +408,7 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: The Prophecy"),
         lambda state: (
-            main_quest_radio_silence(state)
+            post_radio_silence(state)
             and has(state, player, "Key Item: Petey's Letter")
         )
     )
@@ -682,29 +683,31 @@ def set_rules(world):
     )
 
     # ===== Hook-gated collectibles =====
-    for name in [
-        "Magnifying Glass (Sniper Rifle Material)",
-    ]:
-        set_rule(
-            loc(name),
-            lambda state: post_diplomacy(state) and has_hook_access(state)
+    set_rule(
+        loc("Magnifying Glass (Sniper Rifle Material)"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_hook_access(state)
         )
+    )
 
-    # ===== Shotgun + Hook collectibles =====
+# ===== Shotgun + Hook collectibles =====
+# These are Big Tree / hook-route pickups, but they do not require Diplomacy.
     for name in [
         "Cassette Tape: The Hero",
         "Cassette Tape: The Final Hours",
         "Map Piece: The Big Tree",
         "Map Piece: Where Birds Came From (Left/Bottom)",
         "Map Piece: Where Birds Came From (Right/Top)",
-        "Map Piece: Where Birds Lurk (Right)",
+        "Map Piece: Where Birds Lurk (Left)",
         "Puppy Gift: Toy Animal",
     ]:
         set_rule(
             loc(name),
-            lambda state: post_diplomacy(state)
-            and has_shotgun_access(state, player)
-            and has_hook_access(state)
+            lambda state: (
+                has_shotgun_access(state, player)
+                and has_hook_access(state)
+            )
         )
 
     # ===== Shotgun-gated post-Heartglaze collectibles =====
@@ -736,7 +739,7 @@ def set_rules(world):
 
     # ===== Post-diplomacy loose collectibles =====
     for name in [
-        "Map Piece: Where Birds Lurk (Left)",
+        # Placeholder
     ]:
         set_rule(loc(name), lambda state: post_diplomacy(state))
 
@@ -838,9 +841,6 @@ def set_rules(world):
 
     # War chapter key items
     for name in [
-        "Key Item: Fogg's Drumstick",
-        "Key Item: Iris",
-        "Key Item: Sheet Music",
         "Key Item: Brand-New Notebook",
     ]:
         set_rule(loc(name), lambda state: war_chapter_access(state))
@@ -870,6 +870,21 @@ def set_rules(world):
     )
 
     set_rule(
+        loc("Key Item: Iris"),
+        lambda state: post_diplomacy(state)
+    )
+
+    set_rule(
+        loc("Key Item: Sheet Music"),
+        lambda state: post_radio_silence(state)
+    )
+
+    set_rule(
+        loc("Key Item: Fogg's Drumstick"),
+        lambda state: post_diplomacy(state)
+    )
+    
+    set_rule(
         loc("Key Item: Ultra Fast Cough Syrup"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
@@ -895,6 +910,7 @@ def set_rules(world):
         "Key Item: Jar Filled With Bugs",
         "Key Item: Pads",
         "Key Item: Moon Blossom",
+        "Key Item: Birthday Invitation",        
     ]:
         set_rule(loc(name), lambda state: post_big_tree(state))
 

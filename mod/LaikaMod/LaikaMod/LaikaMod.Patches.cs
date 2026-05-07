@@ -205,6 +205,19 @@ public partial class LaikaMod
                 // force the source usable so the player can still shoot it and send the check.
                 if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
                 {
+                    if (LaikaMod.IsQuestRewardCassetteId(cassetteId) &&
+                        !LaikaMod.IsQuestRewardCassetteLocationAllowed(cassetteId))
+                    {
+                        __result = false;
+
+                        LaikaMod.LogInfo(
+                            $"AP CASSETTE SOURCE: not forcing early quest-reward cassette source visible for {cassetteId}; " +
+                            "matching quest is not complete yet."
+                        );
+
+                        return;
+                    }
+
                     __result = true;
 
                     LaikaMod.LogInfo(
@@ -249,6 +262,17 @@ public partial class LaikaMod
                 // So breaking the boombox itself is enough to count the location.
                 if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
                 {
+                    if (LaikaMod.IsQuestRewardCassetteId(cassetteId) &&
+                        !LaikaMod.IsQuestRewardCassetteLocationAllowed(cassetteId))
+                    {
+                        LaikaMod.LogInfo(
+                            $"AP CASSETTE SOURCE: blocked boombox destruction check for early quest-reward cassette {cassetteId}; " +
+                            "matching quest is not complete yet."
+                        );
+
+                        return;
+                    }
+
                     LaikaMod.TrySendLocationCheck(
                         definition,
                         "CassetteDestructible_Destruction_APOwnedCassetteSourcePatch",
@@ -306,8 +330,30 @@ public partial class LaikaMod
                     return false;
                 }
 
-                // If AP already gave the cassette and this source has not been checked,
+                // Quest-reward cassettes are not physical pickup sources.
+                // They should only send from QuestClosePatch after their matching quest completes.
+                if (LaikaMod.IsQuestRewardCassetteId(cassette.id))
+                {
+                    if (!LaikaMod.IsQuestRewardCassetteLocationAllowed(cassette.id))
+                    {
+                        __instance.gameObject.SetActive(false);
+
+                        LaikaMod.LogInfo(
+                            $"AP CASSETTE ADDER: blocked early quest-reward cassette source {cassette.id}; " +
+                            "matching quest is not complete yet."
+                        );
+
+                        return false;
+                    }
+
+                    LaikaMod.LogInfo(
+                        $"AP CASSETTE ADDER: quest-reward cassette source {cassette.id} is allowed because matching quest is complete."
+                    );
+                }
+
+                // If AP already gave a normal physical cassette and this source has not been checked,
                 // send the location now and keep the AP-owned cassette.
+                // Quest-reward cassettes should not use this path unless their quest is already complete.
                 if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassette.id))
                 {
                     LaikaMod.TrySendLocationCheck(
@@ -877,6 +923,11 @@ public partial class LaikaMod
 
             LaikaMod.LogInfo($"QUEST COMPLETED: questId={questId}, silent={silent}");
 
+            LaikaMod.TrySendQuestRewardCassetteLocationForCompletedQuest(
+                questId,
+                "QuestClosePatch"
+            );
+
             LaikaMod.TrySendFetchItemLocationsForCompletedQuest(
                 questId,
                 "QuestClosePatch"
@@ -1272,15 +1323,38 @@ public partial class LaikaMod
                 if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
                 {
                     LaikaMod.LogInfo(
-                        $"CassetteInventoryRealSourcePatch: ignored unarmed already-AP-owned cassette add {cassetteId}; waiting for explicit shop/boombox source."
+                        $"CassetteInventoryRealSourcePatch: ignored unarmed already-AP-owned cassette add {cassetteId}; waiting for explicit shop/boombox/source-specific handler."
                     );
 
                     return;
                 }
 
+                // Quest-reward cassettes are granted by vanilla during camp/night quest wrap-up scenes.
+                // They are NOT safe to treat as generic physical pickups.
+                // Their AP locations should only be sent from TrySendQuestRewardCassetteLocationForCompletedQuest.
+                if (LaikaMod.IsQuestRewardCassetteId(cassetteId))
+                {
+                    LaikaMod.LogInfo(
+                        $"CassetteInventoryRealSourcePatch: ignored unarmed quest-reward cassette add {cassetteId}; " +
+                        "quest-reward cassette locations are only sent from completed quest hooks."
+                    );
+
+                    return;
+                }
+
+                // Normal non-silent cassette pickup.
+                // This covers physical cassette pickups like Heartglaze Hope when the player does NOT already own
+                // the AP cassette. These should send the AP location and then remove the vanilla cassette reward.
                 LaikaMod.LogInfo(
-                    $"CassetteInventoryRealSourcePatch: ignored unarmed cassette add {cassetteId}; not trusted as a location source."
+                    $"CASSETTE INVENTORY SOURCE DETECTED FROM NORMAL PICKUP: id={cassetteId}, silent={silent}, result={__result}"
                 );
+
+                LaikaMod.TryHandleCassetteLocationCheck(
+                    cassetteId,
+                    "CassetteInventoryRealSourcePatch/NormalPickup"
+                );
+
+                return;
             }
             catch (Exception ex)
             {
@@ -1645,6 +1719,108 @@ public partial class LaikaMod
             {
                 LaikaMod.LogWarning($"Boss01Launcher_Interact_APPreventRelaunchAfterDefeatPatch exception:\n{ex}");
                 return true;
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PersistenceManager), "OnSceneLoaded")]
+    public class PersistenceManager_OnSceneLoaded_APCutsceneSkipPatch
+    {
+        private static readonly HashSet<string> RecentlySkippedScenes = new HashSet<string>();
+
+        static void Postfix(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            try
+            {
+                string sceneName = scene.name;
+
+                if (!LaikaMod.IsAPCutsceneSkipEnabled())
+                    return;
+
+                if (string.IsNullOrEmpty(sceneName))
+                    return;
+
+                string targetScene = null;
+
+                if (sceneName == "Dungeon_01_endSequence")
+                {
+                    // Post-Big Tree drive/cutscene scene.
+                    // Logs confirm this is the loaded scene name after The Big Tree.
+                    targetScene = "Camp_Night";
+                }
+
+                if (string.IsNullOrEmpty(targetScene))
+                    return;
+
+                string skipKey = sceneName + "->" + targetScene;
+
+                if (RecentlySkippedScenes.Contains(skipKey))
+                    return;
+
+                RecentlySkippedScenes.Add(skipKey);
+
+                LaikaMod.LogInfo(
+                    $"AP CUTSCENE SKIP: detected scene {sceneName}; loading {targetScene} instead."
+                );
+
+                LaikaMod.EnsureCoroutineRunner();
+
+                if (LaikaMod.CoroutineRunner != null)
+                {
+                    LaikaMod.CoroutineRunner.StartCoroutine(
+                        LaikaMod.SkipSceneToTargetCoroutine(
+                            sceneName,
+                            targetScene,
+                            "PersistenceManager_OnSceneLoaded_APCutsceneSkipPatch"
+                        )
+                    );
+                }
+                else
+                {
+                    MonoSingleton<SceneLoader>.Instance.LoadScene(targetScene, false, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"PersistenceManager_OnSceneLoaded_APCutsceneSkipPatch exception:\n{ex}");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(PersistenceManager), "OnSceneLoaded")]
+    public class PersistenceManager_OnSceneLoaded_APSceneNameLoggerPatch
+    {
+        static void Postfix(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        {
+            try
+            {
+                string sceneName = scene.name;
+
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return;
+
+                if (string.IsNullOrEmpty(sceneName))
+                    return;
+
+                LaikaMod.LogInfo($"AP SCENE LOGGER: loaded sceneName={sceneName}");
+
+                if (sceneName.IndexOf("Kidnap", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    sceneName.IndexOf("Puppy", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    sceneName.IndexOf("Child", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    sceneName.IndexOf("Keep", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    LaikaMod.LogInfo(
+                        $"AP SCENE LOGGER: possible Childless/Where They Keep Puppy scene detected -> {sceneName}"
+                    );
+
+                    LaikaMod.LogImportantQuestSnapshots(
+                        "APSceneNameLogger/ChildlessCandidate/" + sceneName
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning($"PersistenceManager_OnSceneLoaded_APSceneNameLoggerPatch exception:\n{ex}");
             }
         }
     }

@@ -135,6 +135,7 @@ class LaikaWorld(World):
             "Key Item: Carved Whale Tooth",
             "Key Item: Long Rope",
             "Key Item: Mountainheart Card",
+            "Key Item: Birthday Invitation",
         ]
 
         for item_name in progression_key_items:

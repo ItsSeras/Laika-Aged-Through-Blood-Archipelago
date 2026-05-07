@@ -1476,6 +1476,16 @@ public partial class LaikaMod
                 )
             },
             {
+                "I_ENTOM_INVITATION",
+                new APLocationDefinition(
+                    150040L,
+                    "Key Item: Birthday Invitation",
+                    "I_ENTOM_INVITATION",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
                 "I_MATERIAL_SHOTGUN",
                 new APLocationDefinition(
                     150050,
@@ -1667,6 +1677,7 @@ public partial class LaikaMod
         { 1195L, () => new PendingItem(ItemKind.KeyItem, "I_HARPOON_PIECE_1", 1, "Key Item: Carved Whale Tooth") },
         { 1196L, () => new PendingItem(ItemKind.KeyItem, "I_HARPOON_PIECE_2", 1, "Key Item: Long Rope") },
         { 1197L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_key", 1, "Key Item: Mountainheart Card") },
+        { 1198L, () => new PendingItem(ItemKind.KeyItem, "I_ENTOM_INVITATION", 1, "Key Item: Birthday Invitation") },
 
         // ===== Puppy gifts =====
         { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Puppy Gift: Toy Bike") },

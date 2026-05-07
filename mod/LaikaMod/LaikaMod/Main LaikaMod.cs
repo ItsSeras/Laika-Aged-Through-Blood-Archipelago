@@ -1448,6 +1448,39 @@ public partial class LaikaMod : BaseUnityPlugin
         creditsDirector.LoadCampScene();
     }
 
+    internal static bool IsAPCutsceneSkipEnabled()
+    {
+        return SessionState != null && SessionState.APEnabled;
+    }
+
+    internal static System.Collections.IEnumerator SkipSceneToTargetCoroutine(
+        string sourceScene,
+        string targetScene,
+        string sourceTag)
+    {
+        yield return null;
+
+        try
+        {
+            if (!IsAPCutsceneSkipEnabled())
+                yield break;
+
+            if (string.IsNullOrEmpty(targetScene))
+                yield break;
+
+            LogInfo($"{sourceTag}: skipping AP cutscene scene {sourceScene} -> {targetScene}");
+
+            MonoSingleton<PersistenceManager>.Instance.CanSave = true;
+            MonoSingleton<PersistenceManager>.Instance.SaveGame(false);
+
+            MonoSingleton<SceneLoader>.Instance.LoadScene(targetScene, false, false);
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: SkipSceneToTargetCoroutine failed for {sourceScene} -> {targetScene}:\n{ex}");
+        }
+    }
+
     internal static void ScheduleHeartglazeFlowerRemovalAfterDelay(string sourceTag)
     {
         HeartglazeFlowerCleanupDone = false;

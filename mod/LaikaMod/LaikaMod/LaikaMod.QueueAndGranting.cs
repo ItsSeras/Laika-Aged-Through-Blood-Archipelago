@@ -669,6 +669,15 @@ public partial class LaikaMod
             cassetteId == "I_CASSETTE_5";
     }
 
+    internal static bool IsQuestRewardCassetteId(string cassetteId)
+    {
+        return
+            cassetteId == "I_CASSETTE_D01" ||          // Trust Them, Diplomacy reward
+            cassetteId == "I_CASSETTE_D02" ||          // My Destiny, Radio Silence reward
+            cassetteId == "I_CASSETTE_D03" ||          // The End of the Road, Big Tree reward
+            cassetteId == "I_CASSETTE_KIDNAPPING";     // Mother, Floating reward
+    }
+
     private static bool TryBuildMissingMapUnlockReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
     {
         missingItem = null;
@@ -1890,6 +1899,99 @@ public partial class LaikaMod
         }
     }
 
+    internal static bool TryGetQuestRewardCassetteQuestId(string cassetteId, out string questId)
+    {
+        questId = null;
+
+        switch (cassetteId)
+        {
+            case "I_CASSETTE_D01": // Trust Them
+                questId = "Q_D_1_Mines"; // Diplomacy
+                return true;
+
+            case "I_CASSETTE_D02": // My Destiny
+                questId = "Q_D_2_Lighthouse"; // Radio Silence
+                return true;
+
+            case "I_CASSETTE_D03": // The End of the Road
+                questId = "Q_D_3_TheBigTree"; // The Big Tree
+                return true;
+
+            case "I_CASSETTE_KIDNAPPING": // Mother
+                questId = "Q_D_S_TutorialDash"; // Floating
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    internal static bool IsQuestRewardCassetteLocationAllowed(string cassetteId)
+    {
+        string questId;
+        if (!TryGetQuestRewardCassetteQuestId(cassetteId, out questId))
+            return true;
+
+        APLocationDefinition questDefinition;
+        if (!TryGetLocationDefinition(questId, out questDefinition))
+            return false;
+
+        return HasLocationBeenSent(questDefinition.LocationId);
+    }
+
+    internal static void TrySendQuestRewardCassetteLocationForCompletedQuest(string questId, string sourceTag)
+    {
+        if (string.IsNullOrEmpty(questId))
+            return;
+
+        string cassetteId = null;
+
+        switch (questId)
+        {
+            case "Q_D_1_Mines":
+                cassetteId = "I_CASSETTE_D01"; // Trust Them
+                break;
+
+            case "Q_D_2_Lighthouse":
+                cassetteId = "I_CASSETTE_D02"; // My Destiny
+                break;
+
+            case "Q_D_3_TheBigTree":
+                cassetteId = "I_CASSETTE_D03"; // The End of the Road
+                break;
+
+            case "Q_D_S_TutorialDash":
+                cassetteId = "I_CASSETTE_KIDNAPPING"; // Mother
+                break;
+        }
+
+        if (string.IsNullOrEmpty(cassetteId))
+            return;
+
+        APLocationDefinition cassetteDefinition;
+        if (!TryGetLocationDefinition(cassetteId, out cassetteDefinition))
+        {
+            LogWarning($"{sourceTag}: no AP location definition for quest reward cassette {cassetteId} from quest {questId}.");
+            return;
+        }
+
+        if (HasLocationBeenSent(cassetteDefinition.LocationId))
+        {
+            LogInfo($"{sourceTag}: quest reward cassette already sent -> {cassetteDefinition.DisplayName}");
+            return;
+        }
+
+        TrySendLocationCheck(
+            cassetteDefinition,
+            $"{sourceTag}/QuestRewardCassette/{questId}",
+            false
+        );
+
+        LogInfo(
+            $"{sourceTag}: sent quest reward cassette check {cassetteDefinition.DisplayName} because quest {questId} completed."
+        );
+    }
+
     // Centralized cassette check handler.
     // This consumes one-shot suppression for AP-granted cassette items so that receiving
     // a cassette does not accidentally count as finding its real in-world location.
@@ -1914,7 +2016,28 @@ public partial class LaikaMod
             return;
         }
 
+        string requiredQuestId;
+        if (TryGetQuestRewardCassetteQuestId(cassetteId, out requiredQuestId) &&
+            !IsQuestRewardCassetteLocationAllowed(cassetteId))
+        {
+            LogWarning(
+                $"{sourceTag}: blocked quest reward cassette check for {cassetteId} / {locationDefinition.DisplayName} " +
+                $"because required quest {requiredQuestId} is not completed yet."
+            );
+
+            // If vanilla/camp/night tried to add this early, rip it back out.
+            TryRemoveCassetteReward(
+                cassetteId,
+                $"{sourceTag}/BlockedQuestRewardCassette"
+            );
+
+            return;
+        }
+
         TrySendLocationCheck(locationDefinition, sourceTag);
+
+        // Keep this here so legitimate non-AP cassette rewards still do not become free vanilla inventory.
+        TryConsumeVanillaLocationReward(locationDefinition, sourceTag);
     }
 
     internal static string NormalizePuppyGiftId(string giftId)
@@ -2052,6 +2175,7 @@ public partial class LaikaMod
             TryReconcileTutorialHookGoal(questLog, sourceTag);
             TryReconcileDeferredHarpoonPieces(questLog, sourceTag);
             TryReconcileRadioSilenceDashBypass(questLog, sourceTag);
+            TrySkipRadioSilenceBoatIntro(questLog, sourceTag);
         }
         catch (Exception ex)
         {
@@ -2712,6 +2836,47 @@ public partial class LaikaMod
         {
             LogWarning($"{sourceTag}: TryGrantDeferredHarpoonPieceNow failed for {itemId}:\n{ex}");
             return false;
+        }
+    }
+
+    internal static void TrySkipRadioSilenceBoatIntro(QuestLog questLog, string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (questLog == null)
+                return;
+
+            QuestInstance quest = FindActiveQuest("Q_D_2_Lighthouse");
+
+            if (quest == null)
+                return;
+
+            QuestGoal currentGoal = quest.GetCurrentGoal();
+
+            if (currentGoal == null)
+                return;
+
+            if (currentGoal.GoalId != "Infiltrate")
+                return;
+
+            LogInfo($"{sourceTag}: Radio Silence boat intro candidate detected at goal Infiltrate.");
+
+            // Test version: complete only Infiltrate.
+            // Do not complete EnterLighthouse or BackToBoat_1 yet until we see what vanilla does next.
+            bool result = questLog.TryCompleteQuestGoal("Q_D_2_Lighthouse", "Infiltrate");
+
+            LogInfo(
+                $"{sourceTag}: Radio Silence boat intro skip TryCompleteQuestGoal(Infiltrate) returned {result}."
+            );
+
+            LogImportantQuestSnapshots(sourceTag + "/AfterRadioSilenceBoatIntroSkip");
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: TrySkipRadioSilenceBoatIntro failed:\n{ex}");
         }
     }
 
