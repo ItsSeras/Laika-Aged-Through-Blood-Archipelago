@@ -88,13 +88,6 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static bool HasAppliedLiveSlotData = false;
 
-    public bool LocalDeathLinkOverrideEnabled = false;
-    public bool LocalDeathLinkEnabled = false;
-
-    public bool LocalDeathAmnestyOverrideEnabled = false;
-    public bool LocalDeathAmnestyEnabled = false;
-    public int LocalDeathAmnestyCount = 1;
-
     internal static int ActiveSaveSlotIndex = 0;
 
     internal static APSaveState SessionState = new APSaveState
@@ -505,6 +498,15 @@ public partial class LaikaMod : BaseUnityPlugin
         if (TitleAPPanelCanvasObject == null)
             EnsureTitleScreenAPPanelExists();
 
+        if (SessionState == null)
+            LoadSessionStateForSlot(ActiveSaveSlotIndex);
+
+        if (SessionState.Connection == null)
+            SessionState.Connection = new APConnectionState();
+
+        if (SessionState.Options == null)
+            SessionState.Options = new APWorldOptions();
+
         APSettingsPanelObject = new GameObject("LaikaAPSettingsPanel");
         APSettingsPanelObject.transform.SetParent(TitleAPSafeRoot, false);
 
@@ -678,6 +680,8 @@ public partial class LaikaMod : BaseUnityPlugin
             value =>
             {
                 SessionState.Options.DeathLinkEnabled = value;
+                SessionState.Options.DeathLinkLocalOverrideEnabled = true;
+
                 WorldOptions.DeathLinkEnabled = value;
 
                 SaveSessionStateForSlot(ActiveSaveSlotIndex);
@@ -689,7 +693,7 @@ public partial class LaikaMod : BaseUnityPlugin
                     value
                         ? "[AP] DeathLink enabled. Your deaths can affect other players."
                         : "[AP] DeathLink disabled."
-                        );
+                );
 
                 UpdateTitleScreenAPPanel();
                 RefreshVisibleSaveSlotAPLabels();
@@ -699,6 +703,8 @@ public partial class LaikaMod : BaseUnityPlugin
         AddAPToggleButton(contentObject.transform, "Death Amnesty", () => SessionState.Options.DeathAmnestyEnabled, value =>
         {
             SessionState.Options.DeathAmnestyEnabled = value;
+            SessionState.Options.DeathAmnestyLocalOverrideEnabled = true;
+
             WorldOptions.DeathAmnestyEnabled = value;
 
             SaveSessionStateForSlot(ActiveSaveSlotIndex);
@@ -720,6 +726,7 @@ public partial class LaikaMod : BaseUnityPlugin
 
             UpdateTitleScreenAPPanel();
             RefreshVisibleSaveSlotAPLabels();
+            RefreshDevOverlay();
         });
 
         if (SessionState.Options.DeathAmnestyEnabled)
@@ -728,7 +735,9 @@ public partial class LaikaMod : BaseUnityPlugin
             {
                 if (int.TryParse(value, out int parsedAmount))
                 {
-                    SessionState.Options.DeathAmnestyCount = Mathf.Clamp(parsedAmount, 0, 99);
+                    SessionState.Options.DeathAmnestyCount = Mathf.Clamp(parsedAmount, 1, 99);
+                    SessionState.Options.DeathAmnestyCountLocalOverrideEnabled = true;
+
                     WorldOptions.DeathAmnestyCount = SessionState.Options.DeathAmnestyCount;
 
                     SaveSessionStateForSlot(ActiveSaveSlotIndex);
@@ -745,11 +754,14 @@ public partial class LaikaMod : BaseUnityPlugin
 
         AddAPActionButton(contentObject.transform, "Connect", () =>
         {
-            SaveSessionStateForSlot(ActiveSaveSlotIndex);
+            CommitAPSettingsOptionsToRuntime("AP settings Connect button");
+
             AnnounceAPActivity("[AP] Connection requested from title screen.");
             ConnectActiveSlotIfConfigured();
+
             UpdateTitleScreenAPPanel();
             RefreshVisibleSaveSlotAPLabels();
+            RefreshDevOverlay();
         });
 
         AddAPActionButton(contentObject.transform, "Disconnect", () =>
@@ -896,7 +908,9 @@ public partial class LaikaMod : BaseUnityPlugin
         {
             bool next = !getValue();
             setValue(next);
-            refresh();
+
+            if (text != null && text.gameObject != null)
+                refresh();
         });
 
         refresh();
@@ -993,11 +1007,23 @@ public partial class LaikaMod : BaseUnityPlugin
 
         GUILayout.Space(12);
 
-        SessionState.Options.DeathLinkEnabled =
+        bool nextDeathLink =
             GUILayout.Toggle(SessionState.Options.DeathLinkEnabled, "DeathLink");
 
-        SessionState.Options.DeathAmnestyEnabled =
+        if (nextDeathLink != SessionState.Options.DeathLinkEnabled)
+        {
+            SessionState.Options.DeathLinkEnabled = nextDeathLink;
+            SessionState.Options.DeathLinkLocalOverrideEnabled = true;
+        }
+
+        bool nextDeathAmnesty =
             GUILayout.Toggle(SessionState.Options.DeathAmnestyEnabled, "Death Amnesty");
+
+        if (nextDeathAmnesty != SessionState.Options.DeathAmnestyEnabled)
+        {
+            SessionState.Options.DeathAmnestyEnabled = nextDeathAmnesty;
+            SessionState.Options.DeathAmnestyLocalOverrideEnabled = true;
+        }
 
         if (SessionState.Options.DeathAmnestyEnabled)
         {
@@ -1005,7 +1031,15 @@ public partial class LaikaMod : BaseUnityPlugin
             string amnestyText = GUILayout.TextField(SessionState.Options.DeathAmnestyCount.ToString());
 
             if (int.TryParse(amnestyText, out int parsedAmnesty))
-                SessionState.Options.DeathAmnestyCount = Mathf.Clamp(parsedAmnesty, 0, 99);
+            {
+                int nextAmnestyCount = Mathf.Clamp(parsedAmnesty, 1, 99);
+
+                if (nextAmnestyCount != SessionState.Options.DeathAmnestyCount)
+                {
+                    SessionState.Options.DeathAmnestyCount = nextAmnestyCount;
+                    SessionState.Options.DeathAmnestyCountLocalOverrideEnabled = true;
+                }
+            }
         }
 
         GUILayout.Space(16);
@@ -1527,6 +1561,42 @@ public partial class LaikaMod : BaseUnityPlugin
         {
             LogWarning($"IsHeartglazeQuestReadyForFlowerRemoval failed:\n{ex}");
             return false;
+        }
+    }
+
+    internal static void CommitAPSettingsOptionsToRuntime(string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null)
+                return;
+
+            if (SessionState.Options == null)
+                SessionState.Options = new APWorldOptions();
+
+            WorldOptions.WeaponMode = SessionState.Options.WeaponMode;
+            WorldOptions.DeathLinkEnabled = SessionState.Options.DeathLinkEnabled;
+            WorldOptions.DeathAmnestyEnabled = SessionState.Options.DeathAmnestyEnabled;
+            WorldOptions.DeathAmnestyCount = Mathf.Max(1, SessionState.Options.DeathAmnestyCount);
+
+            SessionState.Options.DeathAmnestyCount = WorldOptions.DeathAmnestyCount;
+
+            SaveSessionStateForSlot(ActiveSaveSlotIndex);
+
+            LogInfo(
+                $"AP SETTINGS: committed options to runtime. Source={sourceTag}, " +
+                $"DeathLink={WorldOptions.DeathLinkEnabled}, " +
+                $"DeathLinkOverride={SessionState.Options.DeathLinkLocalOverrideEnabled}, " +
+                $"DeathAmnesty={WorldOptions.DeathAmnestyEnabled}, " +
+                $"DeathAmnestyOverride={SessionState.Options.DeathAmnestyLocalOverrideEnabled}, " +
+                $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}, " +
+                $"DeathAmnestyCountOverride={SessionState.Options.DeathAmnestyCountLocalOverrideEnabled}, " +
+                $"WeaponMode={WorldOptions.WeaponMode}"
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"AP SETTINGS: failed to commit options to runtime. Source={sourceTag}\n{ex}");
         }
     }
 

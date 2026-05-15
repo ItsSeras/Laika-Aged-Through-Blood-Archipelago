@@ -176,12 +176,15 @@ LOCATION_TABLE = {
     "Key Item: Hook Head": 150038,
     "Key Item: Hook Body": 150039,
     "Key Item: Birthday Invitation": 150040,
+    "Key Item: Rainbow Pebble": 150041,
+    "Key Item: Poochie's Ashes": 150042,
+    "Key Item: Maya's Pendant": 150043,
 
     # Weapon unique material / gun part checks
-    "Rusty Spring (Shotgun Material)": 150050,
-    "Magnifying Glass (Sniper Rifle Material)": 150051,
-    "Titanium Plates (Machine Gun Material)": 150052,
-    "Missile (Rocket Launcher Material)": 150053,
+    "Weapon Crafting Material: Rusty Spring": 150050,
+    "Weapon Crafting Material: Magnifying Glass": 150051,
+    "Weapon Crafting Material: Titanium Plates": 150052,
+    "Weapon Crafting Material: Missile": 150053,
     
     # Events
     "Radio Silence: Destroy Antenna 1": 160000,

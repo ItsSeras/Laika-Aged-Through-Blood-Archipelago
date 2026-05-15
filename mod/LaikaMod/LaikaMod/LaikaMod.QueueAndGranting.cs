@@ -2566,7 +2566,7 @@ public partial class LaikaMod
             "I_W_ROCKETLAUNCHER",
             "Rocket Launcher",
             "I_MATERIAL_ROCKETLAUNCHER",
-            "Missile (Rocket Launcher Material)"
+            "Weapon Crafting Material: Missile"
         );
     }
 
@@ -2576,7 +2576,7 @@ public partial class LaikaMod
             "I_W_SHOTGUN",
             "Shotgun",
             "I_MATERIAL_SHOTGUN",
-            "Rusty Spring (Shotgun Material)"
+            "Weapon Crafting Material: Rusty Spring"
         );
     }
 
@@ -2586,7 +2586,7 @@ public partial class LaikaMod
             "I_W_SNIPER",
             "Sniper Rifle",
             "I_MATERIAL_SNIPER",
-            "Magnifying Glass (Sniper Rifle Material)"
+            "Weapon Crafting Material: Magnifying Glass"
         );
     }
 
@@ -2596,7 +2596,7 @@ public partial class LaikaMod
             "I_W_UZI",
             "Machine Gun",
             "I_MATERIAL_UZI",
-            "Titanium Plates (Machine Gun Material)"
+            "Weapon Crafting Material: Titanium Plates"
         );
     }
 

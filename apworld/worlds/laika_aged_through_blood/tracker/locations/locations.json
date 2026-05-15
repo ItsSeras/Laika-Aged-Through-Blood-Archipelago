@@ -1,0 +1,2145 @@
+[
+  {
+    "name": "Tutorial - A Hundred Hungry Beaks",
+    "sections": [
+      {
+        "name": "Boss Defeated: A Hundred Hungry Beaks",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Start / Tutorial Area",
+        "x": 686,
+        "y": 351,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Tutorial - Rage and Sorrow",
+    "sections": [
+      {
+        "name": "Quest Complete: Rage and Sorrow",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Start / Tutorial Area",
+        "x": 1306,
+        "y": 296,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where We Live Placeholder Checks",
+    "sections": [
+      {
+        "name": "Key Item: Jakob's Ashes",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Brand-New Notebook",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Birthday Invitation",
+        "item_count": 1
+      },
+      {
+        "name": "Puppy Gift: Ukulele",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Water Whispers",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Stargazing",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Worse than Nightmares",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Worse than Hives",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Worse than Stomach Flu",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: The Prophecy",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: A New Sheriff in Town",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: We'll Never Know",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Life of the Party",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: A Little Tomb Stone",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: From Mother to Daughter",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Family Tree",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: First Blood",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Bone Flour",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Large Seed",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Iris",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where We Live",
+        "x": 950,
+        "y": 300,
+        "size": 28
+      }
+    ]
+  },
+  {
+    "name": "Where Mother Groans - Maya",
+    "sections": [
+      {
+        "name": "Quest Complete: Old Warfare",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Where We Used to Live",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Target Practice",
+        "item_count": 1
+      },
+      {
+        "name": "Blueprint: Shotgun",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Mother Groans",
+        "x": 1325,
+        "y": 732,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where We Dream - A Heart for Poochie",
+    "sections": [
+      {
+        "name": "Quest Complete: A Heart for Poochie",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where We Dream",
+        "x": 494,
+        "y": 637,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where We Dream - Maya and Puppy",
+    "sections": [
+      {
+        "name": "Quest Complete: Closure",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Ava",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Childless",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where We Dream",
+        "x": 1632,
+        "y": 616,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Shaza Tinkers - Floating",
+    "sections": [
+      {
+        "name": "Quest Complete: Floating",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: Mother",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Shaza Tinkers",
+        "x": 725,
+        "y": 880,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rules Are Made - Radio Silence",
+    "sections": [
+      {
+        "name": "Quest Complete: Radio Silence",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: My Destiny",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rules Are Made",
+        "x": 1189,
+        "y": 563,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rules Are Made - Diplomacy",
+    "sections": [
+      {
+        "name": "Quest Complete: Diplomacy",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: Trust Them",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rules Are Made",
+        "x": 1649,
+        "y": 885,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rules Are Made - The Big Tree",
+    "sections": [
+      {
+        "name": "Quest Complete: The Big Tree",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: The End of the Road",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rules Are Made",
+        "x": 894,
+        "y": 893,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where We Forget - Last Meal",
+    "sections": [
+      {
+        "name": "Quest Complete: Last Meal",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where We Forget",
+        "x": 314,
+        "y": 449,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where We Forget - A Break for Camilla",
+    "sections": [
+      {
+        "name": "Quest Complete: A Break for Camilla",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where We Forget",
+        "x": 628,
+        "y": 465,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Bikes Growl - All Mixtapes",
+    "sections": [
+      {
+        "name": "Cassette Tape: Heartglaze Hope",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: Bloody Sunset",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: Lullaby of the Dead",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: Blue Limbo",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: The Whisper",
+        "item_count": 1
+      },
+      {
+        "name": "Cassette Tape: Playing in the Sun",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Bikes Growl",
+        "x": 270,
+        "y": 222,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Bikes Growl - Rocket Launcher Blueprint",
+    "sections": [
+      {
+        "name": "Blueprint: Rocket Launcher",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Bikes Growl",
+        "x": 255,
+        "y": 130,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Bikes Growl - Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Our Bikes Growl",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Bikes Growl",
+        "x": 1145,
+        "y": 240,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Bikes Growl - Desperately in Need of Music",
+    "sections": [
+      {
+        "name": "Quest Complete: Desperately in Need of Music",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Bikes Growl",
+        "x": 1695,
+        "y": 232,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Bikes Growl - Gas Station",
+    "sections": [
+      {
+        "name": "Cassette Tape: Overthinker",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Gutsy Gus's Gushing Gunfights",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Guitar Strings",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Bikes Growl",
+        "x": 2170,
+        "y": 194,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Poochie's Ashes",
+    "sections": [
+      {
+        "name": "Key Item: Poochie's Ashes",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 105,
+        "y": 285,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - The Last Tear",
+    "sections": [
+      {
+        "name": "Cassette Tape: The Last Tear",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 122,
+        "y": 470,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Blueprint Machine Gun",
+    "sections": [
+      {
+        "name": "Blueprint: Machine Gun",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 525,
+        "y": 685,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Moon Blossom",
+    "sections": [
+      {
+        "name": "Key Item: Moon Blossom",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 430,
+        "y": 630,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Thistle Stems",
+    "sections": [
+      {
+        "name": "Key Item: Thistle Stems",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 695,
+        "y": 710,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Map Piece Bottom",
+    "sections": [
+      {
+        "name": "Map Piece: Where Our Ancestors Rest (Bottom)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 845,
+        "y": 680,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Remnants and Leaves",
+    "sections": [
+      {
+        "name": "Quest Complete: The Remnants",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Shake Off the Dead Leaves",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 745,
+        "y": 790,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Puppy Gifts",
+    "sections": [
+      {
+        "name": "Puppy Gift: Toy Bike",
+        "item_count": 1
+      },
+      {
+        "name": "Puppy Gift: Handheld Console",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 910,
+        "y": 753,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Heartglaze and Woodcrawler",
+    "sections": [
+      {
+        "name": "Key Item: Heartglaze Flower",
+        "item_count": 1
+      },
+      {
+        "name": "Boss Defeated: A Long Lost Woodcrawler",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 760,
+        "y": 216,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Map Piece Top",
+    "sections": [
+      {
+        "name": "Map Piece: Where Our Ancestors Rest (Top)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 985,
+        "y": 335,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Oooo Ooo Oo O Ooo",
+    "sections": [
+      {
+        "name": "Quest Complete: Oooo Ooo Oo O Ooo",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 1075,
+        "y": 374,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Our Ancestors Rest - Camilla's Special Herbs",
+    "sections": [
+      {
+        "name": "Key Item: Camilla's Special Herbs",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Our Ancestors Rest",
+        "x": 1245,
+        "y": 400,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Doom Fell - Great-Great-Grandma's Novella",
+    "sections": [
+      {
+        "name": "Puppy Gift: Great-Great-Grandma's Novella",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Doom Fell",
+        "x": 875,
+        "y": 235,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Doom Fell - Visions of Red",
+    "sections": [
+      {
+        "name": "Cassette Tape: Visions of Red",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Doom Fell",
+        "x": 1063,
+        "y": 312,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Doom Fell - Magnifying Glass",
+    "sections": [
+      {
+        "name": "Weapon Crafting Material: Magnifying Glass",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Doom Fell",
+        "x": 1115,
+        "y": 310,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Doom Fell - Shop",
+    "sections": [
+      {
+        "name": "Cassette Tape: Recurring Dream",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Pads",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Magical Book",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Doom Fell",
+        "x": 1510,
+        "y": 335,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Doom Fell - Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Doom Fell",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Doom Fell",
+        "x": 1565,
+        "y": 335,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Vitamin Bones",
+    "sections": [
+      {
+        "name": "Key Item: Vitamin-Coated Bones",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 665,
+        "y": 285,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - The Last Erhu",
+    "sections": [
+      {
+        "name": "Quest Complete: The Last Erhu",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1175,
+        "y": 143,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Seashell",
+    "sections": [
+      {
+        "name": "Key Item: Seashell",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1240,
+        "y": 280,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Left Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where the Waves Die (Left)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1360,
+        "y": 135,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Titanium Plates",
+    "sections": [
+      {
+        "name": "Weapon Crafting Material: Titanium Plates",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1710,
+        "y": 210,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Just a little girl",
+    "sections": [
+      {
+        "name": "Quest Complete: Just a little girl",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1740,
+        "y": 135,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Erhu Strings",
+    "sections": [
+      {
+        "name": "Key Item: Erhu Strings",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1885,
+        "y": 265,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Coming Home",
+    "sections": [
+      {
+        "name": "Cassette Tape: Coming Home",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1935,
+        "y": 235,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Missile",
+    "sections": [
+      {
+        "name": "Weapon Crafting Material: Missile",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 1975,
+        "y": 185,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Right Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where the Waves Die (Right)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 2300,
+        "y": 112,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where the Waves Die - Lhey's Diary",
+    "sections": [
+      {
+        "name": "Key Item: Lhey's Diary",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where the Waves Die",
+        "x": 2395,
+        "y": 107,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Jar Filled With Bugs",
+    "sections": [
+      {
+        "name": "Key Item: Jar Filled With Bugs",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 79,
+        "y": 129,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Map Piece Left",
+    "sections": [
+      {
+        "name": "Map Piece: Where Rust Weaves (Left)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 50,
+        "y": 174,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Through the Wind",
+    "sections": [
+      {
+        "name": "Cassette Tape: Through the Wind",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 84,
+        "y": 174,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Fogg's Only Wish",
+    "sections": [
+      {
+        "name": "Quest Complete: Fogg's Only Wish",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 367,
+        "y": 178,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Phalseria Sap",
+    "sections": [
+      {
+        "name": "Key Item: Phalseria Sap",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 361,
+        "y": 126,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Fogg's Drumstick",
+    "sections": [
+      {
+        "name": "Key Item: Fogg's Drumstick",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 691,
+        "y": 176,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Map Piece Center",
+    "sections": [
+      {
+        "name": "Map Piece: Where Rust Weaves (Center)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 848,
+        "y": 179,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Hook Head",
+    "sections": [
+      {
+        "name": "Key Item: Hook Head",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 1235,
+        "y": 189,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Gas Station Quests",
+    "sections": [
+      {
+        "name": "Quest Complete: High Spirits",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: Death on Demand",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 1449,
+        "y": 186,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rust Weaves - Map Piece Right",
+    "sections": [
+      {
+        "name": "Map Piece: Where Rust Weaves (Right)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rust Weaves",
+        "x": 1551,
+        "y": 180,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - First Key",
+    "sections": [
+      {
+        "name": "Key Item: 1st Key To The Pit",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 581,
+        "y": 180,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Map Piece Left",
+    "sections": [
+      {
+        "name": "Map Piece: Where Rock Bleeds (Left)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 904,
+        "y": 310,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Mountainheart Card",
+    "sections": [
+      {
+        "name": "Key Item: Mountainheart Card",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1095,
+        "y": 18,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Third Key",
+    "sections": [
+      {
+        "name": "Key Item: 3rd Key To The Pit",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1088,
+        "y": 278,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Map Piece Center",
+    "sections": [
+      {
+        "name": "Map Piece: Where Rock Bleeds (Center)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1270,
+        "y": 123,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Rusty Spring",
+    "sections": [
+      {
+        "name": "Weapon Crafting Material: Rusty Spring",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1353,
+        "y": 130,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Second Key",
+    "sections": [
+      {
+        "name": "Key Item: 2nd Key To The Pit",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1275,
+        "y": 158,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Caterpillar",
+    "sections": [
+      {
+        "name": "Boss Defeated: A Caterpillar Made of Sadness",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1395,
+        "y": 124,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Rock Bleeds - Map Piece Right",
+    "sections": [
+      {
+        "name": "Map Piece: Where Rock Bleeds (Right)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Rock Bleeds",
+        "x": 1378,
+        "y": 222,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Swimcrab",
+    "sections": [
+      {
+        "name": "Boss Defeated: A Gargantuan Swimcrab",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 20,
+        "y": 335,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Antenna 4",
+    "sections": [
+      {
+        "name": "Radio Silence: Destroy Antenna 4",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 948,
+        "y": 183,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Fourth Ship Map",
+    "sections": [
+      {
+        "name": "Map Piece: Where Water Glistened (4th Ship)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 960,
+        "y": 315,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Antenna 3",
+    "sections": [
+      {
+        "name": "Radio Silence: Destroy Antenna 3",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 1265,
+        "y": 190,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Long Rope",
+    "sections": [
+      {
+        "name": "Key Item: Long Rope",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 1260,
+        "y": 378,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Third Ship Map",
+    "sections": [
+      {
+        "name": "Map Piece: Where Water Glistened (3rd Ship)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 1355,
+        "y": 332,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Antenna 2",
+    "sections": [
+      {
+        "name": "Radio Silence: Destroy Antenna 2",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 2437,
+        "y": 140,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Carved Whale Tooth",
+    "sections": [
+      {
+        "name": "Key Item: Carved Whale Tooth",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 2600,
+        "y": 264,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Second Ship Map",
+    "sections": [
+      {
+        "name": "Map Piece: Where Water Glistened (2nd Ship)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 2825,
+        "y": 315,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Antenna 1",
+    "sections": [
+      {
+        "name": "Radio Silence: Destroy Antenna 1",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 3520,
+        "y": 165,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - First Ship Map",
+    "sections": [
+      {
+        "name": "Map Piece: Where Water Glistened (1st Ship)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 3477,
+        "y": 269,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Water Glistened - Borders Map",
+    "sections": [
+      {
+        "name": "Map Piece: Where Water Glistened (Borders)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Water Glistened",
+        "x": 4120,
+        "y": 385,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Rainbow Pebble and Pendant",
+    "sections": [
+      {
+        "name": "Key Item: Rainbow Pebble",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Maya's Pendant",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 330,
+        "y": 194,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Flute Cleaning Brush",
+    "sections": [
+      {
+        "name": "Key Item: Flute Cleaning Brush",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 390,
+        "y": 195,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Family Braid",
+    "sections": [
+      {
+        "name": "Key Item: Family Braid",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 450,
+        "y": 195,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Map Piece Top",
+    "sections": [
+      {
+        "name": "Map Piece: Where All Was Lost (Top)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 555,
+        "y": 195,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Sniper Blueprint",
+    "sections": [
+      {
+        "name": "Blueprint: Sniper",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 1065,
+        "y": 370,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Tangerine Tree",
+    "sections": [
+      {
+        "name": "Puppy Gift: Tangerine Tree",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 1198,
+        "y": 420,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Bottom Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where All Was Lost (Bottom)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 1360,
+        "y": 455,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - For the Cash",
+    "sections": [
+      {
+        "name": "Quest Complete: For the Cash",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 1955,
+        "y": 390,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - The Hero and Toy Animal",
+    "sections": [
+      {
+        "name": "Cassette Tape: The Hero",
+        "item_count": 1
+      },
+      {
+        "name": "Puppy Gift: Toy Animal",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 2280,
+        "y": 90,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where All Was Lost - Clean Your Beak",
+    "sections": [
+      {
+        "name": "Quest Complete: Clean Your Beak",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where All Was Lost",
+        "x": 2355,
+        "y": 170,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Came From - Fade Out",
+    "sections": [
+      {
+        "name": "Quest Complete: Fade Out",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Came From",
+        "x": 330,
+        "y": 265,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Came From - Left Bottom Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Birds Came From (Left/Bottom)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Came From",
+        "x": 1414,
+        "y": 355,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Came From - Banana Leaves",
+    "sections": [
+      {
+        "name": "Key Item: Banana Leaves",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Came From",
+        "x": 1835,
+        "y": 225,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Came From - Right Top Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Birds Came From (Right/Top)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Came From",
+        "x": 1120,
+        "y": 170,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Came From - Final Hours",
+    "sections": [
+      {
+        "name": "Cassette Tape: The Final Hours",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Came From",
+        "x": 1155,
+        "y": 200,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Came From - Petey's Letter",
+    "sections": [
+      {
+        "name": "Key Item: Petey's Letter",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Came From",
+        "x": 1110,
+        "y": 225,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "The Big Tree - Pope Melva VIII",
+    "sections": [
+      {
+        "name": "Boss Defeated: Pope Melva VIII",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "The Big Tree",
+        "x": 1302,
+        "y": 95,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "The Big Tree - Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: The Big Tree",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "The Big Tree",
+        "x": 1065,
+        "y": 1148,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "The Big Tree - Collapse Floor A",
+    "sections": [
+      {
+        "name": "The Big Tree: Collapse Floor A",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "The Big Tree",
+        "x": 1305,
+        "y": 1215,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "The Big Tree - Collapse Floor B",
+    "sections": [
+      {
+        "name": "The Big Tree: Collapse Floor B",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "The Big Tree",
+        "x": 1305,
+        "y": 1030,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "The Big Tree - Collapse Floor C",
+    "sections": [
+      {
+        "name": "The Big Tree: Collapse Floor C",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "The Big Tree",
+        "x": 1305,
+        "y": 805,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "The Big Tree - Collapse Floor D",
+    "sections": [
+      {
+        "name": "The Big Tree: Collapse Floor D",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "The Big Tree",
+        "x": 1305,
+        "y": 630,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Top Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Iron Caresses the Sky (Top)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 290,
+        "y": 134,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Sober Up",
+    "sections": [
+      {
+        "name": "Quest Complete: Sober Up",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 290,
+        "y": 199,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Heartbeat",
+    "sections": [
+      {
+        "name": "Cassette Tape: Heartbeat from the Last Century",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 470,
+        "y": 184,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Hook Body and Bonehead Hook",
+    "sections": [
+      {
+        "name": "Key Item: Hook Body",
+        "item_count": 1
+      },
+      {
+        "name": "Quest Complete: The Bonehead's Hook",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 632,
+        "y": 184,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Sheet Music and Cough Syrup",
+    "sections": [
+      {
+        "name": "Key Item: Sheet Music",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Ultra Fast Cough Syrup",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 770,
+        "y": 145,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Dreamcatcher",
+    "sections": [
+      {
+        "name": "Puppy Gift: Dreamcatcher",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 482,
+        "y": 21,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Lonely Mountain and Gasoline",
+    "sections": [
+      {
+        "name": "Cassette Tape: Lonely Mountain",
+        "item_count": 1
+      },
+      {
+        "name": "Key Item: Gallon of Gasoline",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 1020,
+        "y": 477,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Bluelemon Berries",
+    "sections": [
+      {
+        "name": "Key Item: Bluelemon Berries",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 353,
+        "y": 485,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Iron Caresses the Sky - Bottom Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Iron Caresses the Sky (Bottom)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Iron Caresses the Sky",
+        "x": 562,
+        "y": 620,
+        "size": 16
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Lurk - Left Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Birds Lurk (Left)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Lurk",
+        "x": 545,
+        "y": 260,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Where Birds Lurk - Right Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Where Birds Lurk (Right)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Lurk",
+        "x": 995,
+        "y": 345,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Floating City - Hangar Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Floating City (Hangar)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Floating City",
+        "x": 390,
+        "y": 515,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Floating City - Factory Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Floating City (Factory)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Floating City",
+        "x": 830,
+        "y": 205,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Floating City - End Goal",
+    "sections": [
+      {
+        "name": "Quest Complete: Hell High",
+        "item_count": 1
+      },
+      {
+        "name": "Boss Defeated: Two-Beak God",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Floating City",
+        "x": 1735,
+        "y": 325,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Floating City - Control Area Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Floating City (Control Area)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Floating City",
+        "x": 2064,
+        "y": 390,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Floating City - City Facilities Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Floating City (City Facilities)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Floating City",
+        "x": 2525,
+        "y": 575,
+        "size": 24
+      }
+    ]
+  },
+  {
+    "name": "Floating City - Old Town Map Piece",
+    "sections": [
+      {
+        "name": "Map Piece: Floating City (Old Town)",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Floating City",
+        "x": 2458,
+        "y": 147,
+        "size": 24
+      }
+    ]
+  }
+]

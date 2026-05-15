@@ -5,14 +5,14 @@ def has_shotgun_access(state, player) -> bool:
         state.has("Shotgun (Weapon)", player)
         or (
             state.has("Blueprint: Shotgun", player)
-            and state.has("Rusty Spring (Shotgun Material)", player)
+            and state.has("Weapon Crafting Material: Rusty Spring", player)
         )
     )
 
 def has_shotgun_level_2(state, player) -> bool:
     return (
         has_shotgun_access(state, player)
-        and state.has("Shotgun Upgrade (Weapon Upgrade)", player)
+        and state.has("Weapon Upgrade: Shotgun", player)
     )
 
 def has(state, player, item_name: str, count: int = 1) -> bool:
@@ -29,6 +29,16 @@ def set_rules(world):
 
     def loc(name: str):
         return mw.get_location(name, player)
+
+    def ent(name: str):
+        return mw.get_entrance(name, player)
+
+    def set_region_rule(region_a: str, region_b: str, rule):
+        set_rule(ent(f"{region_a} -> {region_b}"), rule)
+
+    def set_two_way_region_rule(region_a: str, region_b: str, rule):
+        set_region_rule(region_a, region_b, rule)
+        set_region_rule(region_b, region_a, rule)
 
     # Main opening
     # Player always starts with pistol + reflect, so Hundred Hungry Beaks has no AP item requirement.
@@ -95,11 +105,11 @@ def set_rules(world):
         )
 
     def has_dash_access(state) -> bool:
-        return has(state, player, "Dash (Bike Upgrade)")
+        return has(state, player, "Bike Upgrade: Dash")
 
 
     def has_hook_access(state) -> bool:
-        return has(state, player, "Hook (Bike Upgrade)")
+        return has(state, player, "Bike Upgrade: Hook")
 
 
     def has_radio_silence_route(state) -> bool:
@@ -123,7 +133,7 @@ def set_rules(world):
                 can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
                 and has_shotgun_access(state, player)
                 and (
-                    has(state, player, "Dash (Bike Upgrade)")
+                    has(state, player, "Bike Upgrade: Dash")
                     or (
                         has(state, player, "Key Item: Carved Whale Tooth")
                         and has(state, player, "Key Item: Long Rope")
@@ -143,7 +153,7 @@ def set_rules(world):
             lambda state: (
                 can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
                 and can_reach_loc(state, player, "Quest Complete: The Bonehead's Hook")
-                and has(state, player, "Hook (Bike Upgrade)")
+                and has(state, player, "Bike Upgrade: Hook")
                 and has_shotgun_access(state, player)
             )
         )
@@ -167,13 +177,13 @@ def set_rules(world):
     def completed_main_quest_count(state) -> int:
         count = 0
 
-        if main_quest_diplomacy(state):
+        if can_reach_loc(state, player, "Quest Complete: Diplomacy"):
             count += 1
 
-        if main_quest_big_tree(state):
+        if can_reach_loc(state, player, "Quest Complete: The Big Tree"):
             count += 1
 
-        if main_quest_radio_silence(state):
+        if can_reach_loc(state, player, "Quest Complete: Radio Silence"):
             count += 1
 
         return count
@@ -207,6 +217,189 @@ def set_rules(world):
 
     def post_childless(state) -> bool:
         return can_reach_loc(state, player, "Quest Complete: Childless")
+
+    # =========================
+    # Region / map access rules
+    # =========================
+
+    # Tutorial -> Where We Live is a story teleport after Rage and Sorrow.
+    set_region_rule(
+        "Start / Tutorial Area",
+        "Where We Live",
+        lambda state: post_rage(state)
+    )
+
+    # Early post-Rage route.
+    set_two_way_region_rule(
+        "Where We Live",
+        "Where Our Bikes Growl",
+        lambda state: post_rage(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Our Bikes Growl",
+        "Where Our Ancestors Rest",
+        lambda state: post_rage(state)
+    )
+
+    # Where We Live interiors are physically available from camp.
+    set_two_way_region_rule(
+        "Where We Live",
+        "Where Mother Groans",
+        lambda state: post_rage(state)
+    )
+
+    set_two_way_region_rule(
+        "Where We Live",
+        "Where We Dream",
+        lambda state: post_rage(state)
+    )
+
+    set_two_way_region_rule(
+        "Where We Live",
+        "Where Shaza Tinkers",
+        lambda state: post_rage(state)
+    )
+
+    set_two_way_region_rule(
+        "Where We Live",
+        "Where Rules Are Made",
+        lambda state: post_rage(state)
+    )
+
+    set_two_way_region_rule(
+        "Where We Live",
+        "Where We Forget",
+        lambda state: post_rage(state)
+    )
+
+    # War chapter opens after A Heart for Poochie.
+    # This is the point where the broader wasteland starts becoming traversable.
+    set_two_way_region_rule(
+        "Where Our Bikes Growl",
+        "Where Doom Fell",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Doom Fell",
+        "Where Rust Weaves",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Doom Fell",
+        "Where All Was Lost",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Rust Weaves",
+        "Where All Was Lost",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Rust Weaves",
+        "Where Rock Bleeds",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where All Was Lost",
+        "Where Birds Lurk",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Doom Fell",
+        "Where Iron Caresses the Sky",
+        lambda state: war_chapter_access(state)
+    )
+
+    set_two_way_region_rule(
+        "Where Iron Caresses the Sky",
+        "Where All Was Lost",
+        lambda state: war_chapter_access(state)
+    )
+
+    # Shotgun route connections.
+    set_two_way_region_rule(
+        "Where Our Bikes Growl",
+        "Where the Waves Die",
+        lambda state: (
+            war_chapter_access(state)
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_two_way_region_rule(
+        "Where the Waves Die",
+        "Where Doom Fell",
+        lambda state: (
+            war_chapter_access(state)
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_two_way_region_rule(
+        "Where the Waves Die",
+        "Where Water Glistened",
+        lambda state: (
+            war_chapter_access(state)
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    set_two_way_region_rule(
+        "Where Our Ancestors Rest",
+        "Where Iron Caresses the Sky",
+        lambda state: (
+            war_chapter_access(state)
+            and has_shotgun_access(state, player)
+        )
+    )
+
+    # Hook + Shotgun route connections.
+    set_two_way_region_rule(
+        "Where Iron Caresses the Sky",
+        "Where Birds Came From",
+        lambda state: (
+            war_chapter_access(state)
+            and has_shotgun_access(state, player)
+            and has_hook_access(state)
+        )
+    )
+
+    set_two_way_region_rule(
+        "Where Birds Came From",
+        "The Big Tree",
+        lambda state: (
+            war_chapter_access(state)
+            and has_shotgun_access(state, player)
+            and has_hook_access(state)
+        )
+    )
+
+    # Late-game Floating route.
+    set_two_way_region_rule(
+        "Where Our Ancestors Rest",
+        "Floating City",
+        lambda state: all_three_main_quests_complete(state)
+    )
+
+    # Childless One Way Progression
+    set_region_rule(
+        "Floating City",
+        "Where They Keep Puppy",
+        lambda state: all_three_main_quests_complete(state)
+    )
+
+    set_region_rule(
+        "Where They Keep Puppy",
+        "Where We Dream",
+        lambda state: can_reach_loc(state, player, "Quest Complete: Childless")
+    )
 
     set_rule(
         loc("Quest Complete: Diplomacy"),
@@ -290,7 +483,7 @@ def set_rules(world):
         lambda state:
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_shotgun_access(state, player)
-            and has(state, player, "Hook (Bike Upgrade)")
+            and has(state, player, "Bike Upgrade: Hook")
     )
 
     set_rule(
@@ -298,7 +491,7 @@ def set_rules(world):
         lambda state:
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_shotgun_access(state, player)
-            and has(state, player, "Hook (Bike Upgrade)")
+            and has(state, player, "Bike Upgrade: Hook")
     )
 
     set_rule(
@@ -306,7 +499,7 @@ def set_rules(world):
         lambda state:
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_shotgun_access(state, player)
-            and has(state, player, "Hook (Bike Upgrade)")
+            and has(state, player, "Bike Upgrade: Hook")
     )
 
     set_rule(
@@ -339,7 +532,7 @@ def set_rules(world):
         loc("Quest Complete: Floating"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Hell High")
-            and has(state, player, "Dash (Bike Upgrade)")
+            and has(state, player, "Bike Upgrade: Dash")
         )
     )
 
@@ -580,8 +773,8 @@ def set_rules(world):
         loc("Boss Defeated: Two-Beak God"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Floating")
-            and has(state, player, "Dash (Bike Upgrade)")
-            and has(state, player, "Hook (Bike Upgrade)")
+            and has(state, player, "Bike Upgrade: Dash")
+            and has(state, player, "Bike Upgrade: Hook")
             and has_shotgun_access(state, player)
         )
     )
@@ -609,11 +802,11 @@ def set_rules(world):
         "Map Piece: Where Doom Fell",
         "Map Piece: Where Rock Bleeds (Left)",
         "Map Piece: Where Rock Bleeds (Center)",
-        "Rusty Spring (Shotgun Material)",
+        "Weapon Crafting Material: Rusty Spring",
     ]:
         set_rule(loc(name), lambda state: war_chapter_access(state))
 
-    # ===== Shotgun-gated war / post-diplomacy collectibles =====
+    # ===== Shotgun-gated war collectibles =====
     for name in [
         "Cassette Tape: Heartbeat from the Last Century",
         "Map Piece: Where Iron Caresses the Sky (Top)",
@@ -621,16 +814,7 @@ def set_rules(world):
     ]:
         set_rule(
             loc(name),
-            lambda state: post_diplomacy(state) and has_shotgun_access(state, player)
-        )
-
-    def has_radio_silence_vertical_access(state) -> bool:
-        return (
-            has_dash_access(state)
-            or (
-                has(state, player, "Key Item: Carved Whale Tooth")
-                and has(state, player, "Key Item: Long Rope")
-            )
+            lambda state: war_chapter_access(state) and has_shotgun_access(state, player)
         )
 
 
@@ -645,7 +829,7 @@ def set_rules(world):
             lambda state: (
                 can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
                 and has_shotgun_access(state, player)
-                and has_radio_silence_vertical_access(state)
+                and has_radio_silence_route(state)
             )
         )
 
@@ -684,7 +868,7 @@ def set_rules(world):
 
     # ===== Hook-gated collectibles =====
     set_rule(
-        loc("Magnifying Glass (Sniper Rifle Material)"),
+        loc("Weapon Crafting Material: Magnifying Glass"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_hook_access(state)
@@ -699,21 +883,32 @@ def set_rules(world):
         "Map Piece: The Big Tree",
         "Map Piece: Where Birds Came From (Left/Bottom)",
         "Map Piece: Where Birds Came From (Right/Top)",
-        "Map Piece: Where Birds Lurk (Left)",
         "Puppy Gift: Toy Animal",
     ]:
         set_rule(
             loc(name),
             lambda state: (
-                has_shotgun_access(state, player)
+                war_chapter_access(state)
+                and has_shotgun_access(state, player)
                 and has_hook_access(state)
             )
+        )
+
+    # Map pieces for Where Birds Lurk don't actually
+    # require the shotgun like we initially believed.
+    for name in [
+        "Map Piece: Where Birds Lurk (Left)",
+        "Map Piece: Where Birds Lurk (Right)",
+    ]:
+        set_rule(
+            loc(name),
+            lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
         )
 
     # ===== Shotgun-gated post-Heartglaze collectibles =====
     for name in [
         "Cassette Tape: Coming Home",
-        "Titanium Plates (Machine Gun Material)",
+        "Weapon Crafting Material: Titanium Plates",
     ]:
         set_rule(
             loc(name),
@@ -753,35 +948,23 @@ def set_rules(world):
  
     set_rule(
         loc("Cassette Tape: Through the Wind"),
-        lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
-        )
+        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
     )
 
     # ===== Later chapter collectibles =====
     set_rule(
         loc("Map Piece: Where Rust Weaves (Left)"),
-        lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
-        )
+        lambda state: war_chapter_access(state)
     )
 
     set_rule(
         loc("Map Piece: Where Rust Weaves (Center)"),
-        lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
-        )
+        lambda state: war_chapter_access(state)
     )
 
     set_rule(
         loc("Map Piece: Where Rust Weaves (Right)"),
-        lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
-        )
+        lambda state: war_chapter_access(state)
     )
 
     set_rule(
@@ -818,11 +1001,12 @@ def set_rules(world):
     )
 
     set_rule(
-        loc("Missile (Rocket Launcher Material)"),
-        lambda state:
-            has(state, player, "Dash (Bike Upgrade)")
+        loc("Weapon Crafting Material: Missile"),
+        lambda state: (
+            has_dash_access(state)
             and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_shotgun_access(state, player)
+        )
     )
 
     set_rule(
@@ -846,8 +1030,18 @@ def set_rules(world):
         set_rule(loc(name), lambda state: war_chapter_access(state))
 
     # Diplomacy Access
+    set_rule(
+        loc("Key Item: 1st Key To The Pit"),
+        lambda state: (
+            war_chapter_access(state)
+            and (
+                has_dash_access(state)
+                or has(state, player, "Key Item: Mountainheart Card")
+            )
+        )
+    )
+
     for name in [
-        "Key Item: 1st Key To The Pit",
         "Key Item: 2nd Key To The Pit",
         "Key Item: 3rd Key To The Pit",
     ]:
@@ -881,15 +1075,37 @@ def set_rules(world):
 
     set_rule(
         loc("Key Item: Fogg's Drumstick"),
-        lambda state: post_diplomacy(state)
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
+        )
     )
     
     set_rule(
         loc("Key Item: Ultra Fast Cough Syrup"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            post_childless(state)
             and has_dash_access(state)
         )
+    )
+
+    set_rule(
+        loc("Key Item: Rainbow Pebble"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: A Little Tomb Stone")
+        )
+    )
+
+    set_rule(
+        loc("Key Item: Poochie's Ashes"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Childless")
+        )
+    )
+
+    set_rule(
+        loc("Key Item: Maya's Pendant"),
+        lambda state: all_three_main_quests_complete(state)
     )
 
     # Diplomacy side quest key items
@@ -935,7 +1151,7 @@ def set_rules(world):
     # Hook / Big Tree area key items
     set_rule(
         loc("Key Item: Magical Book"),
-        lambda state: post_big_tree(state) and has_hook_access(state)
+        lambda state: post_childless(state)
     )
 
     # Puppy gift completion reward
@@ -953,10 +1169,7 @@ def set_rules(world):
 
     set_rule(
         loc("Puppy Gift: Tangerine Tree"),
-        lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
-        )
+        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
     )
 
     set_rule(
@@ -986,7 +1199,7 @@ def set_rules(world):
 
     set_rule(
         loc("Cassette Tape: Recurring Dream"),
-        lambda state: post_diplomacy(state)
+        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
     )
 
     # Completion condition

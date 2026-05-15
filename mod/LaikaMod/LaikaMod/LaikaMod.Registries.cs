@@ -1486,10 +1486,40 @@ public partial class LaikaMod
                 )
             },
             {
+                "I_TOMB_PEBBLE",
+                new APLocationDefinition(
+                    150041L,
+                    "Key Item: Rainbow Pebble",
+                    "I_TOMB_PEBBLE",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_POOCHIE_ASHES",
+                new APLocationDefinition(
+                    150042L,
+                    "Key Item: Poochie's Ashes",
+                    "I_POOCHIE_ASHES",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
+                "I_MAYA_PENDANT",
+                new APLocationDefinition(
+                    150043L,
+                    "Key Item: Maya's Pendant",
+                    "I_MAYA_PENDANT",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
                 "I_MATERIAL_SHOTGUN",
                 new APLocationDefinition(
                     150050,
-                    "Rusty Spring (Shotgun Material)",
+                    "Weapon Crafting Material: Rusty Spring",
                     "I_MATERIAL_SHOTGUN",
                     "Material",
                     true
@@ -1499,7 +1529,7 @@ public partial class LaikaMod
                 "I_MATERIAL_SNIPER",
                 new APLocationDefinition(
                     150051,
-                    "Magnifying Glass (Sniper Rifle Material)",
+                    "Weapon Crafting Material: Magnifying Glass",
                     "I_MATERIAL_SNIPER",
                     "Material",
                     true
@@ -1509,7 +1539,7 @@ public partial class LaikaMod
                 "I_MATERIAL_UZI",
                 new APLocationDefinition(
                     150052,
-                    "Titanium Plates (Machine Gun Material)",
+                    "Weapon Crafting Material: Titanium Plates",
                     "I_MATERIAL_UZI",
                     "Material",
                     true
@@ -1519,7 +1549,7 @@ public partial class LaikaMod
                 "I_MATERIAL_ROCKETLAUNCHER",
                 new APLocationDefinition(
                     150053,
-                    "Missile (Rocket Launcher Material)",
+                    "Weapon Crafting Material: Missile",
                     "I_MATERIAL_ROCKETLAUNCHER",
                     "Material",
                     true
@@ -1611,9 +1641,9 @@ public partial class LaikaMod
         new Dictionary<long, Func<PendingItem>>()
         {
         // ===== Key items =====
-        { 1000L, () => new PendingItem(ItemKind.KeyItem, "I_DASH", 1, "Dash (Bike Upgrade)") },
-        { 1001L, () => new PendingItem(ItemKind.KeyItem, "I_E_HOOK", 1, "Hook (Bike Upgrade)") },
-        { 1002L, () => new PendingItem(ItemKind.KeyItem, "I_MAYA_PENDANT", 1, "Maya's Pendant (Bike Upgrade)") },
+        { 1000L, () => new PendingItem(ItemKind.KeyItem, "I_DASH", 1, "Bike Upgrade: Dash") },
+        { 1001L, () => new PendingItem(ItemKind.KeyItem, "I_E_HOOK", 1, "Bike Upgrade: Hook") },
+        { 1002L, () => new PendingItem(ItemKind.KeyItem, "I_MAYA_PENDANT", 1, "Bike Upgrade: Maya's Pendant") },
 
         // ===== Weapons / weapon-mode-aware unlocks =====
         { 1100L, () => GetShotgunUnlockItem() },
@@ -1625,17 +1655,17 @@ public partial class LaikaMod
         { 1104L, () => new PendingItem(ItemKind.Weapon, "I_W_CROSSBOW", 1, "Crossbow (Weapon)") },
 
         // ===== Weapon upgrades =====
-        { 1110L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Shotgun Upgrade") },
-        { 1111L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Sniper Rifle Upgrade") },
-        { 1112L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 1, "Machine Gun Upgrade") },
-        { 1113L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_ROCKETLAUNCHER", 1, "Rocket Launcher Upgrade") },
-        { 1114L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_CROSSBOW", 1, "Crossbow Upgrade") },
+        { 1110L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SHOTGUN", 1, "Weapon Upgrade: Shotgun") },
+        { 1111L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_SNIPER", 1, "Weapon Upgrade: Sniper Rifle") },
+        { 1112L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 1, "Weapon Upgrade: Machine Gun") },
+        { 1113L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_ROCKETLAUNCHER", 1, "Weapon Upgrade: Rocket Launcher") },
+        { 1114L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_CROSSBOW", 1, "Weapon Upgrade: Crossbow") },
 
         // ===== Crafting-mode weapon materials =====
-        { 1150L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Rusty Spring (Shotgun Material)") },
-        { 1151L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SNIPER", 1, "Magnifying Glass (Sniper Rifle Material)") },
-        { 1152L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_UZI", 1, "Titanium Plates (Machine Gun Material)") },
-        { 1153L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_ROCKETLAUNCHER", 1, "Missile (Rocket Launcher Material)") },
+        { 1150L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Weapon Crafting Material: Rusty Spring") },
+        { 1151L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SNIPER", 1, "Weapon Crafting Material: Magnifying Glass") },
+        { 1152L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_UZI", 1, "Weapon Crafting Material: Titanium Plates") },
+        { 1153L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_ROCKETLAUNCHER", 1, "Weapon Crafting Material: Missile") },
 
         // ===== Weapon recipes / blueprints =====
         { 1160L, () => GetShotgunUnlockItem() },
@@ -1678,6 +1708,8 @@ public partial class LaikaMod
         { 1196L, () => new PendingItem(ItemKind.KeyItem, "I_HARPOON_PIECE_2", 1, "Key Item: Long Rope") },
         { 1197L, () => new PendingItem(ItemKind.KeyItem, "I_D_Dungeon_01_key", 1, "Key Item: Mountainheart Card") },
         { 1198L, () => new PendingItem(ItemKind.KeyItem, "I_ENTOM_INVITATION", 1, "Key Item: Birthday Invitation") },
+        { 1199L, () => new PendingItem(ItemKind.KeyItem, "I_TOMB_PEBBLE", 1, "Key Item: Rainbow Pebble") },
+        { 1200L, () => new PendingItem(ItemKind.KeyItem, "I_POOCHIE_ASHES", 1, "Key Item: Poochie's Ashes") },
 
         // ===== Puppy gifts =====
         { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Puppy Gift: Toy Bike") },
@@ -1689,7 +1721,7 @@ public partial class LaikaMod
         { 1906L, () => new PendingItem(ItemKind.PuppyTreat, "I_UKULELE", 1, "Puppy Gift: Ukulele") },
 
         // ===== Currency =====
-        { 1907L, () => new PendingItem(ItemKind.Currency, "VISCERA_100", 100, "Viscera x100") },
+        { 1907L, () => new PendingItem(ItemKind.Currency, "VISCERA_100", 300, "Viscera x300") },
 
         // ===== Ingredients =====
         { 1950L, () => new PendingItem(ItemKind.Ingredient, "I_C_BEANS", 1, "Ingredient: Beans") },

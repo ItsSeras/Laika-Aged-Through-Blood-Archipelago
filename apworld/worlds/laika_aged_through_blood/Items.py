@@ -12,20 +12,20 @@ class LaikaItem(Item):
 
 ITEM_TABLE = {
     # ===== Core progression Key items =====
-    "Dash (Bike Upgrade)": {
+    "Bike Upgrade: Dash": {
         "id": 1000,
         "classification": ItemClassification.progression,
         "internal_id": "I_DASH",
         "kind": "KeyItem",
     },
-    "Hook (Bike Upgrade)": {
+    "Bike Upgrade: Hook": {
         "id": 1001,
         "classification": ItemClassification.progression,
         "internal_id": "I_E_HOOK",
         "kind": "KeyItem",
     },
     # ===== Useful Key items =====
-    "Maya's Pendant (Bike Upgrade)": {
+    "Bike Upgrade: Maya's Pendant": {
         "id": 1002,
         "classification": ItemClassification.useful,
         "internal_id": "I_MAYA_PENDANT",
@@ -65,31 +65,31 @@ ITEM_TABLE = {
     },
 
     # ===== Weapon Upgrades =====
-    "Shotgun Upgrade (Weapon Upgrade)": {
+    "Weapon Upgrade: Shotgun": {
         "id": 1110,
         "classification": ItemClassification.progression,
         "internal_id": "I_W_SHOTGUN",
         "kind": "WeaponUpgrade",
     },
-    "Sniper Rifle Upgrade (Weapon Upgrade)": {
+    "Weapon Upgrade: Sniper Rifle": {
         "id": 1111,
         "classification": ItemClassification.useful,
         "internal_id": "I_W_SNIPER",
         "kind": "WeaponUpgrade",
     },
-    "Machine Gun Upgrade (Weapon Upgrade)": {
+    "Weapon Upgrade: Machine Gun": {
         "id": 1112,
         "classification": ItemClassification.useful,
         "internal_id": "I_W_UZI",
         "kind": "WeaponUpgrade",
     },
-    "Rocket Launcher Upgrade (Weapon Upgrade)": {
+    "Weapon Upgrade: Rocket Launcher": {
         "id": 1113,
         "classification": ItemClassification.useful,
         "internal_id": "I_W_ROCKETLAUNCHER",
         "kind": "WeaponUpgrade",
     },
-    "Crossbow Upgrade (Weapon Upgrade)": {
+    "Weapon Upgrade: Crossbow": {
         "id": 1114,
         "classification": ItemClassification.useful,
         "internal_id": "I_W_CROSSBOW",
@@ -327,27 +327,39 @@ ITEM_TABLE = {
         "internal_id": "I_ENTOM_INVITATION",
         "kind": "KeyItem",
     },
-    
+    "Key Item: Rainbow Pebble": {
+        "id": 1199,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_TOMB_PEBBLE",
+        "kind": "KeyItem",
+    },
+    "Key Item: Poochie's Ashes": {
+        "id": 1200,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_POOCHIE_ASHES",
+        "kind": "KeyItem",
+    },
+
     # ===== Crafting-mode weapon material items =====
-    "Rusty Spring (Shotgun Material)": {
+    "Weapon Crafting Material: Rusty Spring": {
         "id": 1150,
         "classification": ItemClassification.progression,
         "internal_id": "I_MATERIAL_SHOTGUN",
         "kind": "Material",
     },
-    "Magnifying Glass (Sniper Rifle Material)": {
+    "Weapon Crafting Material: Magnifying Glass": {
         "id": 1151,
         "classification": ItemClassification.useful,
         "internal_id": "I_MATERIAL_SNIPER",
         "kind": "Material",
     },
-    "Titanium Plates (Machine Gun Material)": {
+    "Weapon Crafting Material: Titanium Plates": {
         "id": 1152,
         "classification": ItemClassification.useful,
         "internal_id": "I_MATERIAL_UZI",
         "kind": "Material",
     },
-    "Missile (Rocket Launcher Material)": {
+    "Weapon Crafting Material: Missile": {
         "id": 1153,
         "classification": ItemClassification.useful,
         "internal_id": "I_MATERIAL_ROCKETLAUNCHER",

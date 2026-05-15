@@ -79,6 +79,10 @@ public class APWorldOptions
     public bool DeathLinkEnabled { get; set; } = false;
     public bool DeathAmnestyEnabled { get; set; } = false;
     public int DeathAmnestyCount { get; set; } = 1;
+
+    public bool DeathLinkLocalOverrideEnabled = false;
+    public bool DeathAmnestyLocalOverrideEnabled = false;
+    public bool DeathAmnestyCountLocalOverrideEnabled = false;
 }
 
 public class PendingItem

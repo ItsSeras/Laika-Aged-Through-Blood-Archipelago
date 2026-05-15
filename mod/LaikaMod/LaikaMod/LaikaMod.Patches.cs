@@ -1804,6 +1804,11 @@ public partial class LaikaMod
 
                 LaikaMod.LogInfo($"AP SCENE LOGGER: loaded sceneName={sceneName}");
 
+                LaikaMod.TryUpdateUniversalTrackerRegionFromScene(
+                    scene,
+                    "PersistenceManager.OnSceneLoaded"
+                );
+
                 if (sceneName.IndexOf("Kidnap", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     sceneName.IndexOf("Puppy", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     sceneName.IndexOf("Child", StringComparison.OrdinalIgnoreCase) >= 0 ||
