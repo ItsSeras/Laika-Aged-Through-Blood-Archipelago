@@ -1516,6 +1516,16 @@ public partial class LaikaMod
                 )
             },
             {
+                "I_RADIO_TRANSMITTER",
+                new APLocationDefinition(
+                    150044L,
+                    "Key Item: Radio Transmitter",
+                    "I_RADIO_TRANSMITTER",
+                    "KeyItem",
+                    true
+                )
+            },
+            {
                 "I_MATERIAL_SHOTGUN",
                 new APLocationDefinition(
                     150050,
@@ -1710,6 +1720,7 @@ public partial class LaikaMod
         { 1198L, () => new PendingItem(ItemKind.KeyItem, "I_ENTOM_INVITATION", 1, "Key Item: Birthday Invitation") },
         { 1199L, () => new PendingItem(ItemKind.KeyItem, "I_TOMB_PEBBLE", 1, "Key Item: Rainbow Pebble") },
         { 1200L, () => new PendingItem(ItemKind.KeyItem, "I_POOCHIE_ASHES", 1, "Key Item: Poochie's Ashes") },
+        { 1201L, () => new PendingItem(ItemKind.KeyItem, "I_RADIO_TRANSMITTER", 1, "Key Item: Radio Transmitter") },
 
         // ===== Puppy gifts =====
         { 1900L, () => new PendingItem(ItemKind.PuppyTreat, "I_TOY_BIKE", 1, "Puppy Gift: Toy Bike") },
@@ -1735,7 +1746,7 @@ public partial class LaikaMod
         { 1958L, () => new PendingItem(ItemKind.Ingredient, "I_C_MEAT", 1, "Ingredient: Meat") },
         { 1959L, () => new PendingItem(ItemKind.Ingredient, "I_C_JACKFRUIT", 1, "Ingredient: Jackfruit") },
         { 1960L, () => new PendingItem(ItemKind.Ingredient, "I_C_SARDINE", 1, "Ingredient: Sardine") },
-        { 1961L, () => new PendingItem(ItemKind.Ingredient, "I_C_COCO", 1, "Ingredient: Coco") },
+        { 1961L, () => new PendingItem(ItemKind.Ingredient, "I_C_COCO", 1, "Ingredient: Coconut Milk") },
         { 1962L, () => new PendingItem(ItemKind.Ingredient, "I_C_COFFEE", 1, "Ingredient: Coffee Beans") },
         { 1963L, () => new PendingItem(ItemKind.Ingredient, "I_C_WHISKEY", 1, "Ingredient: Whiskey") },
         { 1964L, () => new PendingItem(ItemKind.Ingredient, "I_C_TOMATO", 1, "Ingredient: Tomato") },

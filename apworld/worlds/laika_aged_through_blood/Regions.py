@@ -14,6 +14,8 @@ REGION_LOCATION_TABLE = {
         "Key Item: Jakob's Ashes",
         "Key Item: Brand-New Notebook",
         "Key Item: Birthday Invitation",
+        "Key Item: Iris",
+        "Key Item: Large Seed",
         "Puppy Gift: Ukulele",
 
         "Quest Complete: Water Whispers",
@@ -46,12 +48,17 @@ REGION_LOCATION_TABLE = {
 
     "Where Shaza Tinkers": [
         "Quest Complete: Floating",
+        "Cassette Tape: Mother",
     ],
 
     "Where Rules Are Made": [
         "Quest Complete: Diplomacy",
         "Quest Complete: The Big Tree",
         "Quest Complete: Radio Silence",
+
+        "Cassette Tape: My Destiny",
+        "Cassette Tape: The End of the Road",
+        "Cassette Tape: Trust Them",
     ],
 
     "Where We Forget": [
@@ -64,6 +71,8 @@ REGION_LOCATION_TABLE = {
     ],
 
     "Where Our Bikes Growl": [
+        "Blueprint: Rocket Launcher",
+
         "Cassette Tape: Bloody Sunset",
         "Cassette Tape: Playing in the Sun",
         "Cassette Tape: Lullaby of the Dead",
@@ -87,6 +96,7 @@ REGION_LOCATION_TABLE = {
         "Key Item: Thistle Stems",
         "Key Item: Camilla's Special Herbs",
         "Key Item: Poochie's Ashes",
+        "Key Item: Moon Blossom",
 
         "Map Piece: Where Our Ancestors Rest (Bottom)",
         "Map Piece: Where Our Ancestors Rest (Top)",
@@ -120,10 +130,14 @@ REGION_LOCATION_TABLE = {
 
     "Where Doom Fell": [
         "Cassette Tape: Visions of Red",
+        "Cassette Tape: Recurring Dream",
+
         "Map Piece: Where Doom Fell",
         "Weapon Crafting Material: Magnifying Glass",
         "Puppy Gift: Great-Great-Grandma's Novella",
+
         "Key Item: Magical Book",
+        "Key Item: Pads",
     ],
 
     "Where the Waves Die": [
@@ -238,6 +252,7 @@ REGION_LOCATION_TABLE = {
     "Where Birds Lurk": [
         "Map Piece: Where Birds Lurk (Right)",
         "Map Piece: Where Birds Lurk (Left)",
+        "Key Item: Radio Transmitter",
     ],
 
     "Floating City": [

@@ -339,6 +339,12 @@ ITEM_TABLE = {
         "internal_id": "I_POOCHIE_ASHES",
         "kind": "KeyItem",
     },
+    "Key Item: Radio Transmitter": {
+        "id": 1201,
+        "classification": ItemClassification.progression,
+        "internal_id": "I_RADIO_TRANSMITTER",
+        "kind": "KeyItem",
+    },
 
     # ===== Crafting-mode weapon material items =====
     "Weapon Crafting Material: Rusty Spring": {
@@ -487,7 +493,7 @@ ITEM_TABLE = {
         "internal_id": "I_C_SARDINE",
         "kind": "Ingredient",
     },
-    "Ingredient: Coco": {
+    "Ingredient: Coconut Milk": {
         "id": 1961,
         "classification": ItemClassification.filler,
         "internal_id": "I_C_COCO",

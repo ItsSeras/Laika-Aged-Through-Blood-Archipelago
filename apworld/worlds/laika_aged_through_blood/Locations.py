@@ -179,6 +179,7 @@ LOCATION_TABLE = {
     "Key Item: Rainbow Pebble": 150041,
     "Key Item: Poochie's Ashes": 150042,
     "Key Item: Maya's Pendant": 150043,
+    "Key Item: Radio Transmitter": 150044,
 
     # Weapon unique material / gun part checks
     "Weapon Crafting Material: Rusty Spring": 150050,

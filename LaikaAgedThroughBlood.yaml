@@ -1,43 +1,86 @@
-# Player name shown in the multiworld
+# Laika: Aged Through Blood - Archipelago player options
+#
+# Copy this file into your Archipelago Players folder before generating a seed.
+# The values below are safe defaults, but you can change them to match how you
+# want your Laika: Aged Through Blood game to play.
+
+# Your player name in the multiworld.
+# This is the name other players and the server will see.
 name: Wastelander
 
-# The APWorld game name must match the world exactly
+# Keep this exactly as written so Archipelago loads the correct APWorld.
+# DO NOT change this.
 game: "Laika: Aged Through Blood"
 
 "Laika: Aged Through Blood":
-  # --- General Archipelago settings ---
+  # --------------------------------------------------------------------------
+  # Standard Archipelago options
+  # --------------------------------------------------------------------------
 
-  # Progression balancing allows you to adjust how "stuck" you will get.
-  # Higher values try harder to keep important progression from being overly buried.
-
+  # Controls how strongly Archipelago tries to avoid burying your progression.
+  #
+  # 0   = less balancing; progression can be more uneven.
+  # 50  = standard/recommended behavior.
+  # 100 = stronger balancing; progression is pushed earlier more aggressively.
   progression_balancing: 50
 
-  # "items" means the seed only expects you to be able to reach the required items/checks,
-  # not necessarily every single location in the game.
-
+  # Controls what Archipelago considers necessary for the seed to be beatable.
+  #
+  # items     = recommended. The seed only guarantees access to required items
+  #             and checks needed to finish.
+  # locations = stricter. The seed expects every location to be reachable.
+  #
+  # "items" is recommended for Laika because it avoids forcing unnecessary
+  # cleanup while still keeping the seed completable.
   accessibility: items
 
-  # --- Laika-specific settings ---
+  # --------------------------------------------------------------------------
+  # Laika-specific options
+  # --------------------------------------------------------------------------
 
-  # How major weapons are represented in the seed.
-  # "direct" = you receive the actual weapon from Archipelago.
-  # "crafting" = you receive that weapon's unique crafting material and blueprint instead.
-  # Crossbow currently stays direct even in crafting mode.
-
+  # Controls how major weapons are sent by Archipelago.
+  #
+  # direct:
+  #   Weapons are sent as complete usable weapons.
+  #   This is the simpler recommended mode.
+  #
+  # crafting:
+  #   Most weapons are split into two Archipelago items:
+  #   the weapon blueprint and that weapon's unique crafting material.
+  #   You must receive both before the weapon can be crafted in-game.
+  #
+  # Valid values: direct, crafting
   weapon_mode: direct
 
-  # If true, your death can be sent to other connected players,
-  # and their deaths can affect you. WARNING. MAY BREAK YOUR GAME
-  # WHEN ENABLED. USE WITH CAUTION.
-  # These death link options can also be toggled in game!
-
+  # Controls whether this slot starts with DeathLink enabled.
+  #
+  # false = deaths are not shared with other DeathLink players.
+  # true  = eligible deaths can be shared with other DeathLink players.
+  #
+  # The in-game Archipelago menu can still toggle DeathLink after connecting.
+  # This YAML value is the seed's starting/default setting.
+  #
+  # Valid values: true, false
   death_link: false
 
-  # If true, deaths do not immediately send a DeathLink.
-  # Instead, the game waits until you have died enough times to hit the threshold below.
-
+  # Controls whether DeathLink waits for multiple local deaths before sending.
+  #
+  # false = every eligible death sends immediately while DeathLink is enabled.
+  # true  = deaths build toward the death_amnesty_count threshold below.
+  #
+  # This only matters when death_link is true.
+  #
+  # Valid values: true, false
   death_amnesty: false
 
-  # Number of deaths required before a DeathLink is sent when death_amnesty is enabled.
-
+  # Number of eligible local deaths required before sending a DeathLink when
+  # death_amnesty is enabled.
+  #
+  # 1 = no grace; every eligible death sends immediately.
+  # 3 = the third eligible death sends.
+  # 5 = default.
+  #
+  # This only matters when both death_link and death_amnesty are true.
+  #
+  # Valid values: 1 through 99
   death_amnesty_count: 5

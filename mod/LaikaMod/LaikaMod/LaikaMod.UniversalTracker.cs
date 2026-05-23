@@ -15,7 +15,7 @@ public partial class LaikaMod
 
     // Tutorial / intro.
     { "Autosave", "Start / Tutorial Area" },
-    { "Wasteland_01_01", "Start / Tutorial Area" },
+    { "Wasteland_01_01", "Where All Was Lost" },
 
     // Where We Live / camp hub.
     { "Camp", "Where We Live" },
@@ -56,6 +56,7 @@ public partial class LaikaMod
     { "Wasteland_01_08", "Where Birds Came From" },
 
     { "Dungeon_00", "Where Birds Lurk" },
+    { "Dungeon_00_Tutorial", "Where Birds Lurk" },
     { "Dungeon_01", "Where Rock Bleeds" },
     { "Dungeon_02", "Where Water Glistened" },
     { "Dungeon_03", "The Big Tree" },
@@ -108,6 +109,20 @@ public partial class LaikaMod
         { "Where Birds Lurk", 18 },
         { "Floating City", 19 },
     };
+
+    private static bool HasSentLocation(long locationId)
+    {
+        try
+        {
+            return SessionState != null &&
+                   SessionState.SentLocationIds != null &&
+                   SessionState.SentLocationIds.Contains(locationId);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     internal static void TryUpdateUniversalTrackerRegionFromScene(Scene scene, string sourceTag)
     {
@@ -194,6 +209,25 @@ public partial class LaikaMod
         if (string.IsNullOrWhiteSpace(sceneName))
             return "";
 
+        if (string.Equals(sceneName, "Wasteland_01_01", StringComparison.OrdinalIgnoreCase))
+        {
+            // Wasteland_01_01 is used both by the opening/tutorial route and the real
+            // Where All Was Lost area. Rage and Sorrow is the story break between them.
+            return HasSentLocation(110001L)
+                ? "Where All Was Lost"
+                : "Start / Tutorial Area";
+        }
+
+        if (string.Equals(sceneName, "Dungeon_00_Tutorial", StringComparison.OrdinalIgnoreCase))
+        {
+            // The opening route can enter the Birds Lurk tutorial scene before Rage and Sorrow.
+            // Before Rage and Sorrow, keep UT on the tutorial tab. Afterward, this scene is
+            // treated as the real Where Birds Lurk map.
+            return HasSentLocation(110001L)
+                ? "Where Birds Lurk"
+                : "Start / Tutorial Area";
+        }
+
         string regionName;
         if (SceneNameToUniversalTrackerRegion.TryGetValue(sceneName, out regionName))
             return regionName;
@@ -202,9 +236,11 @@ public partial class LaikaMod
         // These are intentionally conservative.
         string normalized = sceneName.Replace("_", "").Replace("-", "").Replace(" ", "");
 
-        if (normalized.IndexOf("Wasteland0101", StringComparison.OrdinalIgnoreCase) >= 0 ||
-            normalized.IndexOf("Autosave", StringComparison.OrdinalIgnoreCase) >= 0)
+        if (normalized.IndexOf("Autosave", StringComparison.OrdinalIgnoreCase) >= 0)
             return "Start / Tutorial Area";
+
+        if (normalized.IndexOf("Wasteland0101", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Where All Was Lost";
 
         if (normalized.IndexOf("BikesGrowl", StringComparison.OrdinalIgnoreCase) >= 0)
             return "Where Our Bikes Growl";
@@ -226,6 +262,11 @@ public partial class LaikaMod
 
         if (normalized.IndexOf("AllWasLost", StringComparison.OrdinalIgnoreCase) >= 0)
             return "Where All Was Lost";
+
+        if (normalized.IndexOf("Dungeon00Tutorial", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            normalized.IndexOf("Dungeon00", StringComparison.OrdinalIgnoreCase) >= 0 ||
+            normalized.IndexOf("BirdsLurk", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Where Birds Lurk";
 
         if (normalized.IndexOf("BirdsCameFrom", StringComparison.OrdinalIgnoreCase) >= 0)
             return "Where Birds Came From";

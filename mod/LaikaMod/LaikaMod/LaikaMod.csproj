@@ -99,13 +99,37 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ArchipelagoClientManager.cs" />
+    <Compile Include="ArchipelagoClientManager.DeathLink.cs" />
+    <Compile Include="ArchipelagoClientManager.Items.cs" />
+    <Compile Include="ArchipelagoClientManager.Locations.cs" />
+    <Compile Include="ArchipelagoClientManager.PacketHandling.cs" />
+    <Compile Include="ArchipelagoClientManager.PrintJson.cs" />
+    <Compile Include="ArchipelagoClientManager.Reflection.cs" />
+    <Compile Include="ArchipelagoClientManager.SlotData.cs" />
+    <Compile Include="ArchipelagoClientManager.Connection.cs" />
+    <Compile Include="ArchipelagoClientManager.UniversalTracker.cs" />
+    <Compile Include="LaikaMod.DeathLink.cs" />
+    <Compile Include="LaikaMod.Granting.cs" />
+    <Compile Include="LaikaMod.LocationChecks.cs" />
+    <Compile Include="LaikaMod.Patches.Bosses.cs" />
+    <Compile Include="LaikaMod.Patches.Cassettes.cs" />
+    <Compile Include="LaikaMod.Patches.Cutscenes.cs" />
+    <Compile Include="LaikaMod.Patches.Overlay.cs" />
+    <Compile Include="LaikaMod.Patches.Maps.cs" />
+    <Compile Include="LaikaMod.Patches.PlayerDeath.cs" />
+    <Compile Include="LaikaMod.Patches.PuppyGifts.cs" />
+    <Compile Include="LaikaMod.Patches.Quests.cs" />
+    <Compile Include="LaikaMod.Patches.Reconciliation.cs" />
+    <Compile Include="LaikaMod.Patches.TitleScreen.cs" />
+    <Compile Include="LaikaMod.QuestSoftlocks.cs" />
+    <Compile Include="LaikaMod.Reconciliation.cs" />
     <Compile Include="LaikaMod.UniversalTracker.cs" />
+    <Compile Include="LaikaMod.WeaponMode.cs" />
     <Compile Include="Main LaikaMod.cs" />
     <Compile Include="LaikaMod.Models.cs" />
     <Compile Include="LaikaMod.Overlay.cs" />
-    <Compile Include="LaikaMod.Patches.cs" />
-    <Compile Include="LaikaMod.QueueAndGranting.cs" />
+    <Compile Include="LaikaMod.Patches.Inventory.cs" />
+    <Compile Include="LaikaMod.Queue.cs" />
     <Compile Include="LaikaMod.Registries.cs" />
     <Compile Include="LaikaMod.State.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

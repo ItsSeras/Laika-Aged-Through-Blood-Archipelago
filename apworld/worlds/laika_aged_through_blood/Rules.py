@@ -121,6 +121,14 @@ def set_rules(world):
             )
         )
 
+    def has_all_pit_access_items(state) -> bool:
+        return (
+            has(state, player, "Key Item: Mountainheart Card")
+            and has(state, player, "Key Item: 1st Key To The Pit")
+            and has(state, player, "Key Item: 2nd Key To The Pit")
+            and has(state, player, "Key Item: 3rd Key To The Pit")
+        )
+
     for name in [
         "Radio Silence: Destroy Antenna 1",
         "Radio Silence: Destroy Antenna 2",
@@ -405,6 +413,7 @@ def set_rules(world):
         loc("Quest Complete: Diplomacy"),
         lambda state: (
             war_chapter(state)
+            and has_all_pit_access_items(state)
             and can_reach_loc(state, player, "Boss Defeated: A Caterpillar Made of Sadness")
         )
     )
@@ -412,7 +421,7 @@ def set_rules(world):
     set_rule(
         loc("Key Item: Flute Cleaning Brush"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
             and has_shotgun_access(state, player)
         )
     )
@@ -472,9 +481,7 @@ def set_rules(world):
         loc("Boss Defeated: A Caterpillar Made of Sadness"),
         lambda state: (
             war_chapter(state)
-            and has(state, player, "Key Item: 1st Key To The Pit")
-            and has(state, player, "Key Item: 2nd Key To The Pit")
-            and has(state, player, "Key Item: 3rd Key To The Pit")
+            and has_all_pit_access_items(state)
         )
     )
 
@@ -694,7 +701,7 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: Fogg's Only Wish"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
             and has(state, player, "Key Item: Fogg's Drumstick")
         )
     )
@@ -709,10 +716,11 @@ def set_rules(world):
             and has(state, player, "Key Item: Erhu Strings")
         )
     )
+
     set_rule(
         loc("Quest Complete: Clean Your Beak"),
         lambda state: (
-            all_three_main_quests_complete(state)
+            can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
             and has_shotgun_access(state, player)
             and has(state, player, "Key Item: Flute Cleaning Brush")
         )
@@ -773,6 +781,7 @@ def set_rules(world):
         loc("Boss Defeated: Two-Beak God"),
         lambda state: (
             can_reach_loc(state, player, "Quest Complete: Floating")
+            and has(state, player, "Key Item: Radio Transmitter")
             and has(state, player, "Bike Upgrade: Dash")
             and has(state, player, "Bike Upgrade: Hook")
             and has_shotgun_access(state, player)
@@ -1011,7 +1020,7 @@ def set_rules(world):
 
     set_rule(
         loc("Blueprint: Rocket Launcher"),
-        lambda state: post_childless(state) and has_dash_access(state)
+        lambda state: post_rage(state) and has_dash_access(state)
     )
 
     # ===== Progression key item pickup/check logic =====
@@ -1179,17 +1188,17 @@ def set_rules(world):
 
     set_rule(
         loc("Cassette Tape: Trust Them"),
-        lambda state: post_diplomacy(state)
+        lambda state: post_big_tree(state)
     )
 
     set_rule(
         loc("Cassette Tape: My Destiny"),
-        lambda state: post_radio_silence(state) and has_shotgun_access(state, player)
+        lambda state: post_radio_silence(state)
     )
 
     set_rule(
         loc("Cassette Tape: The End of the Road"),
-        lambda state: post_big_tree(state) and has_hook_access(state)
+        lambda state: post_big_tree(state)
     )
 
     set_rule(
@@ -1198,8 +1207,16 @@ def set_rules(world):
     )
 
     set_rule(
+        loc("Key Item: Radio Transmitter"),
+        lambda state: (
+            can_reach_loc(state, player, "Quest Complete: Floating")
+            and has(state, player, "Bike Upgrade: Dash")
+        )
+    )
+
+    set_rule(
         loc("Cassette Tape: Recurring Dream"),
-        lambda state: can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+        lambda state: post_rage(state)
     )
 
     # Completion condition

@@ -8,6 +8,8 @@ A *Laika: Aged Through Blood* mod for the [Archipelago multi-game randomizer sys
 # Status (as of May 2026)
 We have made significant progress! There are certainly plenty of adjustments and tweaks needed to make this stable.
 
+Universal Tracker is now officially supported! I highly recommend to use it alongside `Laika: Aged Through Blood`. You can find the instructions on how to install it [here!](https://discord.com/channels/731205301247803413/1367270230635839539)
+
 Anyone is free to try it out if they'd like! However, please expect potentially broken or unstable portions. 
 
 # Contact

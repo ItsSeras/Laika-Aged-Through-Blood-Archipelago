@@ -2003,6 +2003,23 @@
     ]
   },
   {
+    "name": "Where Birds Lurk - Radio Transmitter",
+    "sections": [
+      {
+        "name": "Key Item: Radio Transmitter",
+        "item_count": 1
+      }
+    ],
+    "map_locations": [
+      {
+        "map": "Where Birds Lurk",
+        "x": 640,
+        "y": 130,
+        "size": 24
+      }
+    ]
+  },
+  {
     "name": "Where Birds Lurk - Left Map Piece",
     "sections": [
       {

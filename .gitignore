@@ -46,3 +46,5 @@ references/**
 # But keep Harmony
 !references/
 !references/0Harmony.dll
+tools/validate_laika_data.py
+/tools
