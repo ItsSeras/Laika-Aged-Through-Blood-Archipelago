@@ -239,7 +239,7 @@ EXPLANATION_RULES = {
     ],
     "Cassette Tape: The Whisper": [("loc", "Quest Complete: Rage and Sorrow")],
     "Cassette Tape: Through the Wind": [("loc", "Quest Complete: A Heart for Poochie")],
-    "Cassette Tape: Trust Them": [("loc", "Quest Complete: The Big Tree"),
+    "Cassette Tape: Trust Them": [("loc", "Quest Complete: Diplomacy"),
     ],
     "Cassette Tape: Visions of Red": [("war_chapter",)],
     "Key Item: 1st Key To The Pit": [
@@ -262,7 +262,7 @@ EXPLANATION_RULES = {
     "Key Item: Birthday Invitation": [("loc", "Quest Complete: The Big Tree")],
     "Key Item: Bluelemon Berries": [("loc", "Quest Complete: Radio Silence")],
     "Key Item: Brand-New Notebook": [("war_chapter",)],
-    "Key Item: Camilla's Special Herbs": [("loc", "Quest Complete: The Big Tree")],
+    "Key Item: Camilla's Special Herbs": [("loc", "Quest Complete: Diplomacy")],
     "Key Item: Carved Whale Tooth": [
         ("loc", "Quest Complete: A Heart for Poochie"),
         ("shotgun",),
@@ -437,7 +437,7 @@ EXPLANATION_RULES = {
         ("loc", "Quest Complete: Oooo Ooo Oo O Ooo"),
     ],
     "Quest Complete: A Break for Camilla": [
-        ("loc", "Quest Complete: The Big Tree"),
+        ("loc", "Quest Complete: Diplomacy"),
         ("shotgun",),
         ("item", "Key Item: Camilla's Special Herbs"),
     ],
@@ -524,7 +524,6 @@ EXPLANATION_RULES = {
         ("item", "Key Item: Jar Filled With Bugs"),
     ],
     "Quest Complete: Old Warfare": [
-        ("loc", "Quest Complete: A Heart for Poochie"),
         ("shotgun",),
     ],
     "Quest Complete: Oooo Ooo Oo O Ooo": [

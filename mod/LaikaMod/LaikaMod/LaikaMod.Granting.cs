@@ -535,6 +535,55 @@ public partial class LaikaMod
         }
     }
 
+    internal static bool ShouldBypassHeartglazeFlowerDeferral(string sourceTag)
+    {
+        bool flowerPickupChecked = HasSentAPLocationByInternalId(
+            "I_PUPPY_FLOWER",
+            sourceTag,
+            "Key Item: Heartglaze Flower"
+        );
+
+        bool woodcrawlerChecked = HasSentAPLocationByInternalId(
+            "B_BOSS_ROSCO_DEFEATED",
+            sourceTag,
+            "Boss Defeated: A Long Lost Woodcrawler"
+        );
+
+        return flowerPickupChecked && woodcrawlerChecked;
+    }
+
+    private static bool HasSentAPLocationByInternalId(string internalId, string sourceTag, string friendlyName)
+    {
+        try
+        {
+            if (SessionState == null || SessionState.SentLocationIds == null)
+            {
+                LogInfo($"{sourceTag}: Heartglaze bypass check failed because SessionState/SentLocationIds is not ready.");
+                return false;
+            }
+
+            APLocationDefinition definition;
+            if (!TryGetLocationDefinition(internalId, out definition))
+            {
+                LogWarning($"{sourceTag}: Heartglaze bypass check could not find AP location definition for {friendlyName} / {internalId}.");
+                return false;
+            }
+
+            bool sent = SessionState.SentLocationIds.Contains(definition.LocationId);
+
+            LogInfo(
+                $"{sourceTag}: Heartglaze bypass prerequisite {friendlyName} -> sent={sent}, locationId={definition.LocationId}."
+            );
+
+            return sent;
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: Heartglaze bypass check failed for {friendlyName} / {internalId}:\n{ex}");
+            return false;
+        }
+    }
+
     // Grants a key item through the game's inventory system.
     // The InventoryManager will internally route key items through AddKeyItem(...)
     internal static bool TryGrantKeyItem(PendingItem item, string sourceTag)
@@ -565,10 +614,23 @@ public partial class LaikaMod
                 SaveSessionState();
             }
 
-            AnnounceHeartglazeDeferredNoticeOnce(sourceTag);
+            if (!ShouldBypassHeartglazeFlowerDeferral(sourceTag))
+            {
+                AnnounceHeartglazeDeferredNoticeOnce(sourceTag);
 
-            LogInfo($"{sourceTag}: Heartglaze Flower received from AP. Deferring actual vanilla inventory grant until physical flower pickup.");
-            return true;
+                LogInfo(
+                    $"{sourceTag}: Heartglaze Flower received from AP. Deferring actual vanilla inventory grant until physical flower pickup."
+                );
+
+                return true;
+            }
+
+            HeartglazeFlowerCleanupDone = true;
+            WaitingToRemoveHeartglazeFlowerAfterQuestUpdate = false;
+
+            LogInfo(
+                $"{sourceTag}: Heartglaze Flower received from AP after the physical flower check and Woodcrawler boss were already completed. Bypassing defer and granting directly."
+            );
         }
 
         try

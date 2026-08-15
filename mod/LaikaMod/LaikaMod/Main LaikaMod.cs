@@ -14,7 +14,7 @@ using UnityEngine.UI;
 using System.Runtime.InteropServices;
 
 // AP save-state, per-slot persistence, and connection-state helpers.
-[BepInPlugin("com.seras.laikaapprototype", "Laika AP Alpha", "0.01")]
+[BepInPlugin("com.seras.laikaapprototype", "Laika AP Alpha", "V 0.13")]
 public partial class LaikaMod : BaseUnityPlugin
 {
     // Shared logger for Harmony patches.

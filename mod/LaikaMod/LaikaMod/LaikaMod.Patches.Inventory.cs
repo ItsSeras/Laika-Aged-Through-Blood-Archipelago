@@ -109,10 +109,56 @@ public partial class LaikaMod
                     return false;
                 }
 
-                // Key items often start quests or advance dialogue.
-                // Do not block them here. Let AddKeyItem run, then handle AP check/removal there.
+                // Key items frequently participate in scripted quest/dialogue reward flows.
+                //
+                // If AP already gave the player the same unique key item, vanilla AddItem can
+                // reject the duplicate before its popup/callback runs. Some quests wait on that
+                // callback before restoring player control, which can permanently freeze the
+                // interaction.
+                //
+                // Temporarily remove an AP-owned copy, allow vanilla to add it normally, then
+                // keep the vanilla re-added copy. The temporary removal suppresses our real
+                // "vanilla consumed AP item" tracking, so reconciliation is not poisoned.
+                //
+                // Heartglaze Flower is excluded because it has its own dedicated deferred
+                // pickup/grant sequence.
                 if (definition.Category == "KeyItem")
                 {
+                    bool usesSpecialHeartglazeFlow =
+                        itemId == "I_PUPPY_FLOWER";
+
+                    if (!usesSpecialHeartglazeFlow &&
+                        LaikaMod.HasReceivedAPItem(ItemKind.KeyItem, itemId))
+                    {
+                        var inventory = Singleton<InventoryManager>.Instance;
+
+                        if (inventory != null && inventory.HasItem(itemId, 1))
+                        {
+                            bool removed = LaikaMod.TryRemoveInventoryReward(
+                                itemId,
+                                amount > 0 ? amount : 1,
+                                $"{sourceTag}/PreRemoveAlreadyOwnedKeyItem"
+                            );
+
+                            if (removed)
+                            {
+                                LaikaMod.TemporarilyRemovedForVanillaReAdd.Add(itemId);
+
+                                LaikaMod.LogInfo(
+                                    $"{sourceTag}: temporarily removed already-owned AP key item {itemId} " +
+                                    "so vanilla AddItem can run its popup/callback flow normally."
+                                );
+                            }
+                            else
+                            {
+                                LaikaMod.LogWarning(
+                                    $"{sourceTag}: could not temporarily remove already-owned AP key item {itemId}. " +
+                                    "Vanilla AddItem may reject the duplicate and its scripted callback may not run."
+                                );
+                            }
+                        }
+                    }
+
                     LaikaMod.LogInfo(
                         $"{sourceTag}: key item {itemId} allowed through AddItem so vanilla quest logic can run."
                     );

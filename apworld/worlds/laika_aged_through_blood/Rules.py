@@ -463,8 +463,7 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: Old Warfare"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-            and has_shotgun_access(state, player)
+            has_shotgun_access(state, player)
         )
     )
 
@@ -591,7 +590,7 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: A Break for Camilla"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: The Big Tree")
+            can_reach_loc(state, player, "Quest Complete: Diplomacy")
             and has_shotgun_access(state, player)
             and has(state, player, "Key Item: Camilla's Special Herbs")
         )
@@ -1120,6 +1119,7 @@ def set_rules(world):
     # Diplomacy side quest key items
     for name in [
         "Key Item: Petey's Letter",
+        "Key Item: Camilla's Special Herbs",
     ]:
         set_rule(loc(name), lambda state: post_diplomacy(state))
 
@@ -1130,7 +1130,6 @@ def set_rules(world):
 
     # The Big Tree side quest key items
     for name in [
-        "Key Item: Camilla's Special Herbs",
         "Key Item: Vitamin-Coated Bones",
         "Key Item: Jar Filled With Bugs",
         "Key Item: Pads",
@@ -1188,7 +1187,7 @@ def set_rules(world):
 
     set_rule(
         loc("Cassette Tape: Trust Them"),
-        lambda state: post_big_tree(state)
+        lambda state: post_diplomacy(state)
     )
 
     set_rule(
