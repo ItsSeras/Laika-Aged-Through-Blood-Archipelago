@@ -62,7 +62,7 @@ public partial class LaikaMod
     [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] { typeof(ItemData), typeof(int), typeof(Action), typeof(bool) })]
     public class InventoryManager_AddItem_APLocationPatch
     {
-        static bool Prefix(ItemData item, int amount, Action onAddedCallback, bool silent, ref bool __result)
+        static bool Prefix(ItemData item, int amount, Action onAddedCallback, ref bool silent, ref bool __result)
         {
             try
             {
@@ -163,6 +163,9 @@ public partial class LaikaMod
                         $"{sourceTag}: key item {itemId} allowed through AddItem so vanilla quest logic can run."
                     );
 
+                    // Stop the ItemReceivedPopup from popping up to prevent camera issues in the shop menu.
+                    silent = true;
+
                     return true;
                 }
 
@@ -195,6 +198,9 @@ public partial class LaikaMod
                     LaikaMod.LogInfo(
                         $"{sourceTag}: puppy gift {itemId} allowed through AddItem so vanilla dialogue/reward flow can run."
                     );
+
+                    // Stop the ItemReceivedPopup from popping up to prevent camera issues in the shop menu.
+                    silent = true;
 
                     return true;
                 }
