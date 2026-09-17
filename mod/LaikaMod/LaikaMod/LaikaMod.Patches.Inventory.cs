@@ -163,8 +163,15 @@ public partial class LaikaMod
                         $"{sourceTag}: key item {itemId} allowed through AddItem so vanilla quest logic can run."
                     );
 
-                    // Stop the ItemReceivedPopup from popping up to prevent camera issues in the shop menu.
-                    silent = true;
+                    if (LaikaMod.IsActiveShopPurchase(itemId))
+                    {
+                        silent = true;
+
+                        LaikaMod.LogInfo(
+                            $"{sourceTag}: forcing silent AddItem for active shop purchase {itemId} " +
+                            "to prevent ItemReceivedPopup/shop camera overlap."
+                        );
+                    }
 
                     return true;
                 }
@@ -199,8 +206,15 @@ public partial class LaikaMod
                         $"{sourceTag}: puppy gift {itemId} allowed through AddItem so vanilla dialogue/reward flow can run."
                     );
 
-                    // Stop the ItemReceivedPopup from popping up to prevent camera issues in the shop menu.
-                    silent = true;
+                    if (LaikaMod.IsActiveShopPurchase(itemId))
+                    {
+                        silent = true;
+
+                        LaikaMod.LogInfo(
+                            $"{sourceTag}: forcing silent AddItem for active shop puppy-gift purchase {itemId} " +
+                            "to prevent ItemReceivedPopup/shop camera overlap."
+                        );
+                    }
 
                     return true;
                 }

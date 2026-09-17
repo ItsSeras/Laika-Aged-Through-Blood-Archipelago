@@ -7,6 +7,23 @@ using System.Reflection;
 
 public partial class LaikaMod
 {
+    internal static string ActiveShopPurchaseItemId = null;
+
+    internal static bool IsActiveShopPurchase(string itemId)
+    {
+        if (string.IsNullOrEmpty(itemId))
+            return false;
+
+        if (string.IsNullOrEmpty(ActiveShopPurchaseItemId))
+            return false;
+
+        return string.Equals(
+            ActiveShopPurchaseItemId,
+            itemId,
+            StringComparison.Ordinal
+        );
+    }
+
     // Cassette and shop-source Harmony patches.
     // These detect real cassette pickups/rewards and convert them into AP location checks.
     internal static bool TryGetCassetteIdFromResourceDestructible(ResourceDestructible destructible, out string cassetteId)
@@ -556,6 +573,12 @@ public partial class LaikaMod
                 if (itemData == null)
                     return;
 
+                LaikaMod.ActiveShopPurchaseItemId = itemData.id;
+
+                LaikaMod.LogInfo(
+                    $"SHOP PURCHASE CONTEXT: armed for {itemData.id}."
+                );
+
                 if (itemData is CassetteData)
                 {
                     string cassetteId = itemData.id;
@@ -630,6 +653,36 @@ public partial class LaikaMod
             }
         }
     }
+
+    static void Postfix()
+    {
+        try
+        {
+            if (!string.IsNullOrEmpty(LaikaMod.ActiveShopPurchaseItemId))
+            {
+                LaikaMod.LogInfo(
+                    $"SHOP PURCHASE CONTEXT: cleared for {LaikaMod.ActiveShopPurchaseItemId}."
+                );
+            }
+
+            LaikaMod.ActiveShopPurchaseItemId = null;
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning(
+                $"ShopScreen_OnBuySucceded_APLocationPatch.Postfix exception:\n{ex}"
+            );
+
+            LaikaMod.ActiveShopPurchaseItemId = null;
+        }
+    }
+
+    static Exception Finalizer(Exception __exception)
+    {
+        LaikaMod.ActiveShopPurchaseItemId = null;
+        return __exception;
+    }
+
     internal static bool IsJakobMusicCollectionCassette(string cassetteId)
     {
         if (string.IsNullOrEmpty(cassetteId))
