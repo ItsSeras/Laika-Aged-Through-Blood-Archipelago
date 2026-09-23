@@ -103,7 +103,17 @@ public partial class LaikaMod
         static void Postfix()
         {
             LaikaMod.TitleScreenSavePickerOpen = true;
-            LaikaMod.LogInfo("AP TITLE: PlayOptionSelected fired. Save picker opened.");
+
+            // Keep the persistent title indicators visible while browsing save slots.
+            // They are part of the title screen itself and should only disappear
+            // once the player actually enters a save/gameplay scene.
+            LaikaMod.ShowMainMenuArchipelagoEditionText();
+            LaikaMod.ShowMainMenuArchipelagoEditionText();
+
+            LaikaMod.LogInfo(
+                "AP TITLE: PlayOptionSelected fired. Save picker opened."
+            );
+
             LaikaMod.UpdateTitleScreenAPPanel();
         }
     }
@@ -122,6 +132,10 @@ public partial class LaikaMod
             LaikaMod.SetTitleScreenNavigationBlocked(false);
             LaikaMod.SetTitleScreenSelectablesLocked(false);
             LaikaMod.SetTitleScreenUINavigationLocked(false);
+
+            // Reassert the persistent title indicators when returning from the
+            // save picker in case Laika's title UI refresh disabled them.
+            LaikaMod.ShowMainMenuArchipelagoEditionText();
 
             LaikaMod.LogInfo("AP TITLE: Back fired. Save picker closed.");
         }
@@ -166,6 +180,40 @@ public partial class LaikaMod
             catch (Exception ex)
             {
                 LaikaMod.LogWarning("AP TITLE highlight patch failed:\n" + ex);
+            }
+        }
+    }
+
+
+    // Create the persistent Archipelago title indicators after Laika finishes
+    // setting up its own title UI. Creating them earlier caused startup flicker
+    // and unreliable visibility before the main menu had fully initialized.
+    [HarmonyPatch(
+        typeof(TitleScreenView),
+        "SetUp",
+        new Type[] { typeof(object) }
+    )]
+    public class TitleScreenView_SetUp_APMainMenuIndicatorPatch
+    {
+        static void Postfix()
+        {
+            try
+            {
+                LaikaMod.TitleScreenSavePickerOpen = false;
+
+                LaikaMod.ShowMainMenuArchipelagoEditionText();
+
+                LaikaMod.LogInfo(
+                    "AP TITLE: TitleScreenView.SetUp completed; " +
+                    "main menu indicator requested."
+                );
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    "AP TITLE: failed showing main menu indicator from SetUp:\n" +
+                    ex
+                );
             }
         }
     }
@@ -417,17 +465,6 @@ public partial class LaikaMod
         static void Postfix()
         {
             LaikaMod.PollTitleScreenAPHotkey();
-
-            if (!LaikaMod.TitleScreenSavePickerOpen &&
-                !LaikaMod.ShowAPSettingsPopup &&
-                !LaikaMod.SuppressTitleUIForSlotLoad)
-            {
-                LaikaMod.UpdateMainMenuArchipelagoEditionText(false);
-            }
-            else if (LaikaMod.MainMenuArchipelagoEditionCanvasObject != null)
-            {
-                LaikaMod.MainMenuArchipelagoEditionCanvasObject.SetActive(false);
-            }
         }
     }
 

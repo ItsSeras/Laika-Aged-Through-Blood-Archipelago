@@ -14,7 +14,7 @@ using UnityEngine.UI;
 using System.Runtime.InteropServices;
 
 // AP save-state, per-slot persistence, and connection-state helpers.
-[BepInPlugin("com.seras.laikaapprototype", "Laika AP Alpha", "0.13")]
+[BepInPlugin("com.seras.laikaapprototype", "Laika AP Alpha", "0.1.5")]
 public partial class LaikaMod : BaseUnityPlugin
 {
     // Shared logger for Harmony patches.
@@ -153,6 +153,45 @@ public partial class LaikaMod : BaseUnityPlugin
         LogInfo("AP coroutine runner created.");
     }
 
+    // Prefer the real Unity scene name when detecting the title screen.
+    // SceneLoader.CurrentSceneIsTitleScreen can briefly report false during
+    // title initialization even though the active scene is already TitleScreen.
+    internal static bool IsActuallyOnTitleScreen()
+    {
+        try
+        {
+            string sceneName =
+                UnityEngine.SceneManagement.SceneManager
+                    .GetActiveScene()
+                    .name;
+
+            // This is the strongest check because the actual Laika scene
+            // is explicitly named "TitleScreen".
+            if (string.Equals(
+                sceneName,
+                "TitleScreen",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            // Keep Laika's own property as a secondary/fallback check.
+            if (MonoSingleton<SceneLoader>.Instance != null &&
+                MonoSingleton<SceneLoader>.Instance.CurrentSceneIsTitleScreen)
+            {
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                "AP TITLE: failed checking title screen state:\n" + ex
+            );
+        }
+
+        return false;
+    }
+
     internal static void UpdateTitleScreenAPPanel()
     {
         //LogInfo("AP TITLE PANEL: UpdateTitleScreenAPPanel entered. SavePickerOpen=" + TitleScreenSavePickerOpen);
@@ -223,10 +262,11 @@ public partial class LaikaMod : BaseUnityPlugin
         else if (apConnectionState == "Attempting to connect...")
             connectionColor = "#FFD166";
 
+        // "Archipelago Edition" is now a persistent title-screen label,
+        // so only show the selected save slot here to avoid duplicating it.
         TitleAPPanelText.text =
-        "<size=56><b>Archipelago Edition</b></size>\n" +
-            "Save Slot " + (slotIndex + 1) + "\n\n" +
-            "Status: <color=" + statusColor + ">" + statusText + "</color>\n" +
+            "<size=46><b>Save Slot " + (slotIndex + 1) + "</b></size>\n\n" +
+                            "Status: <color=" + statusColor + ">" + statusText + "</color>\n" +
             "Connection: <color=" + connectionColor + ">" + apConnectionState + "</color>\n" +
         "Host: " + (string.IsNullOrWhiteSpace(connection.Host)
             ? "<empty>"
@@ -1208,8 +1248,6 @@ public partial class LaikaMod : BaseUnityPlugin
         return SessionState != null && SessionState.APEnabled;
     }
 
-    internal static float MainMenuEditionForceShowUntil = -1f;
-
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
@@ -1227,116 +1265,281 @@ public partial class LaikaMod : BaseUnityPlugin
         return pressed;
     }
 
+    // Hide both persistent title indicators when entering gameplay.
+    // The objects remain owned by the TitleScreen scene and are cleaned up
+    // naturally when that scene unloads.
     internal static void HideMainMenuArchipelagoEditionText()
     {
         if (MainMenuArchipelagoEditionCanvasObject != null)
             MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+
+        if (MainMenuArchipelagoEditionLabelObject != null)
+            MainMenuArchipelagoEditionLabelObject.SetActive(false);
     }
 
-    internal static float MainMenuEditionEligibleSince = -1f;
-
-    internal static bool MainMenuEditionSkipNextDelay = false;
-
-    internal static bool WasSavePickerOpenLastFrame = false;
-
-    internal static void UpdateMainMenuArchipelagoEditionText(bool isTitleScreen)
+    // Read the displayed AP version directly from the BepInPlugin attribute
+    // so the title screen always matches the actual installed plugin version.
+    internal static string GetLaikaAPVersionString()
     {
-        bool titleMenuTextExists = false;
-
-        foreach (TMP_Text tmp in Resources.FindObjectsOfTypeAll<TMP_Text>())
+        try
         {
-            if (tmp == null || tmp.text == null || tmp.gameObject == null)
-                continue;
+            BepInPlugin pluginAttribute =
+                Attribute.GetCustomAttribute(
+                    typeof(LaikaMod),
+                    typeof(BepInPlugin)
+                ) as BepInPlugin;
 
-            if (!tmp.gameObject.activeInHierarchy)
-                continue;
-
-            string text = tmp.text.Trim().ToUpperInvariant();
-
-            if (text == "PLAY" || text == "SETTINGS" || text == "CREDITS" || text == "EXIT")
+            if (pluginAttribute != null &&
+                pluginAttribute.Version != null)
             {
-                titleMenuTextExists = true;
-                break;
+                return pluginAttribute.Version.ToString();
             }
         }
-
-        bool eligibleToShow =
-            isTitleScreen &&
-            titleMenuTextExists &&
-            !ShowAPSettingsPopup;
-
-        if (!eligibleToShow)
+        catch (Exception ex)
         {
-            MainMenuEditionEligibleSince = -1f;
+            LogWarning(
+                "AP TITLE: failed reading BepInPlugin version:\n" + ex
+            );
+        }
 
-            if (MainMenuArchipelagoEditionCanvasObject != null)
-                MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+        return "unknown";
+    }
 
+    // Reuse Laika's existing title-screen TMP font so our custom labels
+    // visually match the vanilla menu instead of introducing another font.
+    internal static TMP_FontAsset FindTitleMainMenuFont()
+    {
+        try
+        {
+            foreach (TitleScreenMenuOption option
+                in Resources.FindObjectsOfTypeAll<TitleScreenMenuOption>())
+            {
+                if (option == null || option.gameObject == null)
+                    continue;
+
+                TextMeshProUGUI label =
+                    option.GetComponentInChildren<TextMeshProUGUI>(true);
+
+                if (label != null && label.font != null)
+                    return label.font;
+            }
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                "AP TITLE: failed finding title menu font:\n" + ex
+            );
+        }
+
+        return null;
+    }
+
+    // Creates the persistent title-screen Archipelago labels once per
+    // TitleScreen instance. Both objects are parented to Laika's own title
+    // canvas so they follow the game's normal fades and scene lifecycle.
+    
+    internal static void EnsureMainMenuArchipelagoIndicatorExists()
+    {
+        if (MainMenuArchipelagoEditionCanvasObject != null &&
+            MainMenuArchipelagoEditionText != null &&
+            MainMenuArchipelagoEditionLabelObject != null &&
+            MainMenuArchipelagoEditionLabelText != null)
+        {
             return;
         }
 
-        // If the real main menu buttons are visible, we are definitely not in the save picker.
-        TitleScreenSavePickerOpen = false;
+        // Use Laika's existing title canvas rather than a separate overlay canvas.
+        // A standalone ScreenSpaceOverlay caused flickering during title startup
+        // and made the indicators harder to keep synchronized with the menu.
 
-        if (MainMenuEditionSkipNextDelay)
+        try
         {
-            MainMenuEditionSkipNextDelay = false;
-            MainMenuEditionEligibleSince = 0f;
-            MainMenuEditionForceShowUntil = Time.unscaledTime + 2.0f;
+            TitleScreenView titleView =
+                UnityEngine.Object.FindObjectOfType<TitleScreenView>();
+
+            if (titleView == null)
+            {
+                LogWarning(
+                    "AP TITLE: cannot create title indicators because " +
+                    "TitleScreenView was not found."
+                );
+                return;
+            }
+
+            Canvas titleCanvas =
+                titleView.GetComponentInParent<Canvas>();
+
+            if (titleCanvas == null)
+            {
+                LogWarning(
+                    "AP TITLE: cannot create title indicators because " +
+                    "the TitleScreenView canvas was not found."
+                );
+                return;
+            }
+
+            TMP_FontAsset font = FindTitleMainMenuFont();
+
+            // Small AP version beside Laika's vanilla version number.
+            // Keep this subtle so it functions primarily as an install/version check.
+
+            if (MainMenuArchipelagoEditionCanvasObject == null ||
+                MainMenuArchipelagoEditionText == null)
+            {
+                MainMenuArchipelagoEditionCanvasObject =
+                    new GameObject("LaikaAPVersionText");
+
+                MainMenuArchipelagoEditionCanvasObject.transform.SetParent(
+                    titleCanvas.transform,
+                    false
+                );
+
+                MainMenuArchipelagoEditionCanvasObject.transform.SetAsLastSibling();
+
+                RectTransform versionRect =
+                    MainMenuArchipelagoEditionCanvasObject
+                        .AddComponent<RectTransform>();
+
+                versionRect.anchorMin = new Vector2(0f, 0f);
+                versionRect.anchorMax = new Vector2(0f, 0f);
+                versionRect.pivot = new Vector2(0f, 0f);
+
+                // Positioned beside the vanilla version text in the bottom-left.
+                // Values are intentionally tuned to visually match Laika's existing label.
+                versionRect.anchoredPosition = new Vector2(50f, 11f);
+                versionRect.sizeDelta = new Vector2(260f, 28f);
+
+                MainMenuArchipelagoEditionText =
+                    MainMenuArchipelagoEditionCanvasObject
+                        .AddComponent<TextMeshProUGUI>();
+
+                if (font != null)
+                    MainMenuArchipelagoEditionText.font = font;
+
+                // Slightly smaller than normal menu text to match the vanilla version label.
+                MainMenuArchipelagoEditionText.fontSize = 17f;
+                MainMenuArchipelagoEditionText.characterSpacing = 1f;
+                MainMenuArchipelagoEditionText.fontStyle = FontStyles.Normal;
+                MainMenuArchipelagoEditionText.alignment =
+                    TextAlignmentOptions.BottomLeft;
+
+                MainMenuArchipelagoEditionText.color = Color.white;
+                MainMenuArchipelagoEditionText.enableWordWrapping = false;
+                MainMenuArchipelagoEditionText.overflowMode =
+                    TextOverflowModes.Overflow;
+                MainMenuArchipelagoEditionText.richText = true;
+
+                MainMenuArchipelagoEditionText.text =
+                    "AP v" + GetLaikaAPVersionString();
+            }
+
+            // Persistent "Archipelago Edition" label below the LAIKA logo.
+            // This replaces the old save-picker-only heading so players can
+            // immediately tell that the Archipelago mod loaded successfully.
+
+            if (MainMenuArchipelagoEditionLabelObject == null ||
+                MainMenuArchipelagoEditionLabelText == null)
+            {
+                MainMenuArchipelagoEditionLabelObject =
+                    new GameObject("LaikaAPEditionLabel");
+
+                MainMenuArchipelagoEditionLabelObject.transform.SetParent(
+                    titleCanvas.transform,
+                    false
+                );
+
+                MainMenuArchipelagoEditionLabelObject.transform.SetAsLastSibling();
+
+                RectTransform editionRect =
+                    MainMenuArchipelagoEditionLabelObject
+                        .AddComponent<RectTransform>();
+
+                editionRect.anchorMin = new Vector2(1f, 1f);
+                editionRect.anchorMax = new Vector2(1f, 1f);
+                editionRect.pivot = new Vector2(1f, 1f);
+
+                // Below the LAIKA / AGED THROUGH BLOOD logo.
+                // Keep this in the same visual area as the original AP save-screen heading,
+                // but high enough that it does not overlap the save-slot information.
+                editionRect.anchoredPosition = new Vector2(-55f, -330f);
+                editionRect.sizeDelta = new Vector2(650f, 70f);
+
+                MainMenuArchipelagoEditionLabelText =
+                    MainMenuArchipelagoEditionLabelObject
+                        .AddComponent<TextMeshProUGUI>();
+
+                if (font != null)
+                    MainMenuArchipelagoEditionLabelText.font = font;
+
+                MainMenuArchipelagoEditionLabelText.fontSize = 40f;
+                MainMenuArchipelagoEditionLabelText.characterSpacing = 3f;
+                MainMenuArchipelagoEditionLabelText.fontStyle = FontStyles.Bold;
+                MainMenuArchipelagoEditionLabelText.alignment =
+                    TextAlignmentOptions.TopRight;
+
+                MainMenuArchipelagoEditionLabelText.color = Color.white;
+                MainMenuArchipelagoEditionLabelText.enableWordWrapping = false;
+                MainMenuArchipelagoEditionLabelText.overflowMode =
+                    TextOverflowModes.Overflow;
+                MainMenuArchipelagoEditionLabelText.richText = true;
+
+                MainMenuArchipelagoEditionLabelText.text =
+                    "Archipelago Edition";
+            }
+
+            LogInfo(
+                "AP TITLE: created persistent title indicators. Version=" +
+                GetLaikaAPVersionString()
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                "AP TITLE: failed creating persistent title indicators:\n" +
+                ex
+            );
+        }
+    }
+
+    // Re-enable and refresh the persistent title indicators without recreating
+    // them. This is used when Laika changes between the main menu and save picker.
+    internal static void ShowMainMenuArchipelagoEditionText()
+    {
+        EnsureMainMenuArchipelagoIndicatorExists();
+
+        if (MainMenuArchipelagoEditionText != null)
+        {
+            if (MainMenuArchipelagoEditionText.font == null)
+            {
+                TMP_FontAsset font = FindTitleMainMenuFont();
+
+                if (font != null)
+                    MainMenuArchipelagoEditionText.font = font;
+            }
+
+            MainMenuArchipelagoEditionText.text =
+                "AP v" + GetLaikaAPVersionString();
         }
 
-        if (MainMenuEditionEligibleSince < 0f)
-            MainMenuEditionEligibleSince = Time.unscaledTime;
-
-        bool shouldShow =
-            Time.unscaledTime <= MainMenuEditionForceShowUntil ||
-            Time.unscaledTime - MainMenuEditionEligibleSince >= 1.2f;
-
-        if (!shouldShow)
+        if (MainMenuArchipelagoEditionLabelText != null)
         {
-            if (MainMenuArchipelagoEditionCanvasObject != null)
-                MainMenuArchipelagoEditionCanvasObject.SetActive(false);
+            if (MainMenuArchipelagoEditionLabelText.font == null)
+            {
+                TMP_FontAsset font = FindTitleMainMenuFont();
 
-            return;
+                if (font != null)
+                    MainMenuArchipelagoEditionLabelText.font = font;
+            }
+
+            MainMenuArchipelagoEditionLabelText.text =
+                "Archipelago Edition";
         }
 
-        if (MainMenuArchipelagoEditionCanvasObject == null)
-        {
-            MainMenuArchipelagoEditionCanvasObject = new GameObject("LaikaAPMainMenuEditionCanvas");
+        if (MainMenuArchipelagoEditionCanvasObject != null)
+            MainMenuArchipelagoEditionCanvasObject.SetActive(true);
 
-            Canvas canvas = MainMenuArchipelagoEditionCanvasObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.overrideSorting = true;
-            canvas.sortingOrder = 32767;
-
-            MainMenuArchipelagoEditionCanvasObject.AddComponent<CanvasScaler>();
-
-            GameObject textObject = new GameObject("LaikaAPMainMenuEditionText");
-            textObject.transform.SetParent(MainMenuArchipelagoEditionCanvasObject.transform, false);
-
-            RectTransform rect = textObject.AddComponent<RectTransform>();
-            rect.anchorMin = new Vector2(1f, 0.5f);
-            rect.anchorMax = new Vector2(1f, 0.5f);
-            rect.pivot = new Vector2(1f, 0.5f);
-            rect.anchoredPosition = new Vector2(-75.5f, 226.5f);
-            rect.sizeDelta = new Vector2(426f, 90f);
-
-            MainMenuArchipelagoEditionText = textObject.AddComponent<TextMeshProUGUI>();
-            MainMenuArchipelagoEditionText.text = "<size=68><b>Archipelago Edition</b></size>";
-            MainMenuArchipelagoEditionText.fontSize = 48f;
-            MainMenuArchipelagoEditionText.characterSpacing = 3.5f;
-            MainMenuArchipelagoEditionText.fontStyle = FontStyles.Bold;
-            MainMenuArchipelagoEditionText.alignment = TextAlignmentOptions.MidlineRight;
-            MainMenuArchipelagoEditionText.color = Color.white;
-            MainMenuArchipelagoEditionText.enableWordWrapping = false;
-            MainMenuArchipelagoEditionText.overflowMode = TextOverflowModes.Overflow;
-            MainMenuArchipelagoEditionText.richText = true;
-
-            if (TitleAPPanelText != null && TitleAPPanelText.font != null)
-                MainMenuArchipelagoEditionText.font = TitleAPPanelText.font;
-        }
-
-        MainMenuArchipelagoEditionCanvasObject.SetActive(true);
+        if (MainMenuArchipelagoEditionLabelObject != null)
+            MainMenuArchipelagoEditionLabelObject.SetActive(true);
     }
 
     private void Update()
@@ -1354,40 +1557,10 @@ public partial class LaikaMod : BaseUnityPlugin
         SetTitleScreenSelectablesLocked(shouldLockTitleScreen);
         SetTitleScreenUINavigationLocked(shouldLockTitleScreen);
 
-        bool isTitleScreen = false;
-
-        try
-        {
-            if (MonoSingleton<SceneLoader>.Instance != null)
-                isTitleScreen = MonoSingleton<SceneLoader>.Instance.CurrentSceneIsTitleScreen;
-        }
-        catch
-        {
-            isTitleScreen =
-                UnityEngine.SceneManagement.SceneManager
-                    .GetActiveScene()
-                    .name
-                    .ToLowerInvariant()
-                    .Contains("title");
-        }
-
-        bool returnedFromSavePickerToMainMenu =
-            WasSavePickerOpenLastFrame &&
-            !TitleScreenSavePickerOpen;
-
-        if (returnedFromSavePickerToMainMenu)
-            MainMenuEditionSkipNextDelay = true;
-
-        WasSavePickerOpenLastFrame = TitleScreenSavePickerOpen;
-
-        if (isTitleScreen)
-        {
-            UpdateMainMenuArchipelagoEditionText(isTitleScreen);
-        }
-        else
-        {
-            HideMainMenuArchipelagoEditionText();
-        }
+        // Title indicator visibility is handled by the TitleScreenView lifecycle
+        // patches rather than recreated/destroyed every frame. This avoids flicker
+        // during Laika's intro, menu transitions, and return-to-title sequence.
+        bool isTitleScreen = IsActuallyOnTitleScreen();
 
         bool isConnected =
             ArchipelagoClientManager.Instance != null &&
@@ -1401,13 +1574,6 @@ public partial class LaikaMod : BaseUnityPlugin
 
         if (!isTitleScreen)
         {
-            if (MainMenuArchipelagoEditionCanvasObject != null)
-            {
-                Destroy(MainMenuArchipelagoEditionCanvasObject);
-                MainMenuArchipelagoEditionCanvasObject = null;
-                MainMenuArchipelagoEditionText = null;
-            }
-
             if (TitleAPPanelCanvasObject != null)
             {
                 Destroy(TitleAPPanelCanvasObject);
@@ -1668,4 +1834,7 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static TMPro.TextMeshProUGUI MainMenuArchipelagoEditionText;
     internal static GameObject MainMenuArchipelagoEditionCanvasObject;
+
+    internal static GameObject MainMenuArchipelagoEditionLabelObject;
+    internal static TextMeshProUGUI MainMenuArchipelagoEditionLabelText;
 }
