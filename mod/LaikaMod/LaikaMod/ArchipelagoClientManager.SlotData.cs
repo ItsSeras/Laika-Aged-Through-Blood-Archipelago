@@ -147,19 +147,66 @@ public partial class ArchipelagoClientManager
         }
     }
 
-    private string ResolveOverlayItemColorHex(long itemId, string packetColorName)
+    private string ResolveOverlayItemColorHex(
+        long itemId,
+        string packetColorName,
+        int itemFlags = 0,
+        int ownerSlot = -1)
     {
-        string laikaColor = LaikaMod.GetOverlayItemColorHex(itemId, null);
+        int localSlot =
+            LaikaMod.SessionState != null &&
+            LaikaMod.SessionState.Connection != null
+                ? LaikaMod.SessionState.Connection.Slot
+                : -1;
 
-        if (!string.IsNullOrWhiteSpace(laikaColor))
-            return laikaColor;
+        string ownerGameName =
+            ownerSlot > 0
+                ? ResolveApGameNameFromSlot(ownerSlot)
+                : "";
 
-        string packetColor = MapAPColorToUnityRichText(packetColorName);
+        bool belongsToLaika =
+            (ownerSlot > 0 && ownerSlot == localSlot) ||
+            string.Equals(
+                ownerGameName,
+                "Laika: Aged Through Blood",
+                StringComparison.OrdinalIgnoreCase
+            );
+
+        // If this is actually a Laika item, preserve all of our existing
+        // custom colors: progression, useful/key item, ingredient, cassette,
+        // map, Puppy Gift, etc.
+        //
+        // Do NOT classify foreign items purely by numeric ID because
+        // Archipelago IDs are only unique inside a game's data package.
+        if (belongsToLaika && LaikaMod.IsLaikaApItemId(itemId))
+        {
+            return LaikaMod.GetItemRarityColorHex(itemId);
+        }
+
+        // For items belonging to another game, use Archipelago's item flags.
+        //
+        // 0x01 = progression
+        // 0x02 = useful
+        // 0x04 = trap
+
+        if ((itemFlags & 0x04) != 0)
+            return "#FF6B6B"; // trap / dangerous
+
+        if ((itemFlags & 0x01) != 0)
+            return "#C792EA"; // progression lavender
+
+        if ((itemFlags & 0x02) != 0)
+            return "#00D9FF"; // useful cyan
+
+        // Keep support for explicitly colored AP text if supplied.
+        string packetColor =
+            MapAPColorToUnityRichText(packetColorName);
 
         if (!string.IsNullOrWhiteSpace(packetColor))
             return packetColor;
 
-        return "#FFFFFF";
+        // Normal/filler item.
+        return "#5F7FFF";
     }
 
     private void ApplySlotDataValue(IDictionary slotDataDictionary, string key)

@@ -110,18 +110,115 @@ public partial class ArchipelagoClientManager
 
         foreach (object part in parts)
         {
-            string text = ReadStringProperty(part, "Text", "text");
-            string color = ReadStringProperty(part, "Color", "color");
+            Newtonsoft.Json.Linq.JObject jsonPart =
+                part as Newtonsoft.Json.Linq.JObject;
+
+            string text =
+                jsonPart != null
+                    ? (jsonPart.Value<string>("text") ?? "")
+                    : ReadStringProperty(part, "Text", "text");
+
+            string color =
+                jsonPart != null
+                    ? (jsonPart.Value<string>("color") ?? "")
+                    : ReadStringProperty(part, "Color", "color");
+
+            string partType =
+                jsonPart != null
+                    ? (jsonPart.Value<string>("type") ?? "")
+                    : ReadStringProperty(part, "Type", "type");
 
             if (string.IsNullOrEmpty(text))
                 continue;
 
-            string mappedColor = MapAPColorToUnityRichText(color);
+            string normalizedType =
+                NormalizePrintJsonPartType(partType);
+
+            string mappedColor = null;
+
+            switch (normalizedType)
+            {
+                case "playerid":
+                case "playername":
+                    {
+                        // Resolve a raw player slot if this library/version gives us
+                        // the numeric player ID rather than the already-resolved alias.
+                        if (normalizedType == "playerid")
+                        {
+                            int playerSlot = TryParseIntText(text);
+
+                            if (playerSlot > 0)
+                                text = ResolveApPlayerNameFromSlot(playerSlot);
+                        }
+
+                        mappedColor = "#C792EA";
+                        break;
+                    }
+
+                case "locationid":
+                case "locationname":
+                    {
+                        mappedColor = "#00E676";
+                        break;
+                    }
+
+                case "itemid":
+                case "itemname":
+                    {
+                        int ownerSlot =
+                            jsonPart != null
+                                ? (jsonPart.Value<int?>("player") ?? -1)
+                                : ReadIntProperty(part, "Player", "player");
+
+                        int itemFlags =
+                            jsonPart != null
+                                ? (jsonPart.Value<int?>("flags") ?? 0)
+                                : ReadIntProperty(part, "Flags", "flags");
+
+                        long partItemId =
+                            ReadLongProperty(
+                                part,
+                                "ItemId",
+                                "Item",
+                                "item",
+                                "Id",
+                                "id"
+                            );
+
+                        if (partItemId <= 0)
+                            partItemId = TryParseLongText(text);
+
+                        mappedColor =
+                            ResolveOverlayItemColorHex(
+                                partItemId,
+                                color,
+                                itemFlags,
+                                ownerSlot
+                            );
+
+                        break;
+                    }
+
+                default:
+                    {
+                        // Preserve explicit Archipelago color nodes.
+                        mappedColor =
+                            MapAPColorToUnityRichText(color);
+
+                        break;
+                    }
+            }
 
             if (!string.IsNullOrEmpty(mappedColor))
-                sb.Append($"<color={mappedColor}>{text}</color>");
+            {
+                sb.Append(
+                    $"<color={mappedColor}>{text}</color>"
+                );
+            }
             else
+            {
                 sb.Append(text);
+            }
         }
 
         return sb.ToString();
@@ -378,13 +475,32 @@ public partial class ArchipelagoClientManager
             }
             else if (normalizedType == "itemid")
             {
-                itemId = ReadLongProperty(part, "ItemId", "Item", "item", "Id", "id");
+                itemId = ReadLongProperty(
+                    part,
+                    "ItemId",
+                    "Item",
+                    "item",
+                    "Id",
+                    "id"
+                );
 
                 if (itemId <= 0)
                     itemId = TryParseLongText(text);
 
-                itemOwnerSlot = part.Value<int?>("player") ?? -1;
-                itemColorHex = ResolveOverlayItemColorHex(itemId, color);
+                itemOwnerSlot =
+                    part.Value<int?>("player") ?? -1;
+
+                int itemFlags =
+                    part.Value<int?>("flags") ?? 0;
+
+                itemColorHex =
+                    ResolveOverlayItemColorHex(
+                        itemId,
+                        color,
+                        itemFlags,
+                        itemOwnerSlot
+                    );
+
                 itemTextFromPacket = text;
             }
             else if (normalizedType == "locationid")
@@ -526,6 +642,89 @@ public partial class ArchipelagoClientManager
         return null;
     }
 
+    private string ApplyTriggeringPlayerColor(
+        object packet,
+        string messageType,
+        string line)
+    {
+        if (packet == null || string.IsNullOrWhiteSpace(line))
+            return line;
+
+        bool hasTriggeringPlayer =
+            string.Equals(messageType, "Chat", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(messageType, "Join", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(messageType, "Part", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(messageType, "TagsChanged", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(messageType, "Goal", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(messageType, "Release", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(messageType, "Collect", StringComparison.OrdinalIgnoreCase);
+
+        if (!hasTriggeringPlayer)
+            return line;
+
+        int slot = ReadIntProperty(
+            packet,
+            "Slot",
+            "slot"
+        );
+
+        if (slot <= 0)
+            return line;
+
+        string playerName =
+            ResolveApPlayerNameFromSlot(slot);
+
+        if (string.IsNullOrWhiteSpace(playerName))
+            return line;
+
+        string alreadyColored =
+            LaikaMod.OverlayColor(
+                "#C792EA",
+                playerName
+            );
+
+        // Avoid wrapping a name that was already correctly formatted
+        // by structured PrintJSON parsing.
+        if (line.Contains(alreadyColored))
+            return line;
+
+        int index =
+            line.IndexOf(
+                playerName,
+                StringComparison.Ordinal
+            );
+
+        if (index < 0)
+        {
+            index =
+                line.IndexOf(
+                    playerName,
+                    StringComparison.OrdinalIgnoreCase
+                );
+        }
+
+        if (index < 0)
+            return line;
+
+        // Preserve the exact capitalization/text that the server supplied.
+        string actualText =
+            line.Substring(
+                index,
+                playerName.Length
+            );
+
+        string coloredName =
+            LaikaMod.OverlayColor(
+                "#C792EA",
+                actualText
+            );
+
+        return
+            line.Substring(0, index) +
+            coloredName +
+            line.Substring(index + playerName.Length);
+    }
+
     private string ResolveApGameNameFromSlot(int slot)
     {
         if (slot <= 0)
@@ -646,12 +845,24 @@ public partial class ArchipelagoClientManager
         {
             string messageType = ReadStringProperty(packet, "MessageType", "messageType");
 
-            // Do not spam the Recent AP Activity box with connection/tutorial text.
+            // Do not spam the Recent AP Activity box with tutorial/CommandResult text.
             bool shouldShowInRecentLog =
                 string.Equals(messageType, "ItemSend", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(messageType, "Hint", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(messageType, "Chat", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(messageType, "ServerChat", StringComparison.OrdinalIgnoreCase);
+                string.Equals(messageType, "ServerChat", StringComparison.OrdinalIgnoreCase) ||
+
+                // Useful multiplayer state messages.
+                // These show players joining/leaving and things such as
+                // DeathLink being enabled or disabled through AP tags.
+                string.Equals(messageType, "Join", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(messageType, "Part", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(messageType, "TagsChanged", StringComparison.OrdinalIgnoreCase) ||
+
+                // Useful multiworld progression events.
+                string.Equals(messageType, "Goal", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(messageType, "Release", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(messageType, "Collect", StringComparison.OrdinalIgnoreCase);
 
             if (!shouldShowInRecentLog)
             {
@@ -661,10 +872,36 @@ public partial class ArchipelagoClientManager
             }
 
             object dataObject = ExtractPrintJsonDataObject(packet);
-            string line = BuildPrintJsonOverlayLine(dataObject);
+
+            string line = null;
+
+            if (string.Equals(
+                messageType,
+                "Hint",
+                StringComparison.OrdinalIgnoreCase))
+            {
+                line = BuildStructuredHintOverlayLine(packet);
+            }
+
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                line = BuildPrintJsonOverlayLine(dataObject);
+            }
 
             if (string.IsNullOrWhiteSpace(line))
                 return;
+
+            // Chat, Join, Part, TagsChanged, etc. identify the player through
+            // the packet's slot field even when the client library has already
+            // flattened that player's JSON message part into ordinary text.
+            //
+            // This preserves the server's exact sentence while still applying
+            // our normal Archipelago player color.
+            line = ApplyTriggeringPlayerColor(
+                packet,
+                messageType,
+                line
+            );
 
             LaikaMod.LogInfo($"AP PRINTJSON: {line}");
             LaikaMod.AnnounceAPActivity(line);
@@ -832,24 +1069,36 @@ public partial class ArchipelagoClientManager
 
         try
         {
+            string ownerGameName = ResolveApGameNameFromSlot(ownerSlot);
+
             if (session != null && session.Locations != null)
             {
-                object result = TryInvokeAny(
-                    session.Locations,
-                    new string[]
+                // Archipelago location IDs are only unique within a game's data package.
+                // Resolve the player's game first so cross-game hints/checks use the
+                // correct location table instead of assuming the local Laika world.
+                if (!string.IsNullOrWhiteSpace(ownerGameName))
+                {
+                    object resultByGame = TryInvokeAny(
+                        session.Locations,
+                        new string[]
+                        {
+                        "GetLocationNameFromId",
+                        "GetLocationName",
+                        "GetLocationNameById"
+                        },
+                        locationId,
+                        ownerGameName
+                    );
+
+                    if (resultByGame != null &&
+                        !string.IsNullOrWhiteSpace(resultByGame.ToString()))
                     {
-                    "GetLocationNameFromId",
-                    "GetLocationName",
-                    "GetLocationNameById"
-                    },
-                    locationId,
-                    ownerSlot
-                );
+                        return resultByGame.ToString();
+                    }
+                }
 
-                if (result != null && !string.IsNullOrWhiteSpace(result.ToString()))
-                    return result.ToString();
-
-                result = TryInvokeAny(
+                // Fallback for any library shape that exposes a local-game lookup.
+                object result = TryInvokeAny(
                     session.Locations,
                     new string[]
                     {
@@ -860,8 +1109,11 @@ public partial class ArchipelagoClientManager
                     locationId
                 );
 
-                if (result != null && !string.IsNullOrWhiteSpace(result.ToString()))
+                if (result != null &&
+                    !string.IsNullOrWhiteSpace(result.ToString()))
+                {
                     return result.ToString();
+                }
             }
         }
         catch
@@ -869,9 +1121,159 @@ public partial class ArchipelagoClientManager
         }
 
         APLocationDefinition localDefinition;
+
         if (LaikaMod.TryGetLocationDefinition(locationId, out localDefinition))
             return localDefinition.DisplayName;
 
         return $"Location {locationId}";
+    }
+
+    private string BuildStructuredHintOverlayLine(object packet)
+    {
+        try
+        {
+            if (packet == null)
+                return null;
+
+            object networkItem = ReadObjectProperty(
+                packet,
+                "Item",
+                "item"
+            );
+
+            if (networkItem == null)
+                return null;
+
+            int receivingSlot = ReadIntProperty(
+                packet,
+                "ReceivingPlayer",
+                "receivingPlayer",
+                "Receiving",
+                "receiving"
+            );
+
+            int findingSlot = ReadIntProperty(
+                packet,
+                "FindingPlayer",
+                "findingPlayer"
+            );
+
+            // Fallback for library versions where the finding player is only
+            // exposed through the NetworkItem.
+            if (findingSlot <= 0)
+            {
+                findingSlot = ReadIntProperty(
+                    networkItem,
+                    "Player",
+                    "player"
+                );
+            }
+
+            long itemId = ReadLongProperty(
+                networkItem,
+                "Item",
+                "item"
+            );
+
+            long locationId = ReadLongProperty(
+                networkItem,
+                "Location",
+                "location"
+            );
+
+            int itemFlags = ReadIntProperty(
+                networkItem,
+                "Flags",
+                "flags"
+            );
+
+            if (receivingSlot <= 0 || findingSlot <= 0)
+                return null;
+
+            string receiverName = ResolveApPlayerNameFromSlot(receivingSlot);
+            string finderName = ResolveApPlayerNameFromSlot(findingSlot);
+
+            // The item belongs to the receiving player's game.
+            string itemName = ResolveApItemNameFromId(
+                itemId,
+                receivingSlot
+            );
+
+            string itemColorHex =
+                ResolveOverlayItemColorHex(
+                    itemId,
+                    null,
+                    itemFlags,
+                    receivingSlot
+                );
+
+            // The location belongs to the finding player's game.
+            string locationName = ResolveApLocationNameFromId(
+                locationId,
+                findingSlot
+            );
+
+            string prefixPart =
+                LaikaMod.OverlayColor("#FFFFFF", "[Hint] ");
+
+            // Keep the entire possessive player name purple.
+            string receiverPart =
+                LaikaMod.OverlayColor(
+                    "#C792EA",
+                    receiverName + "'s"
+                );
+
+            string receiverSpacePart =
+                LaikaMod.OverlayColor("#FFFFFF", " ");
+
+            string itemPart =
+                LaikaMod.OverlayColor(
+                    itemColorHex,
+                    itemName
+                );
+
+            string atPart =
+                LaikaMod.OverlayColor("#FFFFFF", " is at ");
+
+            string locationPart =
+                LaikaMod.OverlayColor(
+                    "#00E676",
+                    locationName
+                );
+
+            string worldPart = "";
+
+            if (findingSlot != receivingSlot)
+            {
+                worldPart =
+                    LaikaMod.OverlayColor("#FFFFFF", " in ") +
+                    LaikaMod.OverlayColor(
+                        "#C792EA",
+                        finderName + "'s"
+                    ) +
+                    LaikaMod.OverlayColor("#FFFFFF", " World");
+            }
+
+            string periodPart =
+                LaikaMod.OverlayColor("#FFFFFF", ".");
+
+            return
+                $"{prefixPart}" +
+                $"{receiverPart}" +
+                $"{receiverSpacePart}" +
+                $"{itemPart}" +
+                $"{atPart}" +
+                $"{locationPart}" +
+                $"{worldPart}" +
+                $"{periodPart}";
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning(
+                $"AP PRINTJSON: structured Hint parsing failed:\n{ex}"
+            );
+
+            return null;
+        }
     }
 }

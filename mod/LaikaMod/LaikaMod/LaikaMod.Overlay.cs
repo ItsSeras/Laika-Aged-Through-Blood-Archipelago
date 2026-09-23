@@ -269,6 +269,51 @@ public partial class LaikaMod
         return $"{prefixPart}{itemPart}{fromPart}{senderPart}{whitePeriodPart}";
     }
 
+    internal static string BuildIncomingDeathLinkOverlayLine(
+        string sourceName,
+        string cause)
+    {
+        // Incoming DeathLinks use the normal danger/red presentation,
+        // while keeping the remote player's name in Archipelago's player color.
+
+        if (string.IsNullOrWhiteSpace(sourceName))
+            sourceName = "<unknown>";
+
+        if (string.IsNullOrWhiteSpace(cause))
+            cause = "DeathLink";
+
+        string redPrefix =
+            OverlayColor("#FF7B7B", "[AP] DeathLink from ");
+
+        string playerPart =
+            OverlayColor("#C792EA", sourceName);
+
+        string redCause =
+            OverlayColor(
+                "#FF7B7B",
+                ": " + (string.IsNullOrWhiteSpace(cause)
+                    ? "DeathLink"
+                    : cause)
+            );
+
+        return redPrefix + playerPart + redCause;
+    }
+
+    internal static void AnnounceIncomingAPDeathLink(
+        string sourceName,
+        string cause)
+    {
+        if (!ShouldShowAPActivityOverlay())
+            return;
+
+        AnnounceAPActivity(
+            BuildIncomingDeathLinkOverlayLine(
+                sourceName,
+                cause
+            )
+        );
+    }
+
     internal static void AnnounceAPInfo(string message)
     {
         if (!ShouldShowAPActivityOverlay())

@@ -314,8 +314,14 @@ public partial class ArchipelagoClientManager
         }
         catch (Exception ex)
         {
-            LaikaMod.LogWarning($"AP: failed to unsubscribe packet hook during disconnect:\n{ex}");
+            LaikaMod.LogWarning(
+                $"AP: failed to unsubscribe packet hook during disconnect:\n{ex}"
+            );
         }
+
+        // Always discard DeathLinks belonging to the connection being closed,
+        // even if packet-hook cleanup encountered a problem.
+        LaikaMod.ClearPendingIncomingDeathLinks("AP disconnect");
 
         try
         {

@@ -164,7 +164,10 @@ public partial class LaikaMod
             // Reset per-runtime-only counters so one slot does not leak into another.
             LocalDeathsThisSession = 0;
             DeathsSinceLastDeathLink = 0;
-            SuppressedDeathLinksRemaining = 0;
+
+            // Pending DeathLinks belong to the previous AP/save context and must not
+            // survive a save-slot switch.
+            ClearPendingIncomingDeathLinks("save slot bind");
 
             // Clear any pending runtime-only grants when changing slot context.
             PendingItemQueue.Clear();

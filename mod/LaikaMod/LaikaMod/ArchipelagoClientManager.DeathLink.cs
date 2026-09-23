@@ -14,30 +14,52 @@ public partial class ArchipelagoClientManager
     {
         try
         {
-            LaikaMod.SuppressedDeathLinksRemaining++;
-
             string source = "<unknown>";
             string cause = "DeathLink";
 
             if (dataObject != null)
             {
-                if (dataObject.ContainsKey("source") && dataObject["source"] != null)
+                if (dataObject.ContainsKey("source") &&
+                    dataObject["source"] != null)
+                {
                     source = dataObject["source"].ToString();
+                }
 
-                if (dataObject.ContainsKey("cause") && dataObject["cause"] != null)
+                if (dataObject.ContainsKey("cause") &&
+                    dataObject["cause"] != null)
+                {
                     cause = dataObject["cause"].ToString();
+                }
             }
 
-            LaikaMod.AnnounceAPDeathLink($"[AP] DeathLink from {source}: {cause}");
+            // Tell the player immediately what was received.
+            // Remote DeathLinks use the danger/red presentation, while the
+            // originating player's name keeps the standard AP player color.
+            LaikaMod.AnnounceIncomingAPDeathLink(
+                source,
+                cause
+            );
+
+            // Do NOT increment SuppressedDeathLinksRemaining here.
+            // The actual vanilla death has not happened yet.
+            //
+            // Queue the kill so LaikaMod.Update can perform it safely
+            // on Unity's main thread.
+            LaikaMod.QueueIncomingDeathLink(
+                source,
+                cause
+            );
+
             LaikaMod.LogInfo(
-                $"AP DEATHLINK: suppression incremented. " +
-                $"RemainingSuppressedDeaths={LaikaMod.SuppressedDeathLinksRemaining}, " +
+                $"AP DEATHLINK: incoming DeathLink queued. " +
                 $"Source={source}, Cause={cause}"
             );
         }
         catch (Exception ex)
         {
-            LaikaMod.LogError($"AP DEATHLINK: failed to apply incoming death:\n{ex}");
+            LaikaMod.LogError(
+                $"AP DEATHLINK: failed to apply incoming death:\n{ex}"
+            );
         }
     }
 

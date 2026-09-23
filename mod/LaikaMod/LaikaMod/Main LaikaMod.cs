@@ -14,7 +14,7 @@ using UnityEngine.UI;
 using System.Runtime.InteropServices;
 
 // AP save-state, per-slot persistence, and connection-state helpers.
-[BepInPlugin("com.seras.laikaapprototype", "Laika AP Alpha", "0.1.5")]
+[BepInPlugin("com.seras.laikaap", "Laika AP Beta", "0.1.5")]
 public partial class LaikaMod : BaseUnityPlugin
 {
     // Shared logger for Harmony patches.
@@ -109,7 +109,7 @@ public partial class LaikaMod : BaseUnityPlugin
         LogInfo("AP TITLE PANEL: Main LaikaMod OnGUI support compiled in.");
 
         Log.LogInfo(
-            $"Laika AP Prototype loaded. " +
+            $"Laika AP loaded. " +
             $"WeaponMode={WorldOptions.WeaponMode}, " +
             $"DevStress={EnableDevelopmentStressTest}, " +
             $"DeathLink={WorldOptions.DeathLinkEnabled}, " +
@@ -124,7 +124,7 @@ public partial class LaikaMod : BaseUnityPlugin
             EnqueueDevelopmentStressTestItems();
         }
 
-        Harmony harmony = new Harmony("com.seras.laikaapprototype");
+        Harmony harmony = new Harmony("com.seras.laikaap");
         harmony.PatchAll();
         Log.LogInfo("Harmony patches applied.");
 
@@ -136,6 +136,13 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal sealed class LaikaCoroutineRunner : MonoBehaviour
     {
+        private void Update()
+        {
+            // Incoming DeathLinks are queued by Archipelago's network callback.
+            // Process them here so the actual vanilla death is always evaluated
+            // on Unity's main thread, independently of title-screen/item-pump logic.
+            LaikaMod.ProcessPendingIncomingDeathLink();
+        }
     }
 
     internal static MonoBehaviour CoroutineRunner;
