@@ -1,4 +1,4 @@
-# WARNING! PLEASE READY BEFORE USE IN ANY RUNS
+# WARNING! PLEASE READ BEFORE USE IN *ANY* RUNS
 While the game is now in a much more stable state now, I would advise against running this in public runs! Please run this solo or inform users that you are willingly using a potentially unstable game in the run. Thank you.
 
 ![Intro](Images&Icons/laikabanner.png)
@@ -31,7 +31,6 @@ The end goal is still to put an end to the final boss before they [SPOILER]. In 
 - Download the [latest version of BepInEx](https://github.com/BepInEx/BepInEx/releases) for your respective system (for most Windows users, that will be the file called BepInEx_win_x64_X.X.X.X.zip)
 - Install the core Archipelago tools from [Archipelago's Github Releases page](https://github.com/ArchipelagoMW/Archipelago/releases). On that page, scroll down to the "Assets" section for the release you want, click on the appropriate installer for your system to start downloading it (for most Windows users, that will be the file called Setup.Archipelago.X.Y.Z.exe), then run it.
 - Go to the top of this repository. There should be five files: `LaikaMod.dll`, `Archipelago.MultiClient.Net.dll`, `Newtonsoft.Json.dll`, `laika_aged_through_blood.apworld`, and `LaikaAgedThroughBlood.yaml`. Download these five files.
-- Launch the game through Steam. If you see "Archipelago Edition" under the title, you've installed it correctly!
 
 ### Archipelago tools setup
 - Go to your Archipelago installation folder. Typically that will be `C:\ProgramData\Archipelago`.
@@ -52,7 +51,7 @@ For a more complex multiworld, you'd put one `.yaml` file in the `\Players` fold
 - Extract the downloaded BepInEx in your Laika:Aged Through Blood directory (default is C:\ProgramFiles (x86)\Steam\SteamApps\Common\Laika - Aged Through Blood). You can also right click on Laika in your Steam library > Properties > Installed Files > Browse and it will take you to the root folder.
 - Launch the game once to allow BepInEx to install required folders. Once the game successfully boots, close the game.
 - Return back to the root folder. Inside the newly extracted BepInEx, put all three of your downloaded .dll files (`LaikaMod.dll`, `Archipelago.MultiClient.Net.dll`, and `Newtonsoft.Json.dll`) inside the plugins folder (Should be ...Steam\steamapps\common\Laika - Aged Through Blood\BepInEx\plugins)
-- Launch the game and hit the `Play` button. If you see "Archipelago Edition" under the title alongside a new panel, then congrats! You successfully installed the Laika Archipelago mod!
+- Launch the game and hit the `Play` button. If you see "Archipelago Edition" under the title alongside a version number on the bottom left, then congrats! You successfully installed the Laika Archipelago mod!
 
 [This video](https://youtu.be/-YUsdD3nlbU) may assist with installation if you are unfamiliar with installing BepInEx or modding Unity games.
 
@@ -63,6 +62,6 @@ Universal Tracker is supported! I highly recommend to use it alongside `Laika: A
 ![Credits Gif](Images&Icons/laikacreditsbanner.png)
 - @ndubs103 for proposing the idea in the `future-game-design` thread on the Archipelago Discord server and assisting with the logic. They have been a great help!
 - @ixrec for his inspirational support for the Nine Sols and Outer Wilds Archipelago. His work motivated me to look into working on AP modding (Plus, he's just a really cool cat!).
-- @kennethbchen/@carmineaccidenti for their assistance with bugfixes.
+- [@kennethbchen](https://github.com/kennethbchen)/@carmineaccidenti for their assistance with bugfixes.
 - @Rixor and everyone in *Paradise* who motivated me to continue working on the project.
 - Everyone at *Brainwash Gang* who made this great game <3.
