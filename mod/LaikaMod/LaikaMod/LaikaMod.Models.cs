@@ -51,6 +51,8 @@ public class APSaveState
     public bool HarpoonPiece2ReceivedFromAP { get; set; } = false;
     public bool HarpoonPieceDeferredNoticeShown { get; set; } = false;
     public bool RadioSilenceDashBypassNoticeShown { get; set; } = false;
+
+    public bool TutorialHookDebrisEventObserved { get; set; } = false;
 }
 
 public enum ItemKind

@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Laika.Inventory;
+using Laika.Persistence;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -31,15 +33,70 @@ public partial class LaikaMod
         return new PendingItem(ItemKind.Weapon, directWeaponId, 1, directDisplayName);
     }
 
-    // Specific weapon unlock helpers that use the generic weapon-mode resolver.
-
-    //Forces the player to start with a pistol. The player doesn't require
-    //it. However, if the player interacts with Jakob too early via a
-    //different weapon, then there is a chance the player will never
-    //acquire the pistol at all. This enforces it.
+    // The Pistol is a vanilla safety item rather than an AP-randomized weapon.
+    //
+    // IMPORTANT:
+    // Adding the first weapon causes vanilla to set G_GUN_RECEIVED.
+    // The opening/tutorial area uses that flag to change Jakob, activate the alarm,
+    // and swap its enemy groups.
+    //
+    // This Pistol fallback must not activate G_GUN_RECEIVED itself.
+    // A different AP-granted weapon can already have activated the flag.
+    // Once it is completed, repair a missing Pistol without advancing it again.
     internal static void EnqueueRequiredStartingItems()
     {
-        EnqueueItem(new PendingItem(ItemKind.Weapon, "I_W_PISTOL", 1, "Pistol"));
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
+        try
+        {
+            ProgressionManager progression =
+                MonoSingleton<ProgressionManager>.Instance;
+
+            WeaponsInventory weapons =
+                Singleton<WeaponsInventory>.Instance;
+
+            if (progression == null ||
+                progression.ProgressionData == null ||
+                weapons == null)
+            {
+                return;
+            }
+
+            // Adding a first weapon changes vanilla tutorial progression.
+            // Only repair the Pistol once this flag is already active.
+            if (!progression.ProgressionData.GetAchievementCompleted(
+                "G_GUN_RECEIVED"))
+            {
+                return;
+            }
+
+            if (weapons.HasWeapon("I_W_PISTOL"))
+                return;
+
+            foreach (PendingItem queuedItem in PendingItemQueue)
+            {
+                if (queuedItem != null &&
+                    queuedItem.Kind == ItemKind.Weapon &&
+                    queuedItem.Id == "I_W_PISTOL")
+                {
+                    return;
+                }
+            }
+
+            LogInfo(
+                "PISTOL SAFETY: G_GUN_RECEIVED is already active, " +
+                "but the Pistol is missing. Queueing the safety Pistol."
+            );
+
+            EnqueueItem(
+                new PendingItem(ItemKind.Weapon, "I_W_PISTOL", 1, "Pistol")
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"EnqueueRequiredStartingItems failed:\n{ex}");
+        }
     }
 
     internal static PendingItem GetRocketLauncherUnlockItem()

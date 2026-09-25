@@ -185,8 +185,9 @@ EXPLANATION_RULES = {
     "Blueprint: Sniper": [("war_chapter",), ("shotgun",)],
     "Boss Defeated: A Caterpillar Made of Sadness": [("war_chapter",), ("pit_items",)],
     "Boss Defeated: A Gargantuan Swimcrab": [
-        ("loc", "Quest Complete: Radio Silence"),
+        ("loc", "Quest Complete: A Heart for Poochie"),
         ("shotgun",),
+        ("radio_route",),
     ],
     "Boss Defeated: A Hundred Hungry Beaks": [],
     "Boss Defeated: A Long Lost Woodcrawler": [
@@ -528,6 +529,7 @@ EXPLANATION_RULES = {
     ],
     "Quest Complete: Oooo Ooo Oo O Ooo": [
         ("loc", "Quest Complete: A Heart for Poochie"),
+        ("loc", "Quest Complete: Desperately in Need of Music"),
         ("item", "Bike Upgrade: Dash"),
         ("item", "Key Item: Ultra Fast Cough Syrup"),
     ],
@@ -541,6 +543,7 @@ EXPLANATION_RULES = {
     ],
     "Quest Complete: Sober Up": [
         ("loc", "Quest Complete: Radio Silence"),
+        ("loc", "Quest Complete: Desperately in Need of Music"),
         ("item", "Key Item: Sheet Music"),
     ],
     "Quest Complete: Stargazing": [
@@ -554,8 +557,7 @@ EXPLANATION_RULES = {
     ],
     "Quest Complete: The Big Tree": [
         ("war_chapter",),
-        ("shotgun",),
-        ("loc", "Quest Complete: The Bonehead's Hook"),
+        ("item", "Bike Upgrade: Hook"),
     ],
     "Quest Complete: The Bonehead's Hook": [
         ("loc", "Quest Complete: A Heart for Poochie"),
@@ -563,6 +565,7 @@ EXPLANATION_RULES = {
         ("item", "Bike Upgrade: Hook"),
     ],
     "Quest Complete: The Last Erhu": [
+        ("loc", "Quest Complete: Desperately in Need of Music"),
         ("loc", "Quest Complete: A Heart for Poochie"),
         ("loc", "Quest Complete: The Bonehead's Hook"),
         ("item", "Bike Upgrade: Hook"),

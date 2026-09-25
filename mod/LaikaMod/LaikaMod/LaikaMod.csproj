@@ -34,9 +34,10 @@
     <Reference Include="0Harmony">
       <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
-    <Reference Include="Archipelago.MultiClient.Net, Version=6.7.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\net45\Archipelago.MultiClient.Net.dll</HintPath>
-    </Reference>
+	  <Reference Include="Archipelago.MultiClient.Net">
+		  <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Archipelago.MultiClient.Net.dll</HintPath>
+		  <Private>True</Private>
+	  </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
@@ -45,9 +46,10 @@
       <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\net45\Newtonsoft.Json.dll</HintPath>
-    </Reference>
+	  <Reference Include="Newtonsoft.Json">
+		  <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
+		  <Private>True</Private>
+	  </Reference>
     <Reference Include="PlayMaker">
       <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\PlayMaker.dll</HintPath>
       <Private>False</Private>

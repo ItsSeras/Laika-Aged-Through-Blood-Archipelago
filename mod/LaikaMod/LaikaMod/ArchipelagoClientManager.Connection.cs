@@ -69,7 +69,7 @@ public partial class ArchipelagoClientManager
                 "Laika: Aged Through Blood",
                 slotName,
                 ItemsHandlingFlags.AllItems,
-                version: null,
+                version: new System.Version(0, 6, 7),
                 password: string.IsNullOrWhiteSpace(password) ? null : password,
                 uuid: null,
                 requestSlotData: true
@@ -236,6 +236,7 @@ public partial class ArchipelagoClientManager
             LaikaMod.SessionState.LastProcessedReceivedItemIndex = 0;
             LaikaMod.SessionState.GoalReported = false;
             LaikaMod.SessionState.SentLocationIds.Clear();
+            LaikaMod.SessionState.TutorialHookDebrisEventObserved = false;
 
             LaikaMod.PendingItemQueue.Clear();
             LaikaMod.IsProcessingQueue = false;

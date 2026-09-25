@@ -47,8 +47,23 @@ public partial class LaikaMod
             if (string.IsNullOrEmpty(questId) || string.IsNullOrEmpty(itemId))
                 return;
 
-            if (!HasReceivedOrConsumedAPQuestItem(itemKind, itemId))
+            bool isHarpoonTurnIn =
+                questId == "Q_D_2_Lighthouse" &&
+                (itemId == "I_HARPOON_PIECE_1" ||
+                 itemId == "I_HARPOON_PIECE_2");
+
+            if (isHarpoonTurnIn)
+            {
+                // FixHarpoon can also be completed by the Dash bypass.
+                // Only claim a turn-in location when vanilla actually consumed
+                // this AP-owned part.
+                if (!WasVanillaConsumedAPItem(itemKind, itemId))
+                    return;
+            }
+            else if (!HasReceivedOrConsumedAPQuestItem(itemKind, itemId))
+            {
                 return;
+            }
 
             APLocationDefinition itemLocation;
             if (!TryGetLocationDefinition(itemId, out itemLocation))
@@ -87,9 +102,14 @@ public partial class LaikaMod
         switch (questId)
         {
             case "Q_D_S_TutorialHook":
-                // If AP gave the real Hook upgrade early, the player can finish Bonehead's Hook
-                // without ever collecting the vanilla Hook Head location.
-                TrySendFetchItemLocationIfAPTurnedIn(questId, "I_HOOK_HEAD", ItemKind.KeyItem, sourceTag);
+                // Finishing Bonehead's Hook proves the Hook Head portion of this quest
+                // is no longer obtainable. Normally the physical pickup already sent
+                // its AP check. If AP Hook caused vanilla to skip/despawn that pickup,
+                // claim the location here instead.
+                TrySendAutoClaimLocation(
+                    "I_HOOK_HEAD",
+                    sourceTag + "/BoneheadsHook"
+                );
                 break;
 
             case "Q_D_A_MusiciansErhu":
@@ -187,6 +207,78 @@ public partial class LaikaMod
                 // Backup only. Normal Heartglaze handling should still happen at the physical flower.
                 TrySendFetchItemLocationIfAPTurnedIn(questId, "I_PUPPY_FLOWER", ItemKind.KeyItem, sourceTag);
                 break;
+            case "Q_D_2_Lighthouse":
+                // Radio Silence can despawn the physical harpoon-part sources if AP
+                // supplied the parts first. If vanilla successfully used those AP
+                // items, make sure their corresponding AP locations are not lost.
+                TrySendFetchItemLocationIfAPTurnedIn(
+                    questId,
+                    "I_HARPOON_PIECE_1",
+                    ItemKind.KeyItem,
+                    sourceTag
+                );
+
+                TrySendFetchItemLocationIfAPTurnedIn(
+                    questId,
+                    "I_HARPOON_PIECE_2",
+                    ItemKind.KeyItem,
+                    sourceTag
+                );
+                break;
+        }
+    }
+
+    // Used when vanilla progression can permanently remove a physical AP location.
+    //
+    // Unlike TrySendFetchItemLocationIfAPTurnedIn(), this does NOT require the
+    // location's vanilla item itself to have been received from AP. The caller
+    // must only use this when game state definitively proves the player passed
+    // the corresponding one-time vanilla step.
+    internal static void TrySendAutoClaimLocation(
+        string locationKey,
+        string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (string.IsNullOrEmpty(locationKey))
+                return;
+
+            APLocationDefinition definition;
+            if (!TryGetLocationDefinition(locationKey, out definition))
+            {
+                LogWarning(
+                    $"{sourceTag}: no AP location definition found for auto-claim key {locationKey}."
+                );
+                return;
+            }
+
+            if (HasLocationBeenSent(definition.LocationId))
+            {
+                LogInfo(
+                    $"{sourceTag}: auto-claim location already sent -> {definition.DisplayName}"
+                );
+                return;
+            }
+
+            TrySendLocationCheck(
+                definition,
+                $"{sourceTag}/AutoClaim",
+                false
+            );
+
+            LogInfo(
+                $"{sourceTag}: auto-claimed {definition.DisplayName} because " +
+                "vanilla progression skipped or removed its physical source."
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                $"{sourceTag}: TrySendAutoClaimLocation failed for {locationKey}\n{ex}"
+            );
         }
     }
 

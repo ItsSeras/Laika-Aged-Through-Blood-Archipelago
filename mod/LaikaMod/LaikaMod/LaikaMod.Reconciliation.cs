@@ -271,6 +271,65 @@ public partial class LaikaMod
         return true;
     }
 
+    // Recover the book location only after its vanilla purchase dialogue.
+    // The saved dialogue flag also supports reconnects and older saves.
+    internal static void TryRecoverMagicalBookLocation(string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (ArchipelagoClientManager.Instance == null ||
+                !ArchipelagoClientManager.Instance.IsConnected)
+            {
+                return;
+            }
+
+            var progression = MonoSingleton<ProgressionManager>.Instance;
+
+            if (progression == null ||
+                progression.ProgressionData == null ||
+                !progression.ProgressionData.GetAchievementCompleted(
+                    "D_A_Dictionary_Bought"))
+            {
+                return;
+            }
+
+            const string itemId = "I_DICTIONARY";
+
+            if (!HasReceivedAPItem(ItemKind.KeyItem, itemId))
+                return;
+
+            if (!InventoryHasItemSafe(itemId) &&
+                !WasVanillaConsumedAPItem(ItemKind.KeyItem, itemId))
+            {
+                return;
+            }
+
+            APLocationDefinition definition;
+
+            if (!TryGetLocationDefinition(itemId, out definition) ||
+                definition.Category != "KeyItem" ||
+                HasLocationBeenSent(definition.LocationId))
+            {
+                return;
+            }
+
+            TrySendLocationCheck(
+                definition,
+                sourceTag + "/MagicalBookDialogueRecovery",
+                false
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                sourceTag + ": Magical Book location recovery failed:\n" + ex
+            );
+        }
+    }
+
     internal static void ScheduleShotgunQuestReconcile(string sourceTag)
     {
         EnsureCoroutineRunner();

@@ -1,7 +1,9 @@
-﻿using System.Reflection;
-using HarmonyLib;
+﻿using HarmonyLib;
+using Laika.Economy.Shops;
 using Laika.Inventory;
 using System;
+using System.Collections.Generic;
+using System.Reflection;
 using UnityEngine;
 
 public partial class LaikaMod
@@ -36,6 +38,25 @@ public partial class LaikaMod
                 LaikaMod.LogInfo(
                     $"VANILLA CONSUMED AP ITEM: id={item.id}, kind={kind}, amount={amount}, silent={silent}"
                 );
+
+                // If this AP-owned quest item also exists in a currently loaded vendor,
+                //
+                // remove it from that vendor immediately after vanilla consumes it.
+                // ShopController.LoadData performs the same cleanup on future loads, so this
+                // handles both the currently loaded scene and later visits to the shop.
+                if (kind == ItemKind.KeyItem)
+                {
+                    ShopController[] shops =
+                        UnityEngine.Object.FindObjectsOfType<ShopController>(true);
+
+                    foreach (ShopController shop in shops)
+                    {
+                        LaikaMod.RemoveConsumedAPKeyItemsFromShopStock(
+                            shop,
+                            "InventoryManager.RemoveItem"
+                        );
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -45,13 +66,13 @@ public partial class LaikaMod
     }
 
     internal static readonly string[] JakobMusicCollectionCassetteIds =
-{
-    "I_CASSETTE_1", // Bloody Sunset
-    "I_CASSETTE_2", // Playing in the Sun
-    "I_CASSETTE_3", // Lullaby of the Dead
-    "I_CASSETTE_4", // Blue Limbo
-    "I_CASSETTE_5", // The Whisper
-};
+    {
+        "I_CASSETTE_1", // Bloody Sunset
+        "I_CASSETTE_2", // Playing in the Sun
+        "I_CASSETTE_3", // Lullaby of the Dead
+        "I_CASSETTE_4", // Blue Limbo
+        "I_CASSETTE_5", // The Whisper
+    };
 
     private static readonly FieldInfo DoorInteractionSceneToLoadField =
         typeof(DoorInteraction).GetField(

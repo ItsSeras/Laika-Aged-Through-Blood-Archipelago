@@ -1,16 +1,12 @@
-# STILL VERY MUCH EARLY IN DEVELOPMENT/PLEASE SEE BELOW
-This project is actively being worked on and is ***NOT*** in any state to be used or attempted in an Archipelago game in any form. Ideally, this will be removed within the near future, but for now this shall remain until further notice.
+# WARNING! PLEASE READY BEFORE USE IN ANY RUNS
+While the game is now in a much more stable state now, I would advise against running this in public runs! Please run this solo or inform users that you are willingly using a potentially unstable game in the run. Thank you.
 
 ![Intro](Images&Icons/laikabanner.png)
 # Laika:Aged Through Blood Archipelago Randomizer
 A *Laika: Aged Through Blood* mod for the [Archipelago multi-game randomizer system](https://archipelago.gg).
 
-# Status (as of May 2026)
-We have made significant progress! There are certainly plenty of adjustments and tweaks needed to make this stable.
-
-Universal Tracker is now officially supported! I highly recommend to use it alongside `Laika: Aged Through Blood`. You can find the instructions on how to install it [here!](https://discord.com/channels/731205301247803413/1367270230635839539)
-
-Anyone is free to try it out if they'd like! However, please expect potentially broken or unstable portions. 
+# Status (as of September 2026)
+Thanks to the support and assistance of many, we have officially released our biggest update that fixes a lot of old stability issues. More testing is required, but we're rapidly approaching a potentially official stable build!
 
 # Contact
 For questions, feedback, or discussion related to the randomizer, please visit the "`Laika: Aged Through Blood`" thread in the [Archipelago Discord server](https://discord.com/channels/731205301247803413/1491947867345129522), or message me (`@itsseras`) directly on Discord.
@@ -23,11 +19,7 @@ Archipelago allows for various games to be randomized in a vast amount of ways. 
 For example, say you're playing *Laika: Aged Through Blood* and buy a map upgrade from Renato. That map upgrade could instead give a legendary item to a *Risk of Rain 2* player in their game. In the same vein, the Risk of Rain 2 player could open a chest and send a Sniper Rifle to you in your game. This allows for unique and dynamic gameplay styles and a wide variety of approaching games that were not possible prior. 
 
 # What This Specific Mod Changes
-Laika came prepared when departing to Where All Was Lost. She is now armed with her trusty pistol at the start of the game, alongside her iconic reflect bike skill. Unfortunately, the birds had been tipped off prior to Laika's arrival, so they'll appear far quicker than what's expected.
-
-Not that Laika minds. After all, the last thing she'd want is for anything to happen to Jakob.
-
-Flavor aside, (nearly) everything from Map purchases from Renato, cassette tapes, bike upgrades, and even key items are randomized.
+Nearly everything from Map purchases from Renato, cassette tapes, bike upgrades, and even key items are randomized.
 
 Depending on your `yaml` options, you can either receive weapons outright, or you can receive materials to craft the weapon instead.
 
@@ -39,6 +31,7 @@ The end goal is still to put an end to the final boss before they [SPOILER]. In 
 - Download the [latest version of BepInEx](https://github.com/BepInEx/BepInEx/releases) for your respective system (for most Windows users, that will be the file called BepInEx_win_x64_X.X.X.X.zip)
 - Install the core Archipelago tools from [Archipelago's Github Releases page](https://github.com/ArchipelagoMW/Archipelago/releases). On that page, scroll down to the "Assets" section for the release you want, click on the appropriate installer for your system to start downloading it (for most Windows users, that will be the file called Setup.Archipelago.X.Y.Z.exe), then run it.
 - Go to the top of this repository. There should be five files: `LaikaMod.dll`, `Archipelago.MultiClient.Net.dll`, `Newtonsoft.Json.dll`, `laika_aged_through_blood.apworld`, and `LaikaAgedThroughBlood.yaml`. Download these five files.
+- Launch the game through Steam. If you see "Archipelago Edition" under the title, you've installed it correctly!
 
 ### Archipelago tools setup
 - Go to your Archipelago installation folder. Typically that will be `C:\ProgramData\Archipelago`.
@@ -64,11 +57,12 @@ For a more complex multiworld, you'd put one `.yaml` file in the `\Players` fold
 [This video](https://youtu.be/-YUsdD3nlbU) may assist with installation if you are unfamiliar with installing BepInEx or modding Unity games.
 
 # Other Suggested Mods and Tools
-PLACEHOLDER/NA
+Universal Tracker is supported! I highly recommend to use it alongside `Laika: Aged Through Blood`. You can find the instructions on how to install it [here!](https://discord.com/channels/731205301247803413/1367270230635839539)
 
 # Credits
 ![Credits Gif](Images&Icons/laikacreditsbanner.png)
 - @ndubs103 for proposing the idea in the `future-game-design` thread on the Archipelago Discord server and assisting with the logic. They have been a great help!
 - @ixrec for his inspirational support for the Nine Sols and Outer Wilds Archipelago. His work motivated me to look into working on AP modding (Plus, he's just a really cool cat!).
+- @kennethbchen/@carmineaccidenti for their assistance with bugfixes.
 - @Rixor and everyone in *Paradise* who motivated me to continue working on the project.
 - Everyone at *Brainwash Gang* who made this great game <3.

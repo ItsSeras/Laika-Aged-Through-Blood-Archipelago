@@ -128,6 +128,7 @@ public partial class LaikaMod
         // They happen because the player already owns the required item before the vanilla quest reaches
         // the step that expects it. I only fix the blocked step here so the rest of the quest can continue normally.
         TryReconcileKnownQuestSoftlocks(sourceTag);
+        EnqueueRequiredStartingItems();
 
         if (PendingItemQueue.Count == 0)
         {
@@ -158,7 +159,20 @@ public partial class LaikaMod
 
                     if (granted)
                     {
+                        // A first AP weapon can activate G_GUN_RECEIVED during this pass.
+                        // Queue the missing Pistol now so this pass can deliver it too.
+                        if (item.Kind == ItemKind.Weapon &&
+                            item.Id != "I_W_PISTOL")
+                        {
+                            EnqueueRequiredStartingItems();
+                        }
+
                         LaikaMod.LogInfo($"{sourceTag}: grant succeeded -> {item}");
+
+                        if (item.Kind == ItemKind.KeyItem && item.Id == "I_DICTIONARY")
+                        {
+                            TryRecoverMagicalBookLocation(sourceTag);
+                        }
 
                         bool isReconcileRestore =
                             sourceTag != null &&

@@ -40,8 +40,23 @@ def set_rules(world):
         set_region_rule(region_a, region_b, rule)
         set_region_rule(region_b, region_a, rule)
 
+    def has_birds_route_access(state):
+        # Vanilla route:
+        # Shotgun gets the player into the route and Hook handles the statue.
+        #
+        # AP route:
+        # Dash can bypass the intended obstacles and reach the area early.
+        return (
+            has_dash_access(state)
+            or (
+                has_shotgun_access(state, player)
+                and has_hook_access(state)
+            )
+        )
+
     # Main opening
-    # Player always starts with pistol + reflect, so Hundred Hungry Beaks has no AP item requirement.
+    # Vanilla provides the Pistol + reflect before Hundred Hungry Beaks,
+    # so the boss does not need an additional AP item requirement.
     set_rule(
         loc("Boss Defeated: A Hundred Hungry Beaks"),
         lambda state: True
@@ -121,6 +136,21 @@ def set_rules(world):
             )
         )
 
+    def has_radio_silence_field_access(state) -> bool:
+        """
+        Access to the actionable Radio Silence / Where Water Glistened route.
+
+        The player needs:
+        - A Heart for Poochie completed
+        - Shotgun access
+        - Either Dash OR both harpoon repair parts
+        """
+        return (
+            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            and has_shotgun_access(state, player)
+            and has_radio_silence_route(state)
+        )
+
     def has_all_pit_access_items(state) -> bool:
         return (
             has(state, player, "Key Item: Mountainheart Card")
@@ -137,17 +167,7 @@ def set_rules(world):
     ]:
         set_rule(
             loc(name),
-            lambda state: (
-                can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
-                and has_shotgun_access(state, player)
-                and (
-                    has(state, player, "Bike Upgrade: Dash")
-                    or (
-                        has(state, player, "Key Item: Carved Whale Tooth")
-                        and has(state, player, "Key Item: Long Rope")
-                    )
-                )
-            )
+            lambda state: has_radio_silence_field_access(state)
         )
 
     for name in [
@@ -368,14 +388,13 @@ def set_rules(world):
         )
     )
 
-    # Hook + Shotgun route connections.
+    # Hook + Shotgun route connections or dash access.
     set_two_way_region_rule(
         "Where Iron Caresses the Sky",
         "Where Birds Came From",
         lambda state: (
             war_chapter_access(state)
-            and has_shotgun_access(state, player)
-            and has_hook_access(state)
+            and has_birds_route_access(state)
         )
     )
 
@@ -384,8 +403,7 @@ def set_rules(world):
         "The Big Tree",
         lambda state: (
             war_chapter_access(state)
-            and has_shotgun_access(state, player)
-            and has_hook_access(state)
+            and has_birds_route_access(state)
         )
     )
 
@@ -440,18 +458,14 @@ def set_rules(world):
 
     set_rule(
         loc("Boss Defeated: A Gargantuan Swimcrab"),
-        lambda state: (
-            post_radio_silence(state)
-            and has_shotgun_access(state, player)
-        )
+        lambda state: has_radio_silence_field_access(state)
     )
 
     set_rule(
         loc("Quest Complete: The Big Tree"),
         lambda state: (
             war_chapter(state)
-            and has_shotgun_access(state, player)
-            and can_reach_loc(state, player, "Quest Complete: The Bonehead's Hook")
+            and has_hook_access(state)
         )
     )
 
@@ -708,7 +722,8 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: The Last Erhu"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
+            and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and can_reach_loc(state, player, "Quest Complete: The Bonehead's Hook")
             and has_hook_access(state)
             and has_shotgun_access(state, player)
@@ -736,7 +751,8 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: Sober Up"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: Radio Silence")
+            can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
+            and can_reach_loc(state, player, "Quest Complete: Radio Silence")
             and has(state, player, "Key Item: Sheet Music")
         )
     )
@@ -744,7 +760,8 @@ def set_rules(world):
     set_rule(
         loc("Quest Complete: Oooo Ooo Oo O Ooo"),
         lambda state: (
-            can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
+            can_reach_loc(state, player, "Quest Complete: Desperately in Need of Music")
+            and can_reach_loc(state, player, "Quest Complete: A Heart for Poochie")
             and has_dash_access(state)
             and has(state, player, "Key Item: Ultra Fast Cough Syrup")
         )

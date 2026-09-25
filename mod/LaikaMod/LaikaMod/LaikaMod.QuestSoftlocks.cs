@@ -49,9 +49,12 @@ public partial class LaikaMod
 
             TryReconcileOldWarfareShotgunGoal(questLog, sourceTag);
             TryReconcileTutorialHookGoal(questLog, sourceTag);
+            TryReconcileTutorialHookBombProgress(questLog, sourceTag);
             TryReconcileDeferredHarpoonPieces(questLog, sourceTag);
             TryReconcileRadioSilenceDashBypass(questLog, sourceTag);
             TrySkipRadioSilenceBoatIntro(questLog, sourceTag);
+            TryRecoverSkippedQuestLocations(questLog, sourceTag);
+            TryRecoverMagicalBookLocation(sourceTag);
         }
         catch (Exception ex)
         {
@@ -305,6 +308,208 @@ public partial class LaikaMod
         }
     }
 
+    internal static bool IsQuestGoalCompletedOrClosed(
+        QuestLog questLog,
+        string questId,
+        string goalId)
+    {
+        if (questLog == null)
+            return false;
+
+        if (questLog.IsQuestComplete(questId))
+            return true;
+
+        QuestInstance quest = FindActiveQuest(questId);
+
+        return quest != null &&
+            quest.goals != null &&
+            quest.goals.Exists(
+                goal => goal != null &&
+                        goal.GoalId == goalId &&
+                        goal.Completed
+            );
+    }
+
+    internal static void TryRecoverSkippedQuestLocations(
+        QuestLog questLog,
+        string sourceTag)
+    {
+        if (SessionState == null ||
+            !SessionState.APEnabled ||
+            SessionState.Connection == null ||
+            !SessionState.Connection.IsAuthenticated ||
+            questLog == null)
+        {
+            return;
+        }
+
+        bool hookQuestComplete =
+            questLog.IsQuestComplete("Q_D_S_TutorialHook");
+
+        bool hookStepSkipped =
+            HasAPHookUnlocked() &&
+            IsQuestGoalCompletedOrClosed(
+                questLog,
+                "Q_D_S_TutorialHook",
+                "GetHook"
+            );
+
+        if (hookQuestComplete || hookStepSkipped)
+        {
+            APLocationDefinition hookHead;
+
+            if (TryGetLocationDefinition("I_HOOK_HEAD", out hookHead) &&
+                !HasLocationBeenSent(hookHead.LocationId))
+            {
+                TrySendAutoClaimLocation(
+                    "I_HOOK_HEAD",
+                    sourceTag + "/HookHeadRecovery"
+                );
+            }
+        }
+
+        if (!IsQuestGoalCompletedOrClosed(
+            questLog,
+            "Q_D_2_Lighthouse",
+            "FixHarpoon"))
+        {
+            return;
+        }
+
+        foreach (string itemId in new[]
+        {
+        "I_HARPOON_PIECE_1",
+        "I_HARPOON_PIECE_2"
+    })
+        {
+            APLocationDefinition definition;
+
+            if (!WasVanillaConsumedAPItem(ItemKind.KeyItem, itemId) ||
+                !TryGetLocationDefinition(itemId, out definition) ||
+                HasLocationBeenSent(definition.LocationId))
+            {
+                continue;
+            }
+
+            TrySendFetchItemLocationIfAPTurnedIn(
+                "Q_D_2_Lighthouse",
+                itemId,
+                ItemKind.KeyItem,
+                sourceTag + "/HarpoonRecovery"
+            );
+        }
+    }
+
+    internal static bool IsReconcilingTutorialHookBomb = false;
+
+    internal static void TryReconcileTutorialHookBombProgress(
+        QuestLog questLog,
+        string sourceTag,
+        bool replayDebrisGoal = true)
+    {
+        if (IsReconcilingTutorialHookBomb ||
+            SessionState == null ||
+            !SessionState.APEnabled ||
+            !SessionState.TutorialHookDebrisEventObserved ||
+            questLog == null)
+        {
+            return;
+        }
+
+        const string questId = "Q_D_S_TutorialHook";
+
+        IsReconcilingTutorialHookBomb = true;
+
+        try
+        {
+            QuestInstance quest = FindActiveQuest(questId);
+
+            if (quest == null || quest.goals == null)
+                return;
+
+            QuestGoal materials = quest.goals.Find(
+                goal => goal != null && goal.GoalId == "GetMaterials"
+            );
+
+            QuestGoal bomb = quest.goals.Find(
+                goal => goal != null && goal.GoalId == "BombBlock"
+            );
+
+            QuestGoal debris = quest.goals.Find(
+                goal => goal != null && goal.GoalId == "ExplodeDebris"
+            );
+
+            // Do not skip collecting the remaining hook mechanism.
+            if (materials == null || !materials.Completed)
+                return;
+
+            if (bomb == null || debris == null)
+            {
+                LogWarning(
+                    $"{sourceTag}: Hook bomb recovery could not find " +
+                    "BombBlock or ExplodeDebris."
+                );
+                return;
+            }
+
+            if (!bomb.Completed)
+            {
+                // Vanilla already requested ExplodeDebris, so the player
+                // performed the later bomb action. Restore its missed
+                // bomb-machine prerequisite.
+                bool completed = questLog.TryCompleteQuestGoal(
+                    questId,
+                    "BombBlock"
+                );
+
+                LogInfo(
+                    $"{sourceTag}: Hook bomb recovery " +
+                    $"BombBlock returned {completed}."
+                );
+
+                if (!completed)
+                    return;
+            }
+
+            // Refresh after quest callbacks.
+            quest = FindActiveQuest(questId);
+
+            if (quest == null || quest.goals == null)
+                return;
+
+            debris = quest.goals.Find(
+                goal => goal != null && goal.GoalId == "ExplodeDebris"
+            );
+
+            // When invoked from the ExplodeDebris prefix, allow the original
+            // call to complete this goal. Otherwise replay an earlier event.
+            if (replayDebrisGoal &&
+                debris != null &&
+                !debris.Completed)
+            {
+                bool completed = questLog.TryCompleteQuestGoal(
+                    questId,
+                    "ExplodeDebris"
+                );
+
+                LogInfo(
+                    $"{sourceTag}: Hook bomb recovery " +
+                    $"ExplodeDebris returned {completed}."
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                $"{sourceTag}: Hook bomb recovery failed:\n{ex}"
+            );
+        }
+        finally
+        {
+            IsReconcilingTutorialHookBomb = false;
+        }
+    }
+
     // Bonehead's Hook can get stuck if AP gives the player the hook before the quest reaches GetHook.
     // In that case, the quest still waits on the first scripted goal even though the player already has the hook.
     // I only complete GetHook so the rest of the quest can still play out normally.
@@ -355,6 +560,16 @@ public partial class LaikaMod
                 LogInfo(
                     $"{sourceTag}: TryCompleteQuestGoal(Q_D_S_TutorialHook, GetHook) returned {completedGetHook}."
                 );
+
+                if (completedGetHook)
+                {
+                    // AP Hook caused us to intentionally bypass the vanilla Hook Head step.
+                    // Vanilla may despawn that physical pickup, so preserve its AP location.
+                    TrySendAutoClaimLocation(
+                        "I_HOOK_HEAD",
+                        sourceTag + "/TutorialHookGetHookSkip"
+                    );
+                }
 
                 if (completedGetHook)
                 {

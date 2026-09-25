@@ -1,8 +1,10 @@
 ﻿using HarmonyLib;
+using HutongGames.PlayMaker;
 using Laika.Inventory;
 using Laika.Persistence;
 using Laika.Quests;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
@@ -54,63 +56,135 @@ public partial class LaikaMod
     [HarmonyPatch(typeof(PersistenceManager), "OnSceneLoaded")]
     public class PersistenceManager_OnSceneLoaded_APCutsceneSkipPatch
     {
-        private static readonly HashSet<string> RecentlySkippedScenes = new HashSet<string>();
-
-        static void Postfix(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
+        static void Postfix(
+            UnityEngine.SceneManagement.Scene scene,
+            UnityEngine.SceneManagement.LoadSceneMode mode)
         {
+            if (!LaikaMod.IsAPCutsceneSkipEnabled() ||
+                scene.name != "AfterBoss")
+            {
+                return;
+            }
+
             try
             {
-                string sceneName = scene.name;
-
-                if (!LaikaMod.IsAPCutsceneSkipEnabled())
-                    return;
-
-                if (string.IsNullOrEmpty(sceneName))
-                    return;
-
-                string targetScene = null;
-
-                if (sceneName == "Dungeon_01_endSequence")
-                {
-                    // Post-Big Tree drive/cutscene scene.
-                    // Logs confirm this is the loaded scene name after The Big Tree.
-                    targetScene = "Camp_Night";
-                }
-
-                if (string.IsNullOrEmpty(targetScene))
-                    return;
-
-                string skipKey = sceneName + "->" + targetScene;
-
-                if (RecentlySkippedScenes.Contains(skipKey))
-                    return;
-
-                RecentlySkippedScenes.Add(skipKey);
-
-                LaikaMod.LogInfo(
-                    $"AP CUTSCENE SKIP: detected scene {sceneName}; loading {targetScene} instead."
-                );
-
                 LaikaMod.EnsureCoroutineRunner();
 
-                if (LaikaMod.CoroutineRunner != null)
+                if (LaikaMod.CoroutineRunner == null)
                 {
-                    LaikaMod.CoroutineRunner.StartCoroutine(
-                        LaikaMod.SkipSceneToTargetCoroutine(
-                            sceneName,
-                            targetScene,
-                            "PersistenceManager_OnSceneLoaded_APCutsceneSkipPatch"
-                        )
+                    LaikaMod.LogWarning(
+                        "AP ORELLA SKIP: no coroutine runner; " +
+                        "leaving the vanilla sequence active."
                     );
+                    return;
                 }
-                else
-                {
-                    MonoSingleton<SceneLoader>.Instance.LoadScene(targetScene, false, false);
-                }
+
+                LaikaMod.CoroutineRunner.StartCoroutine(
+                    SkipOrellaRoad(scene)
+                );
             }
             catch (Exception ex)
             {
-                LaikaMod.LogWarning($"PersistenceManager_OnSceneLoaded_APCutsceneSkipPatch exception:\n{ex}");
+                LaikaMod.LogWarning(
+                    $"AP ORELLA SKIP: could not schedule skip:\n{ex}"
+                );
+            }
+        }
+
+        private static System.Collections.IEnumerator SkipOrellaRoad(
+            UnityEngine.SceneManagement.Scene scene)
+        {
+            // PersistenceManager schedules player respawn after two frames.
+            yield return null;
+            yield return null;
+            yield return null;
+
+            try
+            {
+                if (!LaikaMod.IsAPCutsceneSkipEnabled() ||
+                    !scene.IsValid() ||
+                    !scene.isLoaded ||
+                    UnityEngine.SceneManagement.SceneManager
+                        .GetActiveScene().handle != scene.handle)
+                {
+                    yield break;
+                }
+
+                var questLog = Singleton<QuestLog>.Instance;
+                var persistence = MonoSingleton<PersistenceManager>.Instance;
+                var progression = MonoSingleton<ProgressionManager>.Instance;
+                var sceneLoader = MonoSingleton<SceneLoader>.Instance;
+
+                if (questLog == null ||
+                    persistence == null ||
+                    progression == null ||
+                    progression.LocalSaveData == null ||
+                    sceneLoader == null)
+                {
+                    LaikaMod.LogWarning(
+                        "AP ORELLA SKIP: managers are not ready; " +
+                        "leaving the vanilla sequence active."
+                    );
+                    yield break;
+                }
+
+                // Restrict this to the demonstrated post-Pope transition.
+                if (!questLog.IsQuestGoalComplete(
+                    "Q_D_3_TheBigTree", "KillPope"))
+                {
+                    yield break;
+                }
+
+                if (!persistence.CanSave)
+                {
+                    LaikaMod.LogWarning(
+                        "AP ORELLA SKIP: saving is disabled; " +
+                        "leaving the vanilla sequence active."
+                    );
+                    yield break;
+                }
+
+                AfterBossDirector director = null;
+
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    foreach (AfterBossDirector candidate in
+                        root.GetComponentsInChildren<AfterBossDirector>(false))
+                    {
+                        if (director != null)
+                        {
+                            LaikaMod.LogWarning(
+                                "AP ORELLA SKIP: multiple directors found; " +
+                                "leaving the vanilla sequence active."
+                            );
+                            yield break;
+                        }
+
+                        director = candidate;
+                    }
+                }
+
+                if (director == null)
+                {
+                    LaikaMod.LogWarning(
+                        "AP ORELLA SKIP: AfterBossDirector was not found; " +
+                        "leaving the vanilla sequence active."
+                    );
+                    yield break;
+                }
+
+                LaikaMod.LogInfo(
+                    "AP ORELLA SKIP: ending AfterBoss through " +
+                    "vanilla AfterBossDirector.LoadCampScene()."
+                );
+
+                director.LoadCampScene();
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    $"AP ORELLA SKIP failed:\n{ex}"
+                );
             }
         }
     }
@@ -270,6 +344,45 @@ public partial class LaikaMod
         }
     }
 
+    [HarmonyPatch(
+        typeof(ProgressionData),
+        "SetAchievement",
+        new Type[] { typeof(string), typeof(bool), typeof(bool) }
+    )]
+    public class ProgressionData_BlockEarlyHookUnlockPatch
+    {
+        static bool Prefix(string name, bool value, bool reset)
+        {
+            if (name != "G_HOOK_UNLOCKED" || !value || reset)
+                return true;
+
+            if (LaikaMod.SessionState == null ||
+                !LaikaMod.SessionState.APEnabled)
+            {
+                return true;
+            }
+
+            // AP itself is currently granting Hook.
+            if (LaikaMod.IsGrantingAPItem)
+                return true;
+
+            // AP has already legitimately sent Hook.
+            if (LaikaMod.HasReceivedAPItem(
+                ItemKind.KeyItem,
+                "I_E_HOOK"
+            ))
+            {
+                return true;
+            }
+
+            LaikaMod.LogWarning(
+                "Blocked vanilla G_HOOK_UNLOCKED because Hook has not been received from Archipelago."
+            );
+
+            return false;
+        }
+    }
+
     internal static float BoneheadHookCaveBlockNoticeLastShownAt = -9999f;
 
     internal static bool HasProgressionFlag(string achievementId)
@@ -297,15 +410,15 @@ public partial class LaikaMod
     {
         try
         {
-            if (HasProgressionFlag("G_HOOK_UNLOCKED"))
-                return true;
+            if (SessionState != null && SessionState.APEnabled)
+            {
+                return HasReceivedAPItem(
+                    ItemKind.KeyItem,
+                    "I_E_HOOK"
+                );
+            }
 
-            var inventory = Singleton<InventoryManager>.Instance;
-
-            if (inventory != null && inventory.HasItem("I_E_HOOK", 1))
-                return true;
-
-            return false;
+            return HasProgressionFlag("G_HOOK_UNLOCKED");
         }
         catch (Exception ex)
         {
@@ -517,6 +630,168 @@ public partial class LaikaMod
         {
             LogError($"PlayerHasAllDungeon01PitKeys exception:\n{ex}");
             return false;
+        }
+    }
+}
+
+public partial class LaikaMod
+{
+    private const string RoyOutboundFsmPath =
+        "Dungeon_02/Q_D_2_Lighthouse_Dungeon/D_2_Lighthouse_BoatSequence/FSM";
+    private const string ExteriorHectistPath =
+        "Wasteland_01_04/Wasteland_01_04_Quests/Hectic/Interactions/Q_D_S_HookTutorial";
+
+    private static string Release015ObjectPath(Transform transform)
+    {
+        if (transform == null) return "";
+        string path = transform.name;
+        for (Transform parent = transform.parent; parent != null; parent = parent.parent)
+            path = parent.name + "/" + path;
+        return path;
+    }
+
+    // The log proves this exterior launcher tries TalkToAnarchist2 while
+    // GetMaterials is current. Prevent entry before Interactable blocks controls.
+    private static bool IsStaleExteriorHectist(DialogueFSMLauncher launcher)
+    {
+        if (SessionState == null || !SessionState.APEnabled || launcher == null ||
+            launcher.gameObject.scene.name != "Wasteland_01_04" ||
+            launcher.target == null || launcher.target.gameObject.name != "FSM" ||
+            Release015ObjectPath(launcher.transform) != ExteriorHectistPath ||
+            !HasAPHookUnlocked()) return false;
+
+        var quest = FindActiveQuest("Q_D_S_TutorialHook");
+        var goal = quest == null ? null : quest.GetCurrentGoal();
+        return goal != null && goal.GoalId == "GetMaterials";
+    }
+
+    [HarmonyPatch(typeof(DialogueFSMLauncher), "Interact")]
+    public static class ExteriorHectist_InteractionGuard
+    {
+        [HarmonyPriority(Priority.First)]
+        static bool Prefix(DialogueFSMLauncher __instance)
+        {
+            if (!IsStaleExteriorHectist(__instance)) return true;
+            LogInfo("HECTIST EXTERIOR GUARD: blocked stale exterior interaction at GetMaterials; cave interaction remains available.");
+            return false;
+        }
+    }
+
+    // DialogueFSMLauncher inherits CanInteract from ProgressionInteractable.
+    // This suppresses only the invalid exterior interaction prompt.
+    [HarmonyPatch(typeof(ProgressionInteractable), "CanInteract")]
+    public static class ExteriorHectist_PromptGuard
+    {
+        static void Postfix(ProgressionInteractable __instance, ref bool __result)
+        {
+            if (__result && IsStaleExteriorHectist(__instance as DialogueFSMLauncher))
+                __result = false;
+        }
+    }
+
+    private static readonly FieldInfo RoyDialogueQueueField =
+        AccessTools.Field(typeof(PlayMaker.ExecuteILDialogue), "actions");
+
+    private static bool IsRoyOutboundAction(FsmStateAction action)
+    {
+        if (SessionState == null || !SessionState.APEnabled || action == null ||
+            action.Fsm == null || RoyDialogueQueueField == null) return false;
+        GameObject owner = action.Fsm.GameObject;
+        return owner != null && owner.scene.name == "Dungeon_02" &&
+            Release015ObjectPath(owner.transform) == RoyOutboundFsmPath;
+    }
+
+    // Use each recorded movement action's built-in immediate mode. Preserve its
+    // target, the FSM transitions, checkpoint switches and all cleanup actions.
+    [HarmonyPatch(typeof(Playmaker.MovePlatformController), "OnEnter")]
+    public static class RoyOutbound_ImmediateMovement
+    {
+        static void Prefix(Playmaker.MovePlatformController __instance, out bool? __state)
+        {
+            __state = null;
+            if (!IsRoyOutboundAction(__instance) || __instance.platform == null ||
+                __instance.target == null || __instance.OnlySetUp || __instance.Inmediate)
+                return;
+
+            string targetName = __instance.target.name;
+            if (__instance.target.parent != __instance.Fsm.GameObject.transform ||
+                (targetName != "Target 1" && targetName != "Target 2" &&
+                 targetName != "Target 3" && targetName != "Target 4")) return;
+
+            __state = __instance.Inmediate;
+            __instance.Inmediate = true;
+            LogInfo("ROY OUTBOUND SKIP: immediate movement to " + targetName);
+        }
+
+        static void Finalizer(Playmaker.MovePlatformController __instance, bool? __state)
+        {
+            if (__state.HasValue) __instance.Inmediate = __state.Value;
+        }
+    }
+
+    // Several dialogue actions have 10-120 second delayed starts. Remove their
+    // start delay only in this FSM, and restore the serialized field afterward.
+    [HarmonyPatch(typeof(PlayMaker.ExecuteILDialogue), "OnEnter")]
+    public static class RoyOutbound_NoDialogueStartDelay
+    {
+        static void Prefix(PlayMaker.ExecuteILDialogue __instance, out FsmFloat __state)
+        {
+            __state = null;
+            if (!IsRoyOutboundAction(__instance) || __instance.m_DelayedDialogueStart == null)
+                return;
+            __state = __instance.m_DelayedDialogueStart;
+            __instance.m_DelayedDialogueStart = 0f;
+        }
+
+        static void Finalizer(PlayMaker.ExecuteILDialogue __instance, FsmFloat __state)
+        {
+            if (__state != null) __instance.m_DelayedDialogueStart = __state;
+        }
+    }
+
+    // When this dialogue action generates its command queue, remove display,
+    // wait and timer commands while retaining the other parsed commands.
+    // Vanilla OnUpdate/OnExit handles execution and cleanup.
+    // This filter does not guarantee that every dialogue action in a movement
+    // state runs before immediate movement advances the FSM.
+    [HarmonyPatch(typeof(PlayMaker.ExecuteILDialogue), "GenerateDialogueFromIL")]
+    public static class RoyOutbound_TrimDialoguePresentation
+    {
+        static void Postfix(PlayMaker.ExecuteILDialogue __instance)
+        {
+            if (!IsRoyOutboundAction(__instance)) return;
+            try
+            {
+                object original = RoyDialogueQueueField.GetValue(__instance);
+                var commands = original as IEnumerable;
+                if (commands == null) return;
+                Type queueType = original.GetType();
+                MethodInfo enqueue = queueType.GetMethod("Enqueue");
+                if (enqueue == null) return;
+                object replacement = Activator.CreateInstance(queueType);
+                int removed = 0;
+                int retained = 0;
+                foreach (object command in commands)
+                {
+                    if (command == null) continue;
+                    Type type = command.GetType();
+                    bool presentation = type.DeclaringType == typeof(PlayMaker.ExecuteILDialogue) &&
+                        (type.Name == "DisplayDialogueCommand" || type.Name == "WaitCommand" ||
+                         type.Name == "TimerCommand");
+                    if (presentation) { removed++; continue; }
+                    enqueue.Invoke(replacement, new[] { command });
+                    retained++;
+                }
+                // Commit only after constructing the entire replacement queue.
+                RoyDialogueQueueField.SetValue(__instance, replacement);
+                var asset = __instance.m_ilFile == null ? null : __instance.m_ilFile.Value as TextAsset;
+                LogInfo("ROY OUTBOUND SKIP: dialogue=" + (asset == null ? "<null>" : asset.name) +
+                    ", removed presentation commands=" + removed + ", retained commands=" + retained);
+            }
+            catch (Exception ex)
+            {
+                LogWarning("ROY OUTBOUND SKIP: dialogue filtering failed; original queue retained.\n" + ex);
+            }
         }
     }
 }

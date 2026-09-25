@@ -601,20 +601,13 @@ public partial class LaikaMod
                             $"SHOP CASSETTE PURCHASE DETECTED FOR AP-OWNED CASSETTE: id={cassetteId}, location={definition.DisplayName}"
                         );
 
-                        if (LaikaMod.HasReceivedAPItem(ItemKind.Collectible, cassetteId))
-                        {
-                            LaikaMod.LogInfo(
-                                $"SHOP CASSETTE PURCHASE DETECTED FOR AP-OWNED CASSETTE: id={cassetteId}, location={definition.DisplayName}"
-                            );
+                        LaikaMod.TrySendLocationCheck(
+                            definition,
+                            "ShopScreen_OnBuySucceded_APLocationPatch/APOwnedCassettePurchase",
+                            false
+                        );
 
-                            LaikaMod.TrySendLocationCheck(
-                                definition,
-                                "ShopScreen_OnBuySucceded_APLocationPatch/APOwnedCassettePurchase",
-                                false
-                            );
-
-                            return;
-                        }
+                        return;
                     }
 
                     LaikaMod.ArmCassetteLocationCheck(
@@ -652,35 +645,35 @@ public partial class LaikaMod
                 LaikaMod.LogError($"ShopScreen_OnBuySucceded_APLocationPatch exception:\n{ex}");
             }
         }
-    }
 
-    static void Postfix()
-    {
-        try
+        static void Postfix()
         {
-            if (!string.IsNullOrEmpty(LaikaMod.ActiveShopPurchaseItemId))
+            try
             {
-                LaikaMod.LogInfo(
-                    $"SHOP PURCHASE CONTEXT: cleared for {LaikaMod.ActiveShopPurchaseItemId}."
-                );
+                if (!string.IsNullOrEmpty(LaikaMod.ActiveShopPurchaseItemId))
+                {
+                    LaikaMod.LogInfo(
+                        $"SHOP PURCHASE CONTEXT: cleared for {LaikaMod.ActiveShopPurchaseItemId}."
+                    );
+                }
+
+                LaikaMod.ActiveShopPurchaseItemId = null;
             }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    $"ShopScreen_OnBuySucceded_APLocationPatch.Postfix exception:\n{ex}"
+                );
 
-            LaikaMod.ActiveShopPurchaseItemId = null;
+                LaikaMod.ActiveShopPurchaseItemId = null;
+            }
         }
-        catch (Exception ex)
+
+        static Exception Finalizer(Exception __exception)
         {
-            LaikaMod.LogWarning(
-                $"ShopScreen_OnBuySucceded_APLocationPatch.Postfix exception:\n{ex}"
-            );
-
             LaikaMod.ActiveShopPurchaseItemId = null;
+            return __exception;
         }
-    }
-
-    static Exception Finalizer(Exception __exception)
-    {
-        LaikaMod.ActiveShopPurchaseItemId = null;
-        return __exception;
     }
 
     internal static bool IsJakobMusicCollectionCassette(string cassetteId)
