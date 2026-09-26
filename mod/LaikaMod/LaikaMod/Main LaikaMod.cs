@@ -1738,6 +1738,10 @@ public partial class LaikaMod : BaseUnityPlugin
                 SessionState.Options = new APWorldOptions();
 
             WorldOptions.WeaponMode = SessionState.Options.WeaponMode;
+            WorldOptions.SkipJakobTransition = SessionState.Options.SkipJakobTransition;
+            WorldOptions.SkipOrellaTransition = SessionState.Options.SkipOrellaTransition;
+            WorldOptions.SkipRoyBoat = SessionState.Options.SkipRoyBoat;
+            WorldOptions.VisceraProtection = SessionState.Options.VisceraProtection;
             WorldOptions.DeathLinkEnabled = SessionState.Options.DeathLinkEnabled;
             WorldOptions.DeathAmnestyEnabled = SessionState.Options.DeathAmnestyEnabled;
             WorldOptions.DeathAmnestyCount = Mathf.Max(1, SessionState.Options.DeathAmnestyCount);

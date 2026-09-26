@@ -31,6 +31,61 @@ public partial class ArchipelagoClientManager
         return "unknown";
     }
 
+    private static bool ReadSlotToggle(
+    IDictionary slotData,
+    string key,
+    bool fallback)
+    {
+        if (!slotData.Contains(key) || slotData[key] == null)
+            return fallback;
+
+        string value = slotData[key].ToString().Trim();
+
+        bool parsed;
+        if (bool.TryParse(value, out parsed))
+            return parsed;
+
+        if (value == "1") return true;
+        if (value == "0") return false;
+
+        LaikaMod.LogWarning(
+            $"AP: Invalid {key} value '{value}'; using {fallback}."
+        );
+        return fallback;
+    }
+
+    private static VisceraProtectionMode ReadVisceraProtection(
+        IDictionary slotData)
+    {
+        const string key = "viscera_protection";
+
+        if (!slotData.Contains(key) || slotData[key] == null)
+            return VisceraProtectionMode.Off;
+
+        string value = slotData[key].ToString().Trim().ToLowerInvariant();
+
+        switch (value)
+        {
+            case "off":
+            case "0":
+                return VisceraProtectionMode.Off;
+
+            case "deathlink_only":
+            case "1":
+                return VisceraProtectionMode.DeathLinkOnly;
+
+            case "all_deaths":
+            case "2":
+                return VisceraProtectionMode.AllDeaths;
+
+            default:
+                LaikaMod.LogWarning(
+                    $"AP: Invalid viscera_protection value '{value}'; using off."
+                );
+                return VisceraProtectionMode.Off;
+        }
+    }
+
     private void TryApplyLiveSlotData(object loginResult)
     {
         try
@@ -70,6 +125,28 @@ public partial class ArchipelagoClientManager
             ApplySlotDataValue(slotDataDictionary, "death_amnesty");
             ApplySlotDataValue(slotDataDictionary, "death_amnesty_count");
 
+            // Seed-controlled options. Explicit fallbacks prevent a previous
+            // connection's settings from leaking into an older seed.
+            LaikaMod.WorldOptions.SkipJakobTransition =
+                ReadSlotToggle(slotDataDictionary, "skip_jakob_transition", true);
+
+            LaikaMod.WorldOptions.SkipOrellaTransition =
+                ReadSlotToggle(slotDataDictionary, "skip_orella_transition", true);
+
+            LaikaMod.WorldOptions.SkipRoyBoat =
+                ReadSlotToggle(slotDataDictionary, "skip_roy_boat", true);
+
+            LaikaMod.WorldOptions.VisceraProtection =
+                ReadVisceraProtection(slotDataDictionary);
+
+            LaikaMod.LogInfo(
+                "AP: Run options applied. " +
+                $"SkipJakob={LaikaMod.WorldOptions.SkipJakobTransition}, " +
+                $"SkipOrella={LaikaMod.WorldOptions.SkipOrellaTransition}, " +
+                $"SkipRoy={LaikaMod.WorldOptions.SkipRoyBoat}, " +
+                $"VisceraProtection={LaikaMod.WorldOptions.VisceraProtection}"
+            );
+
             LaikaMod.LogInfo(
                 "AP: Live slot_data read. " +
                 $"HadWeaponMode={hadWeaponMode}, " +
@@ -88,6 +165,16 @@ public partial class ArchipelagoClientManager
                     LaikaMod.SessionState.Options = new APWorldOptions();
 
                 APWorldOptions options = LaikaMod.SessionState.Options;
+
+                // Persist seed options for offline reloads.
+                options.SkipJakobTransition =
+                    LaikaMod.WorldOptions.SkipJakobTransition;
+                options.SkipOrellaTransition =
+                    LaikaMod.WorldOptions.SkipOrellaTransition;
+                options.SkipRoyBoat =
+                    LaikaMod.WorldOptions.SkipRoyBoat;
+                options.VisceraProtection =
+                    LaikaMod.WorldOptions.VisceraProtection;
 
                 // Weapon mode should still come from the AP seed/slot_data.
                 if (hadWeaponMode)

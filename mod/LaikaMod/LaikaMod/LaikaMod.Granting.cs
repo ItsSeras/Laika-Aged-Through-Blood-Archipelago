@@ -662,7 +662,17 @@ public partial class LaikaMod
 
             if (addResult && item.Id == "I_E_HOOK")
             {
-                LogImportantQuestSnapshots($"{sourceTag}: hook grant follow-up");
+                // Reuse the existing GetHook reconciliation and location
+                // recovery when Hook arrives after the quest was accepted.
+                // Later cave, bomb and statue steps retain their existing logic.
+                TryReconcileTutorialHookGoal(
+                    Singleton<Laika.Quests.QuestLog>.Instance,
+                    $"{sourceTag}: hook grant follow-up"
+                );
+
+                LogImportantQuestSnapshots(
+                    $"{sourceTag}: hook grant follow-up"
+                );
             }
 
             return addResult;

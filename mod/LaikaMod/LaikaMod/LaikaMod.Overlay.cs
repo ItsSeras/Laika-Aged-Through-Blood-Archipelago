@@ -273,30 +273,18 @@ public partial class LaikaMod
         string sourceName,
         string cause)
     {
-        // Incoming DeathLinks use the normal danger/red presentation,
-        // while keeping the remote player's name in Archipelago's player color.
-
         if (string.IsNullOrWhiteSpace(sourceName))
-            sourceName = "<unknown>";
+            sourceName = "Another player";
 
-        if (string.IsNullOrWhiteSpace(cause))
-            cause = "DeathLink";
-
-        string redPrefix =
-            OverlayColor("#FF7B7B", "[AP] DeathLink from ");
-
-        string playerPart =
-            OverlayColor("#C792EA", sourceName);
-
-        string redCause =
+        // The original cause remains available in the DeathLink logs.
+        // Use consistent player-facing wording regardless of sender format.
+        return
+            OverlayColor("#FF7B7B", "[AP] ") +
+            OverlayColor("#C792EA", sourceName) +
             OverlayColor(
                 "#FF7B7B",
-                ": " + (string.IsNullOrWhiteSpace(cause)
-                    ? "DeathLink"
-                    : cause)
+                " died! Unfortunately, they are taking you with them."
             );
-
-        return redPrefix + playerPart + redCause;
     }
 
     internal static void AnnounceIncomingAPDeathLink(

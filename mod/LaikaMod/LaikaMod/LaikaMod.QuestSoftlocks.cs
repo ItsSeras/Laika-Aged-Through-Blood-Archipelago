@@ -870,8 +870,14 @@ public partial class LaikaMod
     {
         try
         {
-            if (SessionState == null || !SessionState.APEnabled)
+            // Controls the return-dialogue skip alongside Roy's outbound skip.
+            // Other quest recovery and softlock protections remain independent.
+            if (SessionState == null ||
+                !SessionState.APEnabled ||
+                !WorldOptions.SkipRoyBoat)
+            {
                 return;
+            }
 
             if (questLog == null)
                 return;

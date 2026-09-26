@@ -418,9 +418,10 @@ ITEM_TABLE = {
         "kind": "PuppyTreat",
     },
 
-    # I am making currency explicit in the item name and internal id.
-    # That keeps the APWorld simple and makes the client-side handling obvious.
-    "Viscera x100": {
+    # Display the current reward amount.
+    # Keep the existing numeric ID and legacy internal identifier.
+    # The mod grants 300 viscera for AP item ID 1907.
+    "Viscera x300": {
         "id": 1907,
         "classification": ItemClassification.filler,
         "internal_id": "VISCERA_100",

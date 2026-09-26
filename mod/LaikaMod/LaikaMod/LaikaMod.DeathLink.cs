@@ -288,7 +288,24 @@ public partial class LaikaMod
 
             try
             {
-                rider.Kill();
+                bool protectIncomingViscera =
+                    SessionState != null &&
+                    SessionState.APEnabled &&
+                    (WorldOptions.VisceraProtection ==
+                        VisceraProtectionMode.DeathLinkOnly ||
+                     WorldOptions.VisceraProtection ==
+                        VisceraProtectionMode.AllDeaths);
+
+                if (protectIncomingViscera)
+                {
+                    // This overload has its own existing death-detection patch,
+                    // which consumes the same incoming suppression token.
+                    rider.Kill(true, false);
+                }
+                else
+                {
+                    rider.Kill();
+                }
 
                 // The Harmony Prefix executes synchronously when Kill() is called.
                 // If it did not consume our suppression token, clear it so the
@@ -438,7 +455,9 @@ public partial class LaikaMod
 
             if (ArchipelagoClientManager.Instance != null)
             {
-                string deathCause = $"{SessionState.Connection.SlotName ?? "Laika"} couldn't survive in the Wasteland. (Skill issue)";
+                string deathCause =
+                    $"{SessionState.Connection.SlotName ?? "Laika"} " +
+                    "couldn't survive in the Wasteland (Skill Issue).";
                 ArchipelagoClientManager.Instance.SendDeathLink(deathCause);
             }
 
@@ -464,7 +483,9 @@ public partial class LaikaMod
 
             if (ArchipelagoClientManager.Instance != null)
             {
-                string deathCause = $"{SessionState.Connection.SlotName ?? "Laika"} couldn't survive in the Wasteland. (Skill issue)";
+                string deathCause =
+                    $"{SessionState.Connection.SlotName ?? "Laika"} " +
+                    "couldn't survive in the Wasteland (Skill Issue).";
                 ArchipelagoClientManager.Instance.SendDeathLink(deathCause);
             }
 

@@ -75,6 +75,13 @@ public enum WeaponGrantMode
     Crafting
 }
 
+public enum VisceraProtectionMode
+{
+    Off = 0,
+    DeathLinkOnly = 1,
+    AllDeaths = 2
+}
+
 public class APWorldOptions
 {
     public WeaponGrantMode WeaponMode { get; set; } = WeaponGrantMode.Direct;
@@ -85,6 +92,14 @@ public class APWorldOptions
     public bool DeathLinkLocalOverrideEnabled = false;
     public bool DeathAmnestyLocalOverrideEnabled = false;
     public bool DeathAmnestyCountLocalOverrideEnabled = false;
+
+    // Missing fields in older save files retain v0.1.5 behavior.
+    public bool SkipJakobTransition { get; set; } = true;
+    public bool SkipOrellaTransition { get; set; } = true;
+    public bool SkipRoyBoat { get; set; } = true;
+
+    public VisceraProtectionMode VisceraProtection { get; set; }
+        = VisceraProtectionMode.Off;
 }
 
 public class PendingItem

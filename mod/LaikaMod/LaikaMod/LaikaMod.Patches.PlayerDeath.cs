@@ -24,4 +24,29 @@ public partial class LaikaMod
             LaikaMod.OnPlayerDeathDetected("PLAYER DEATH DETECTED (Kill(bool,bool))", useBlood, moneySack);
         }
     }
+
+    // Both vanilla Kill overloads create this coroutine.
+    // Change only its sack argument; preserve the original death sequence,
+    // death detection, outgoing DeathLink and amnesty behavior.
+    [HarmonyPatch(
+        typeof(global::RiderHead),
+        "KillC",
+        new Type[] { typeof(bool) })]
+    public class PlayerDeath_VisceraProtectionPatch
+    {
+        static void Prefix(ref bool moneySack)
+        {
+            if (LaikaMod.SessionState == null ||
+                !LaikaMod.SessionState.APEnabled)
+            {
+                return;
+            }
+
+            if (LaikaMod.WorldOptions.VisceraProtection ==
+                VisceraProtectionMode.AllDeaths)
+            {
+                moneySack = false;
+            }
+        }
+    }
 }

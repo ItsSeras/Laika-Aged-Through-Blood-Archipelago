@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import Choice, PerGameCommonOptions, Range, Toggle
+from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range, Toggle
 
 
 class WeaponMode(Choice):
@@ -64,6 +64,52 @@ class DeathAmnestyCount(Range):
     range_end = 99
     default = 5
 
+class SkipJakobTransition(DefaultOnToggle):
+    """Skip the long road transition following Jakob's death.
+
+    Recommended enabled for repeat playthroughs.
+    Disabling this restores the vanilla transition.
+    """
+
+    display_name = "Skip Jakob Transition"
+
+
+class SkipOrellaTransition(DefaultOnToggle):
+    """Skip the long road transition following the Orella encounter.
+
+    Recommended enabled for repeat playthroughs.
+    Disabling this restores the vanilla transition.
+    """
+
+    display_name = "Skip Orella Transition"
+
+
+class SkipRoyBoat(DefaultOnToggle):
+    """Enable both existing Roy boat skips.
+
+    Skips the long outbound presentation and the later return dialogue.
+    Disabling this restores both sequences.
+    Softlock prevention remains enabled regardless of this setting.
+    """
+
+    display_name = "Skip Roy Boat Sequences"
+
+
+class VisceraProtection(Choice):
+    """Choose which deaths preserve carried viscera.
+
+    off: Use vanilla money-sack behavior.
+    deathlink_only: Protect against deaths caused by incoming DeathLink.
+    all_deaths: Protect against every death, including without DeathLink.
+
+    Previously dropped bags are unaffected.
+    """
+
+    display_name = "Viscera Protection"
+    option_off = 0
+    option_deathlink_only = 1
+    option_all_deaths = 2
+    default = 0
 
 @dataclass
 class LaikaOptions(PerGameCommonOptions):
@@ -81,3 +127,7 @@ class LaikaOptions(PerGameCommonOptions):
     death_link: DeathLink
     death_amnesty: DeathAmnesty
     death_amnesty_count: DeathAmnestyCount
+    skip_jakob_transition: SkipJakobTransition
+    skip_orella_transition: SkipOrellaTransition
+    skip_roy_boat: SkipRoyBoat
+    viscera_protection: VisceraProtection

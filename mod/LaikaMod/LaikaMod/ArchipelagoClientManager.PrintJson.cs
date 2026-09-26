@@ -392,12 +392,24 @@ public partial class ArchipelagoClientManager
             if (finderSlot == localSlot)
                 return SuppressPrintJsonLine;
 
-            return LaikaMod.BuildFoundYourOwnItemOverlayLine(
-                itemName,
-                itemId,
-                locationName,
-                itemColorHex
-            );
+            // This branch handles another player's self-find.
+            // Our own slot is suppressed above because item receipt
+            // already produces the local grant announcement.
+            return
+                LaikaMod.OverlayColor(
+                    "#C792EA",
+                    ResolveApPlayerNameFromSlot(finderSlot)
+                ) +
+                LaikaMod.OverlayColor("#FFFFFF", " found their ") +
+                LaikaMod.OverlayColor(
+                    string.IsNullOrWhiteSpace(itemColorHex)
+                        ? "#5F7FFF"
+                        : itemColorHex,
+                    itemName
+                ) +
+                LaikaMod.OverlayColor("#FFFFFF", " at ") +
+                LaikaMod.OverlayColor("#00E676", locationName) +
+                LaikaMod.OverlayColor("#FFFFFF", ".");
         }
 
         // AP send-to-other line
@@ -570,12 +582,24 @@ public partial class ArchipelagoClientManager
                 locationName = $"Location {locationId}";
             }
 
-            return LaikaMod.BuildFoundYourOwnItemOverlayLine(
-                itemName,
-                itemId,
-                locationName,
-                itemColorHex
-            );
+            // This branch handles another player's self-find.
+            // Our own slot is suppressed above because item receipt
+            // already produces the local grant announcement.
+            return
+                LaikaMod.OverlayColor(
+                    "#C792EA",
+                    ResolveApPlayerNameFromSlot(finderSlot)
+                ) +
+                LaikaMod.OverlayColor("#FFFFFF", " found their ") +
+                LaikaMod.OverlayColor(
+                    string.IsNullOrWhiteSpace(itemColorHex)
+                        ? "#5F7FFF"
+                        : itemColorHex,
+                    itemName
+                ) +
+                LaikaMod.OverlayColor("#FFFFFF", " at ") +
+                LaikaMod.OverlayColor("#00E676", locationName) +
+                LaikaMod.OverlayColor("#FFFFFF", ".");
         }
 
         if (plainText.Contains(" sent ") && plainText.Contains(" to ") && playerSlots.Count >= 2)
@@ -903,6 +927,20 @@ public partial class ArchipelagoClientManager
                 line
             );
 
+            if (string.Equals(
+                    messageType,
+                    "Chat",
+                    StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    messageType,
+                    "ServerChat",
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                line =
+                    LaikaMod.OverlayColor("#FFFFFF", "[Chat] ") +
+                    line;
+            }
+
             LaikaMod.LogInfo($"AP PRINTJSON: {line}");
             LaikaMod.AnnounceAPActivity(line);
         }
@@ -1223,8 +1261,9 @@ public partial class ArchipelagoClientManager
                     receiverName + "'s"
                 );
 
-            string receiverSpacePart =
-                LaikaMod.OverlayColor("#FFFFFF", " ");
+            // OverlayColor intentionally discards whitespace-only text.
+            // Preserve this separator as literal text.
+            string receiverSpacePart = " ";
 
             string itemPart =
                 LaikaMod.OverlayColor(

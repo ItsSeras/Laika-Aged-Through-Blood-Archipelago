@@ -114,7 +114,11 @@ public partial class ArchipelagoClientManager
                 string.Equals(source, localSlot, StringComparison.OrdinalIgnoreCase))
             {
                 LaikaMod.LogInfo("AP DEATHLINK: self-bounced DeathLink packet received, treating as sent confirmation.");
-                LaikaMod.AnnounceAPDeathLink($"[AP] DeathLink sent to other players: {cause}");
+                LaikaMod.AnnounceAPDeathLink(
+                    $"[AP] {source} felt their death cause a ripple effect " +
+                    "because they couldn't survive in the Wasteland " +
+                    "(Skill Issue)."
+                );
                 return;
             }
 

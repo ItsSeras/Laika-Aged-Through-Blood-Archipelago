@@ -61,4 +61,12 @@ class LaikaWorld(World):
             "death_link": bool(self.options.death_link.value),
             "death_amnesty": bool(self.options.death_amnesty.value),
             "death_amnesty_count": int(self.options.death_amnesty_count.value),
+            "skip_jakob_transition": bool(
+                self.options.skip_jakob_transition.value
+            ),
+            "skip_orella_transition": bool(
+                self.options.skip_orella_transition.value
+            ),
+            "skip_roy_boat": bool(self.options.skip_roy_boat.value),
+            "viscera_protection": self.options.viscera_protection.current_key,
         }

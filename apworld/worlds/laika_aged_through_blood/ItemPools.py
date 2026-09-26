@@ -155,7 +155,7 @@ UNIQUE_FILLER_ITEMS = [
 
 
 FILLER_ITEM_NAMES = [
-    "Viscera x100",
+    "Viscera x300",
     "Ingredient: Beans",
     "Ingredient: Corn",
     "Ingredient: Worms",

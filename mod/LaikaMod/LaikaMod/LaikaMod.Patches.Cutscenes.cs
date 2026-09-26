@@ -26,6 +26,9 @@ public partial class LaikaMod
                 if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
                     return true;
 
+                if (!LaikaMod.WorldOptions.SkipJakobTransition)
+                    return true;
+
                 LaikaMod.LogInfo("AP CREDITS SKIP: skipping Where We Say Who / Rage and Sorrow credits scene.");
 
                 Singleton<QuestLog>.Instance.TryCloseQuest("Q_D_0_Tutorial", true);
@@ -61,6 +64,7 @@ public partial class LaikaMod
             UnityEngine.SceneManagement.LoadSceneMode mode)
         {
             if (!LaikaMod.IsAPCutsceneSkipEnabled() ||
+                !LaikaMod.WorldOptions.SkipOrellaTransition ||
                 scene.name != "AfterBoss")
             {
                 return;
@@ -102,6 +106,7 @@ public partial class LaikaMod
             try
             {
                 if (!LaikaMod.IsAPCutsceneSkipEnabled() ||
+                    !LaikaMod.WorldOptions.SkipOrellaTransition ||
                     !scene.IsValid() ||
                     !scene.isLoaded ||
                     UnityEngine.SceneManagement.SceneManager
@@ -467,6 +472,7 @@ public partial class LaikaMod
     {
         try
         {
+            // This softlock protection is independent of cinematic settings.
             if (SessionState == null || !SessionState.APEnabled)
                 return false;
 
@@ -650,19 +656,117 @@ public partial class LaikaMod
         return path;
     }
 
-    // The log proves this exterior launcher tries TalkToAnarchist2 while
-    // GetMaterials is current. Prevent entry before Interactable blocks controls.
-    private static bool IsStaleExteriorHectist(DialogueFSMLauncher launcher)
+    private static bool IsPrematureInteriorHectist(
+        DialogueFSMLauncher launcher)
     {
-        if (SessionState == null || !SessionState.APEnabled || launcher == null ||
-            launcher.gameObject.scene.name != "Wasteland_01_04" ||
-            launcher.target == null || launcher.target.gameObject.name != "FSM" ||
-            Release015ObjectPath(launcher.transform) != ExteriorHectistPath ||
-            !HasAPHookUnlocked()) return false;
+        if (SessionState == null ||
+            !SessionState.APEnabled ||
+            launcher == null ||
+            launcher.gameObject.scene.name != "Tutorial_Hook")
+        {
+            return false;
+        }
+
+        // Exact final interior interaction observed in the runtime trace.
+        const string finalHectistPath =
+            "Tutorial Hook Level/Tutorial_Hook_Quests/Anarchist/" +
+            "Interactions/Q_D_S_HookTutorial";
+
+        if (Release015ObjectPath(launcher.transform) != finalHectistPath)
+            return false;
 
         var quest = FindActiveQuest("Q_D_S_TutorialHook");
         var goal = quest == null ? null : quest.GetCurrentGoal();
-        return goal != null && goal.GoalId == "GetMaterials";
+
+        if (goal == null)
+            return false;
+
+        // Block only known earlier quest stages.
+        // The intended final conversation and statue step remain available.
+        switch (goal.GoalId)
+        {
+            case "GetHook":
+            case "TalkToAnarchist1":
+            case "GetMaterials":
+            case "BombBlock":
+            case "ExplodeDebris":
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(DialogueFSMLauncher), "Interact")]
+    public static class InteriorHectist_EarlyInteractionGuard
+    {
+        [HarmonyPriority(Priority.First)]
+        static bool Prefix(DialogueFSMLauncher __instance)
+        {
+            if (!IsPrematureInteriorHectist(__instance))
+                return true;
+
+            LogInfo(
+                "HECTIST INTERIOR GUARD: blocked final conversation " +
+                "before the preceding hook quest steps were completed."
+            );
+            return false;
+        }
+    }
+
+    [HarmonyPatch(typeof(ProgressionInteractable), "CanInteract")]
+    public static class InteriorHectist_EarlyPromptGuard
+    {
+        static void Postfix(
+            ProgressionInteractable __instance,
+            ref bool __result)
+        {
+            if (__result &&
+                IsPrematureInteriorHectist(
+                    __instance as DialogueFSMLauncher))
+            {
+                __result = false;
+            }
+        }
+    }
+
+    // The log proves this exterior launcher tries TalkToAnarchist2 while
+    // GetMaterials is current. Prevent entry before Interactable blocks controls.
+    private static bool IsStaleExteriorHectist(
+        DialogueFSMLauncher launcher)
+    {
+        if (SessionState == null ||
+            !SessionState.APEnabled ||
+            launcher == null ||
+            launcher.gameObject.scene.name != "Wasteland_01_04" ||
+            launcher.target == null ||
+            launcher.target.gameObject.name != "FSM" ||
+            Release015ObjectPath(launcher.transform) != ExteriorHectistPath ||
+            !HasAPHookUnlocked())
+        {
+            return false;
+        }
+
+        var quest = FindActiveQuest("Q_D_S_TutorialHook");
+        var goal = quest == null ? null : quest.GetCurrentGoal();
+
+        if (goal == null)
+            return false;
+
+        // With AP Hook already unlocked, this stale exterior launcher can
+        // enter the final conversation before its quest goal is available.
+        switch (goal.GoalId)
+        {
+            case "GetHook":
+            case "TalkToAnarchist1":
+            case "GetMaterials":
+            case "BombBlock":
+            case "ExplodeDebris":
+                return true;
+
+            default:
+                return false;
+        }
     }
 
     [HarmonyPatch(typeof(DialogueFSMLauncher), "Interact")]
@@ -671,9 +775,10 @@ public partial class LaikaMod
         [HarmonyPriority(Priority.First)]
         static bool Prefix(DialogueFSMLauncher __instance)
         {
-            if (!IsStaleExteriorHectist(__instance)) return true;
-            LogInfo("HECTIST EXTERIOR GUARD: blocked stale exterior interaction at GetMaterials; cave interaction remains available.");
-            return false;
+            LogInfo(
+                "HECTIST EXTERIOR GUARD: blocked premature exterior " +
+                "interaction while AP Hook is unlocked."
+            );
         }
     }
 
@@ -694,10 +799,20 @@ public partial class LaikaMod
 
     private static bool IsRoyOutboundAction(FsmStateAction action)
     {
-        if (SessionState == null || !SessionState.APEnabled || action == null ||
-            action.Fsm == null || RoyDialogueQueueField == null) return false;
+        if (SessionState == null ||
+            !SessionState.APEnabled ||
+            !WorldOptions.SkipRoyBoat ||
+            action == null ||
+            action.Fsm == null ||
+            RoyDialogueQueueField == null)
+        {
+            return false;
+        }
+
         GameObject owner = action.Fsm.GameObject;
-        return owner != null && owner.scene.name == "Dungeon_02" &&
+
+        return owner != null &&
+            owner.scene.name == "Dungeon_02" &&
             Release015ObjectPath(owner.transform) == RoyOutboundFsmPath;
     }
 
