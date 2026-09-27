@@ -1677,6 +1677,9 @@ public partial class LaikaMod
         { 1152L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_UZI", 1, "Weapon Crafting Material: Titanium Plates") },
         { 1153L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_ROCKETLAUNCHER", 1, "Weapon Crafting Material: Missile") },
 
+        // Compatibility IDs intentionally use the mode-aware unlock helpers.
+        // Direct mode grants weapons; Crafting mode grants their unique materials.
+        // Do not replace these with unconditional I_RECIPE_* grants
         // ===== Weapon recipes / blueprints =====
         { 1160L, () => GetShotgunUnlockItem() },
         { 1161L, () => GetSniperUnlockItem() },

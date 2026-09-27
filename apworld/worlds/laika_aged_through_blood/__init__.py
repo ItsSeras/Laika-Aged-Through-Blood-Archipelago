@@ -68,5 +68,8 @@ class LaikaWorld(World):
                 self.options.skip_orella_transition.value
             ),
             "skip_roy_boat": bool(self.options.skip_roy_boat.value),
+            "automatic_purchase_hints": bool(
+                self.options.automatic_purchase_hints.value
+            ),
             "viscera_protection": self.options.viscera_protection.current_key,
         }

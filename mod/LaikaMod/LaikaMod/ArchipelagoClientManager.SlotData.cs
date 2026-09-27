@@ -119,6 +119,8 @@ public partial class ArchipelagoClientManager
             bool hadDeathLink = slotDataDictionary.Contains("death_link");
             bool hadDeathAmnesty = slotDataDictionary.Contains("death_amnesty");
             bool hadDeathAmnestyCount = slotDataDictionary.Contains("death_amnesty_count");
+            bool hadAutomaticPurchaseHints =
+                slotDataDictionary.Contains("automatic_purchase_hints");
 
             ApplySlotDataValue(slotDataDictionary, "weapon_mode");
             ApplySlotDataValue(slotDataDictionary, "death_link");
@@ -136,6 +138,13 @@ public partial class ArchipelagoClientManager
             LaikaMod.WorldOptions.SkipRoyBoat =
                 ReadSlotToggle(slotDataDictionary, "skip_roy_boat", true);
 
+            LaikaMod.WorldOptions.AutomaticPurchaseHints =
+                ReadSlotToggle(
+                    slotDataDictionary,
+                    "automatic_purchase_hints",
+                    false
+                );
+
             LaikaMod.WorldOptions.VisceraProtection =
                 ReadVisceraProtection(slotDataDictionary);
 
@@ -144,6 +153,7 @@ public partial class ArchipelagoClientManager
                 $"SkipJakob={LaikaMod.WorldOptions.SkipJakobTransition}, " +
                 $"SkipOrella={LaikaMod.WorldOptions.SkipOrellaTransition}, " +
                 $"SkipRoy={LaikaMod.WorldOptions.SkipRoyBoat}, " +
+                $"AutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}, " +
                 $"VisceraProtection={LaikaMod.WorldOptions.VisceraProtection}"
             );
 
@@ -153,10 +163,12 @@ public partial class ArchipelagoClientManager
                 $"HadDeathLink={hadDeathLink}, " +
                 $"HadDeathAmnesty={hadDeathAmnesty}, " +
                 $"HadDeathAmnestyCount={hadDeathAmnestyCount}, " +
+                $"HadAutoPurchaseHints={hadAutomaticPurchaseHints}, " +
                 $"SlotDataWeaponMode={LaikaMod.WorldOptions.WeaponMode}, " +
                 $"SlotDataDeathLink={LaikaMod.WorldOptions.DeathLinkEnabled}, " +
                 $"SlotDataDeathAmnesty={LaikaMod.WorldOptions.DeathAmnestyEnabled}, " +
-                $"SlotDataDeathAmnestyCount={LaikaMod.WorldOptions.DeathAmnestyCount}"
+                $"SlotDataDeathAmnestyCount={LaikaMod.WorldOptions.DeathAmnestyCount}, " +
+                $"SlotDataAutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}"
             );
 
             if (LaikaMod.SessionState != null)
@@ -173,6 +185,8 @@ public partial class ArchipelagoClientManager
                     LaikaMod.WorldOptions.SkipOrellaTransition;
                 options.SkipRoyBoat =
                     LaikaMod.WorldOptions.SkipRoyBoat;
+                options.AutomaticPurchaseHints =
+                    LaikaMod.WorldOptions.AutomaticPurchaseHints;
                 options.VisceraProtection =
                     LaikaMod.WorldOptions.VisceraProtection;
 
@@ -222,7 +236,8 @@ public partial class ArchipelagoClientManager
                     $"DeathAmnesty={LaikaMod.WorldOptions.DeathAmnestyEnabled}, " +
                     $"DeathAmnestyOverride={options.DeathAmnestyLocalOverrideEnabled}, " +
                     $"DeathAmnestyCount={LaikaMod.WorldOptions.DeathAmnestyCount}, " +
-                    $"DeathAmnestyCountOverride={options.DeathAmnestyCountLocalOverrideEnabled}"
+                    $"DeathAmnestyCountOverride={options.DeathAmnestyCountLocalOverrideEnabled}, " +
+                    $"AutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}"
                 );
             }
 

@@ -98,6 +98,10 @@ public class APWorldOptions
     public bool SkipOrellaTransition { get; set; } = true;
     public bool SkipRoyBoat { get; set; } = true;
 
+    // Seed-controlled presentation option.
+    // False preserves the private-preview behavior used by older seeds.
+    public bool AutomaticPurchaseHints { get; set; } = false;
+
     public VisceraProtectionMode VisceraProtection { get; set; }
         = VisceraProtectionMode.Off;
 }

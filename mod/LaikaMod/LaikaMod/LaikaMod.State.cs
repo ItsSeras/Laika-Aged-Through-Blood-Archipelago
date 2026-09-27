@@ -178,9 +178,38 @@ public partial class LaikaMod
                 EnqueueRequiredStartingItems();
             }
 
-            // Reset slot_data-derived runtime options until this slot connects and reapplies them.
-            WorldOptions = new APWorldOptions();
-            HasAppliedLiveSlotData = false;
+            // Loading the same save after connecting must preserve the live options.
+            // Otherwise Connect() returns early and the defaults remain active.
+            bool preserveLiveOptions =
+                !slotChanged &&
+                SessionState != null &&
+                SessionState.APEnabled &&
+                ArchipelagoClientManager.Instance != null &&
+                ArchipelagoClientManager.Instance.IsConnected &&
+                HasAppliedLiveSlotData;
+
+            if (!preserveLiveOptions)
+            {
+                // Start clean when changing context. Restore this save's cached
+                // options for offline play; a successful login applies live slot_data.
+                WorldOptions = new APWorldOptions();
+                HasAppliedLiveSlotData = false;
+
+                if (SessionState != null && SessionState.APEnabled)
+                {
+                    CommitAPSettingsOptionsToRuntime("save slot bind");
+                }
+            }
+
+            LogInfo(
+                $"AP SLOT OPTIONS: PreservedLive={preserveLiveOptions}, " +
+                $"WeaponMode={WorldOptions.WeaponMode}, " +
+                $"SkipJakob={WorldOptions.SkipJakobTransition}, " +
+                $"SkipOrella={WorldOptions.SkipOrellaTransition}, " +
+                $"SkipRoy={WorldOptions.SkipRoyBoat}, " +
+                $"AutoPurchaseHints={WorldOptions.AutomaticPurchaseHints}, " +
+                $"VisceraProtection={WorldOptions.VisceraProtection}"
+            );
 
             // Keep slot index normalized in persisted state.
             SessionState.SaveSlotIndex = slotIndex;

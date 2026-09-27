@@ -1,8 +1,13 @@
-﻿using HarmonyLib;
+﻿using System.Runtime.CompilerServices;
+using Laika.UI.InGame;
+using TMPro;
+using HarmonyLib;
 using Laika.PlayMaker.FsmActions;
 using System;
 using System.Reflection;
+using System.IO;
 using UnityEngine;
+using UnityEngine.UI;
 
 public partial class LaikaMod
 {
@@ -223,6 +228,365 @@ public partial class LaikaMod
         catch (Exception ex)
         {
             LogWarning($"{sourceTag}: HideMapAreaVisuals failed for {mapAreaId}:\n{ex}");
+        }
+    }
+
+    private static Sprite RenatoPopupLogoSprite;
+    private static Texture2D RenatoPopupLogoTexture;
+    private static bool TriedLoadRenatoPopupLogo;
+
+    private const string RenatoPopupLogoResourceFileName =
+        "renato_ap_logo.png";
+
+    private static Sprite GetRenatoPopupLogoSprite()
+    {
+        if (TriedLoadRenatoPopupLogo)
+            return RenatoPopupLogoSprite;
+
+        TriedLoadRenatoPopupLogo = true;
+
+        try
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+
+            string resourceName = null;
+
+            foreach (string name in assembly.GetManifestResourceNames())
+            {
+                if (name.EndsWith(
+                    RenatoPopupLogoResourceFileName,
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    resourceName = name;
+                    break;
+                }
+            }
+
+            if (string.IsNullOrEmpty(resourceName))
+            {
+                LogWarning(
+                    "RENATO AP PREVIEW: embedded popup logo resource was not found. " +
+                    "Make sure Assets\\renato_ap_logo.png has Build Action = Embedded Resource."
+                );
+
+                return null;
+            }
+
+            byte[] pngBytes;
+
+            using (Stream stream = assembly.GetManifestResourceStream(resourceName))
+            {
+                if (stream == null)
+                {
+                    LogWarning(
+                        "RENATO AP PREVIEW: embedded popup logo stream was null for " +
+                        resourceName + "."
+                    );
+
+                    return null;
+                }
+
+                using (MemoryStream memory = new MemoryStream())
+                {
+                    stream.CopyTo(memory);
+                    pngBytes = memory.ToArray();
+                }
+            }
+
+            RenatoPopupLogoTexture =
+                new Texture2D(2, 2, TextureFormat.ARGB32, false);
+
+            RenatoPopupLogoTexture.name =
+                "LaikaAP_RenatoPopupLogo";
+
+            if (!ImageConversion.LoadImage(
+                RenatoPopupLogoTexture,
+                pngBytes,
+                false))
+            {
+                LogWarning(
+                    "RENATO AP PREVIEW: failed to decode embedded popup logo."
+                );
+
+                UnityEngine.Object.Destroy(RenatoPopupLogoTexture);
+                RenatoPopupLogoTexture = null;
+
+                return null;
+            }
+
+            RenatoPopupLogoTexture.wrapMode =
+                TextureWrapMode.Clamp;
+
+            RenatoPopupLogoTexture.filterMode =
+                FilterMode.Bilinear;
+
+            RenatoPopupLogoSprite = Sprite.Create(
+                RenatoPopupLogoTexture,
+                new Rect(
+                    0f,
+                    0f,
+                    RenatoPopupLogoTexture.width,
+                    RenatoPopupLogoTexture.height
+                ),
+                new Vector2(0.5f, 0.5f),
+                100f
+            );
+
+            RenatoPopupLogoSprite.name =
+                "LaikaAP_RenatoPopupLogo";
+
+            LogInfo(
+                "RENATO AP PREVIEW: loaded embedded custom popup logo " +
+                $"'{resourceName}' " +
+                $"({RenatoPopupLogoTexture.width}x" +
+                $"{RenatoPopupLogoTexture.height})."
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                "RENATO AP PREVIEW: failed to load embedded custom popup logo:\n" +
+                ex
+            );
+
+            if (RenatoPopupLogoTexture != null)
+            {
+                UnityEngine.Object.Destroy(RenatoPopupLogoTexture);
+                RenatoPopupLogoTexture = null;
+            }
+
+            RenatoPopupLogoSprite = null;
+        }
+
+        return RenatoPopupLogoSprite;
+    }
+
+    private sealed class RenatoPopupLogoState
+    {
+        internal Image MapImage;
+        internal Sprite OriginalSprite;
+        internal Sprite OriginalOverrideSprite;
+        internal Color OriginalColor;
+        internal bool OriginalPreserveAspect;
+        internal Vector3 OriginalScale;
+    }
+
+    private static readonly ConditionalWeakTable<BuyMapPopup, RenatoPopupLogoState>
+        RenatoPopupLogoStates =
+            new ConditionalWeakTable<BuyMapPopup, RenatoPopupLogoState>();
+
+    private static void RestoreRenatoPopupLogo(BuyMapPopup popup)
+    {
+        if (popup == null)
+            return;
+
+        RenatoPopupLogoState state;
+        if (!RenatoPopupLogoStates.TryGetValue(popup, out state))
+            return;
+
+        if (state.MapImage != null)
+        {
+            state.MapImage.sprite = state.OriginalSprite;
+            state.MapImage.overrideSprite = state.OriginalOverrideSprite;
+            state.MapImage.color = state.OriginalColor;
+            state.MapImage.preserveAspect = state.OriginalPreserveAspect;
+
+            if (state.MapImage.rectTransform != null)
+                state.MapImage.rectTransform.localScale = state.OriginalScale;
+        }
+
+        RenatoPopupLogoStates.Remove(popup);
+    }
+
+    private static void ApplyRenatoPopupLogo(BuyMapPopup popup)
+    {
+        if (popup == null)
+            return;
+
+        // Restore any changes from a previous use of this popup first.
+        RestoreRenatoPopupLogo(popup);
+
+        Sprite logoSprite = GetRenatoPopupLogoSprite();
+        if (logoSprite == null)
+            return;
+
+        Transform mapTransform =
+            popup.transform.Find("Panel/ImageBg/Image");
+
+        if (mapTransform == null)
+        {
+            LogWarning(
+                "RENATO AP PREVIEW: could not find " +
+                "'Panel/ImageBg/Image'. Keeping vanilla map icon."
+            );
+            return;
+        }
+
+        Image mapImage = mapTransform.GetComponent<Image>();
+
+        if (mapImage == null)
+        {
+            LogWarning(
+                "RENATO AP PREVIEW: 'Panel/ImageBg/Image' did not contain " +
+                "a UnityEngine.UI.Image component."
+            );
+            return;
+        }
+
+        var state = new RenatoPopupLogoState
+        {
+            MapImage = mapImage,
+            OriginalSprite = mapImage.sprite,
+            OriginalOverrideSprite = mapImage.overrideSprite,
+            OriginalColor = mapImage.color,
+            OriginalPreserveAspect = mapImage.preserveAspect,
+            OriginalScale = mapImage.rectTransform.localScale
+        };
+
+        RenatoPopupLogoStates.Add(popup, state);
+
+        mapImage.sprite = logoSprite;
+        mapImage.overrideSprite = logoSprite;
+        mapImage.color = Color.white;
+        mapImage.preserveAspect = true;
+
+        // Keep the AP logo slightly smaller than the vanilla map's available area.
+        Vector3 originalScale = state.OriginalScale;
+
+        mapImage.rectTransform.localScale = new Vector3(
+            originalScale.x * 0.84f,
+            originalScale.y * 0.84f,
+            originalScale.z
+        );
+
+        LogInfo(
+            "RENATO AP PREVIEW: replaced vanilla icon_map with custom AP logo; " +
+            "logoScale=84%."
+        );
+    }
+
+    // Renato AP item previews.
+
+    private sealed class RenatoPopupPreviewState
+    {
+        internal long LocationId;
+        internal int Price;
+        internal string OriginalText;
+        internal object SaveState;
+        internal float FallbackAt;
+    }
+
+    private static readonly ConditionalWeakTable<BuyMapPopup, RenatoPopupPreviewState>
+        RenatoPopupPreviews = new ConditionalWeakTable<BuyMapPopup, RenatoPopupPreviewState>();
+
+    private static void RefreshRenatoPreview(
+        TextMeshProUGUI message, RenatoPopupPreviewState state)
+    {
+        if (message == null)
+            return;
+
+        if (SessionState == null || !SessionState.APEnabled ||
+            !ReferenceEquals(state.SaveState, SessionState))
+        {
+            if (message.text != state.OriginalText)
+                message.text = state.OriginalText;
+            return;
+        }
+
+        var client = ArchipelagoClientManager.Instance;
+        string preview = client != null ? client.GetRenatoPreview(state.LocationId) : null;
+
+        // Avoid flashing a temporary paragraph during a quick first lookup.
+        // Only this message is blanked; the popup and its controls remain active.
+        bool awaitingFirstPreview = preview == null && client != null &&
+            client.IsConnected && UnityEngine.Time.unscaledTime < state.FallbackAt;
+
+        string loadingLine =
+            client != null && client.IsConnected
+                ? (WorldOptions.AutomaticPurchaseHints
+                    ? "Creating hint and loading preview..."
+                    : "Loading item preview...")
+                : "Connect to Archipelago for preview.";
+
+        string body = preview != null
+            ? "Buy " + preview + "\nfor " + state.Price + " viscera?"
+            : "Buy this randomized AP item\nfor " + state.Price +
+                " viscera?\n" + loadingLine;
+
+        string text = awaitingFirstPreview
+            ? string.Empty
+            : "<size=92%>" + body + "</size>";
+
+        if (message.text != text)
+            message.text = text;
+    }
+
+    [HarmonyPatch(typeof(BuyMapPopup), "SetUp")]
+    public static class RenatoPreview_SetUpPatch
+    {
+        static void Postfix(BuyMapPopup __instance, object data,
+            TextMeshProUGUI ___message)
+        {
+            try
+            {
+                // Restore any visual changes from a previous opening first.
+                // This also guarantees AP-disabled popups stay completely vanilla.
+                RestoreRenatoPopupLogo(__instance);
+
+                RenatoPopupPreviews.Remove(__instance);
+
+                var map = data as BuyMapPopup.Data;
+                APLocationDefinition location;
+                if (map == null || ___message == null || SessionState == null ||
+                    !SessionState.APEnabled || !IsAPMapAreaLocation(map.MapAreaID) ||
+                    !TryGetLocationDefinition(map.MapAreaID, out location))
+                    return;
+
+                var state = new RenatoPopupPreviewState
+                {
+                    LocationId = location.LocationId,
+                    Price = map.MapAreaPrice,
+                    OriginalText = ___message.text,
+                    SaveState = SessionState,
+                    FallbackAt = UnityEngine.Time.unscaledTime + 0.5f
+                };
+                RenatoPopupPreviews.Add(__instance, state);
+                ApplyRenatoPopupLogo(__instance);
+                RefreshRenatoPreview(___message, state);
+
+                LogInfo("RENATO AP PREVIEW: opened " + map.MapAreaID +
+                    ", location=" + location.LocationId + ", price=" + map.MapAreaPrice);
+            }
+            catch (Exception ex)
+            {
+                RenatoPopupPreviews.Remove(__instance);
+                LogWarning("Renato preview setup failed: " + ex);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(BuyMapPopup), "Update")]
+    public static class RenatoPreview_UpdatePatch
+    {
+        static void Postfix(BuyMapPopup __instance, TextMeshProUGUI ___message)
+        {
+            RenatoPopupPreviewState state;
+            if (!RenatoPopupPreviews.TryGetValue(__instance, out state))
+                return;
+
+            // Observe completed work every frame, without extra network requests.
+            // RefreshRenatoPreview only assigns text when the value changes.
+            try
+            {
+                RefreshRenatoPreview(___message, state);
+            }
+            catch (Exception ex)
+            {
+                if (___message != null)
+                    ___message.text = state.OriginalText;
+                RenatoPopupPreviews.Remove(__instance);
+                LogWarning("Renato preview refresh failed: " + ex);
+            }
         }
     }
 }

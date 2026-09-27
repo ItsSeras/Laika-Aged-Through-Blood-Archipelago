@@ -34,10 +34,10 @@
     <Reference Include="0Harmony">
       <HintPath>$(GamePath)\BepInEx\core\0Harmony.dll</HintPath>
     </Reference>
-	  <Reference Include="Archipelago.MultiClient.Net">
-		  <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Archipelago.MultiClient.Net.dll</HintPath>
-		  <Private>True</Private>
-	  </Reference>
+    <Reference Include="Archipelago.MultiClient.Net">
+      <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Archipelago.MultiClient.Net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Assembly-CSharp">
       <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
@@ -46,10 +46,10 @@
       <HintPath>$(GamePath)\BepInEx\core\BepInEx.dll</HintPath>
       <Private>False</Private>
     </Reference>
-	  <Reference Include="Newtonsoft.Json">
-		  <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
-		  <Private>True</Private>
-	  </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Archipelago.MultiClient.Net.6.7.1\lib\netstandard2.0\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="PlayMaker">
       <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\PlayMaker.dll</HintPath>
       <Private>False</Private>
@@ -74,6 +74,11 @@
       <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>False</Private>
     </Reference>
+	  <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+		  <SpecificVersion>False</SpecificVersion>
+		  <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\UnityEngine.ImageConversionModule.dll</HintPath>
+		  <Private>False</Private>
+	  </Reference>
     <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>$(GamePath)\Laika Aged through Blood_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
@@ -141,6 +146,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="renato_ap_logo.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Assets\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>

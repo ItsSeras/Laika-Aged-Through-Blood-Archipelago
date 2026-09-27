@@ -1741,6 +1741,8 @@ public partial class LaikaMod : BaseUnityPlugin
             WorldOptions.SkipJakobTransition = SessionState.Options.SkipJakobTransition;
             WorldOptions.SkipOrellaTransition = SessionState.Options.SkipOrellaTransition;
             WorldOptions.SkipRoyBoat = SessionState.Options.SkipRoyBoat;
+            WorldOptions.AutomaticPurchaseHints =
+                SessionState.Options.AutomaticPurchaseHints;
             WorldOptions.VisceraProtection = SessionState.Options.VisceraProtection;
             WorldOptions.DeathLinkEnabled = SessionState.Options.DeathLinkEnabled;
             WorldOptions.DeathAmnestyEnabled = SessionState.Options.DeathAmnestyEnabled;
@@ -1758,7 +1760,8 @@ public partial class LaikaMod : BaseUnityPlugin
                 $"DeathAmnestyOverride={SessionState.Options.DeathAmnestyLocalOverrideEnabled}, " +
                 $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}, " +
                 $"DeathAmnestyCountOverride={SessionState.Options.DeathAmnestyCountLocalOverrideEnabled}, " +
-                $"WeaponMode={WorldOptions.WeaponMode}"
+                $"WeaponMode={WorldOptions.WeaponMode}, " +
+                $"AutoPurchaseHints={WorldOptions.AutomaticPurchaseHints}"
             );
         }
         catch (Exception ex)

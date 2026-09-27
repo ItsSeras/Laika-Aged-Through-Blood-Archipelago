@@ -775,10 +775,15 @@ public partial class LaikaMod
         [HarmonyPriority(Priority.First)]
         static bool Prefix(DialogueFSMLauncher __instance)
         {
+            if (!IsStaleExteriorHectist(__instance))
+                return true;
+
             LogInfo(
                 "HECTIST EXTERIOR GUARD: blocked premature exterior " +
                 "interaction while AP Hook is unlocked."
             );
+
+            return false;
         }
     }
 

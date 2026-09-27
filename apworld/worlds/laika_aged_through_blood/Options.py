@@ -95,6 +95,18 @@ class SkipRoyBoat(DefaultOnToggle):
     display_name = "Skip Roy Boat Sequences"
 
 
+class AutomaticPurchaseHints(Toggle):
+    """Automatically create Archipelago hints for AP-aware purchase previews.
+
+    When enabled, opening a randomized purchase preview creates and announces
+    a hint for that location if the hint does not already exist.
+
+    Previewing an offer never purchases it or sends its location check.
+    """
+
+    display_name = "Automatic Purchase Hints"
+    default = 0
+
 class VisceraProtection(Choice):
     """Choose which deaths preserve carried viscera.
 
@@ -130,4 +142,5 @@ class LaikaOptions(PerGameCommonOptions):
     skip_jakob_transition: SkipJakobTransition
     skip_orella_transition: SkipOrellaTransition
     skip_roy_boat: SkipRoyBoat
+    automatic_purchase_hints: AutomaticPurchaseHints
     viscera_protection: VisceraProtection
