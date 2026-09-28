@@ -102,6 +102,25 @@ public class APWorldOptions
     // False preserves the private-preview behavior used by older seeds.
     public bool AutomaticPurchaseHints { get; set; } = false;
 
+    // Optional top-left victory checklist. Enabled by default for new and old seeds.
+    public bool ShowGoalChecklist { get; set; } = true;
+
+    // Configurable victory goals. C# defaults intentionally preserve the
+    // pre-goal-options behavior for old seeds that do not send these fields.
+    public List<string> GoalCategories { get; set; } = new List<string>
+    {
+        "bosses"
+    };
+    public int GoalAmount { get; set; } = 1;
+
+    public List<string> BossGoals { get; set; } = new List<string>
+    {
+        "Two-Beak God"
+    };
+    public int BossGoalAmount { get; set; } = 1;
+    public int PuppyGiftGoalAmount { get; set; } = 7;
+    public int WastelanderGoalAmount { get; set; } = 6;
+
     public VisceraProtectionMode VisceraProtection { get; set; }
         = VisceraProtectionMode.Off;
 }

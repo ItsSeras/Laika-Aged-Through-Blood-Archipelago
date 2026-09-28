@@ -1,6 +1,109 @@
 from dataclasses import dataclass
 
-from Options import Choice, DefaultOnToggle, PerGameCommonOptions, Range, Toggle
+from Options import Choice, DefaultOnToggle, OptionSet, PerGameCommonOptions, Range, Toggle
+
+
+GOAL_CATEGORY_BOSSES = "bosses"
+GOAL_CATEGORY_PUPPY_GIFTS = "puppy_gifts"
+GOAL_CATEGORY_WASTELANDERS = "wastelanders"
+
+ALL_GOAL_CATEGORIES = frozenset({
+    GOAL_CATEGORY_BOSSES,
+    GOAL_CATEGORY_PUPPY_GIFTS,
+    GOAL_CATEGORY_WASTELANDERS,
+})
+
+ALL_BOSS_NAMES = frozenset({
+    "A Hundred Hungry Beaks",
+    "A Long Lost Woodcrawler",
+    "A Caterpillar Made of Sadness",
+    "A Gargantuan Swimcrab",
+    "Pope Melva VIII",
+    "Two-Beak God",
+})
+
+PUPPY_GIFT_ITEM_NAMES = (
+    "Puppy Gift: Toy Bike",
+    "Puppy Gift: Handheld Console",
+    "Puppy Gift: Tangerine Tree",
+    "Puppy Gift: Toy Animal",
+    "Puppy Gift: Great-Great-Grandma's Novella",
+    "Puppy Gift: Dreamcatcher",
+    "Puppy Gift: Ukulele",
+)
+
+WASTELANDER_QUEST_LOCATIONS = (
+    "Quest Complete: Fogg's Only Wish",
+    "Quest Complete: The Last Erhu",
+    "Quest Complete: Clean Your Beak",
+    "Quest Complete: Desperately in Need of Music",
+    "Quest Complete: Sober Up",
+    "Quest Complete: Oooo Ooo Oo O Ooo",
+)
+
+
+class Goals(OptionSet):
+    """Choose which victory categories are enabled for this seed.
+
+    ``bosses``
+        Defeat enough of the bosses listed in the ``bosses`` option.
+
+    ``puppy_gifts``
+        Receive enough distinct Puppy Gift items from Archipelago.
+
+    ``wastelanders``
+        Complete enough of the six Wastelander band side quests.
+
+    ``goal_amount`` controls how many enabled categories must be completed.
+    """
+
+    display_name = "Victory Goals"
+    valid_keys = ALL_GOAL_CATEGORIES
+    default = ALL_GOAL_CATEGORIES
+
+
+class GoalAmount(Range):
+    """How many enabled victory categories are required to win."""
+
+    display_name = "Goal Amount"
+    range_start = 1
+    range_end = 3
+    default = 1
+
+
+class Bosses(OptionSet):
+    """Choose which bosses are allowed to count toward the Bosses goal."""
+
+    display_name = "Bosses"
+    valid_keys = ALL_BOSS_NAMES
+    default = frozenset({"Two-Beak God"})
+
+
+class BossGoalAmount(Range):
+    """How many selected bosses must be defeated to complete the Bosses goal."""
+
+    display_name = "Boss Goal Amount"
+    range_start = 1
+    range_end = 6
+    default = 1
+
+
+class PuppyGiftGoalAmount(Range):
+    """How many distinct Puppy Gift AP items are required for the Puppy Gifts goal."""
+
+    display_name = "Puppy Gift Goal Amount"
+    range_start = 1
+    range_end = len(PUPPY_GIFT_ITEM_NAMES)
+    default = len(PUPPY_GIFT_ITEM_NAMES)
+
+
+class WastelanderGoalAmount(Range):
+    """How many Wastelander band side quests are required for that goal."""
+
+    display_name = "Wastelander Goal Amount"
+    range_start = 1
+    range_end = len(WASTELANDER_QUEST_LOCATIONS)
+    default = len(WASTELANDER_QUEST_LOCATIONS)
 
 
 class WeaponMode(Choice):
@@ -107,6 +210,17 @@ class AutomaticPurchaseHints(Toggle):
     display_name = "Automatic Purchase Hints"
     default = 0
 
+
+class ShowGoalChecklist(DefaultOnToggle):
+    """Show the live victory-goal checklist beneath the AP connection status.
+
+    The checklist tracks enabled goal categories, remaining required categories,
+    selected bosses, Puppy Gifts, and Wastelander band quests.
+    """
+
+    display_name = "Show Goal Checklist"
+
+
 class VisceraProtection(Choice):
     """Choose which deaths preserve carried viscera.
 
@@ -135,6 +249,12 @@ class LaikaOptions(PerGameCommonOptions):
     #
     # The option classes above define each key's display name, valid values,
     # default value, and WebHost/YAML documentation.
+    goals: Goals
+    goal_amount: GoalAmount
+    bosses: Bosses
+    boss_goal_amount: BossGoalAmount
+    puppy_gift_goal_amount: PuppyGiftGoalAmount
+    wastelander_goal_amount: WastelanderGoalAmount
     weapon_mode: WeaponMode
     death_link: DeathLink
     death_amnesty: DeathAmnesty
@@ -143,4 +263,5 @@ class LaikaOptions(PerGameCommonOptions):
     skip_orella_transition: SkipOrellaTransition
     skip_roy_boat: SkipRoyBoat
     automatic_purchase_hints: AutomaticPurchaseHints
+    show_goal_checklist: ShowGoalChecklist
     viscera_protection: VisceraProtection

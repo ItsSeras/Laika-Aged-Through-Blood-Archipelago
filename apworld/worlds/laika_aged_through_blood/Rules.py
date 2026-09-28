@@ -1,5 +1,22 @@
 from worlds.generic.Rules import set_rule
 
+from .Options import (
+    GOAL_CATEGORY_BOSSES,
+    GOAL_CATEGORY_PUPPY_GIFTS,
+    GOAL_CATEGORY_WASTELANDERS,
+    PUPPY_GIFT_ITEM_NAMES,
+    WASTELANDER_QUEST_LOCATIONS,
+)
+
+BOSS_GOAL_LOCATIONS = {
+    "A Hundred Hungry Beaks": "Boss Defeated: A Hundred Hungry Beaks",
+    "A Long Lost Woodcrawler": "Boss Defeated: A Long Lost Woodcrawler",
+    "A Caterpillar Made of Sadness": "Boss Defeated: A Caterpillar Made of Sadness",
+    "A Gargantuan Swimcrab": "Boss Defeated: A Gargantuan Swimcrab",
+    "Pope Melva VIII": "Boss Defeated: Pope Melva VIII",
+    "Two-Beak God": "Boss Defeated: Two-Beak God",
+}
+
 def has_shotgun_access(state, player) -> bool:
     return (
         state.has("Shotgun (Weapon)", player)
@@ -1235,5 +1252,64 @@ def set_rules(world):
         lambda state: post_rage(state)
     )
 
-    # Completion condition
-    mw.completion_condition[player] = lambda state: state.can_reach_location("Boss Defeated: Two-Beak God", player)
+    # ===== Configurable completion condition =====
+    #
+    # Each enabled category evaluates independently. goal_amount then decides
+    # how many completed categories are required for victory. This mirrors the
+    # runtime C# goal evaluator while giving Archipelago a matching logical
+    # completion condition for generation and accessibility.
+    enabled_goals = set(world.options.goals.value)
+    selected_bosses = set(world.options.bosses.value)
+    required_goal_categories = int(world.options.goal_amount.value)
+    required_bosses = int(world.options.boss_goal_amount.value)
+    required_puppy_gifts = int(world.options.puppy_gift_goal_amount.value)
+    required_wastelanders = int(world.options.wastelander_goal_amount.value)
+
+    def bosses_goal_complete(state) -> bool:
+        if GOAL_CATEGORY_BOSSES not in enabled_goals:
+            return False
+
+        defeated = sum(
+            1
+            for boss_name in selected_bosses
+            if can_reach_loc(state, player, BOSS_GOAL_LOCATIONS[boss_name])
+        )
+        return defeated >= required_bosses
+
+    def puppy_gifts_goal_complete(state) -> bool:
+        if GOAL_CATEGORY_PUPPY_GIFTS not in enabled_goals:
+            return False
+
+        received = sum(
+            1
+            for item_name in PUPPY_GIFT_ITEM_NAMES
+            if state.has(item_name, player)
+        )
+        return received >= required_puppy_gifts
+
+    def wastelanders_goal_complete(state) -> bool:
+        if GOAL_CATEGORY_WASTELANDERS not in enabled_goals:
+            return False
+
+        completed = sum(
+            1
+            for location_name in WASTELANDER_QUEST_LOCATIONS
+            if can_reach_loc(state, player, location_name)
+        )
+        return completed >= required_wastelanders
+
+    def laika_goal_complete(state) -> bool:
+        completed_categories = 0
+
+        if bosses_goal_complete(state):
+            completed_categories += 1
+
+        if puppy_gifts_goal_complete(state):
+            completed_categories += 1
+
+        if wastelanders_goal_complete(state):
+            completed_categories += 1
+
+        return completed_categories >= required_goal_categories
+
+    mw.completion_condition[player] = laika_goal_complete

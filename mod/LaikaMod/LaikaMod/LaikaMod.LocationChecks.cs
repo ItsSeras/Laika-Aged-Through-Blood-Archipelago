@@ -8,6 +8,327 @@ using System.Threading.Tasks;
 
 public partial class LaikaMod
 {
+    private static readonly string[] GoalPuppyGiftInternalIds = new string[]
+    {
+        "I_TOY_BIKE",
+        "I_GAMEBOY",
+        "I_PLANT_PUPPY",
+        "I_TOY_ANIMAL",
+        "I_BOOK_MOTHER",
+        "I_DREAMCATCHER",
+        "I_UKULELE"
+    };
+
+    private static readonly string[] GoalWastelanderQuestIds = new string[]
+    {
+        "Q_D_A_MusiciansDrums",
+        "Q_D_A_MusiciansErhu",
+        "Q_D_A_MusiciansFlute",
+        "Q_D_A_MusiciansGuitar",
+        "Q_D_A_MusiciansPiano",
+        "Q_D_A_MusiciansVoice"
+    };
+
+    private sealed class APGoalProgressSnapshot
+    {
+        public bool BossesEnabled;
+        public bool PuppyGiftsEnabled;
+        public bool WastelandersEnabled;
+
+        public int EnabledCategoryCount;
+        public int CompletedCategoryCount;
+        public int GoalAmount;
+        public int GoalsRemaining;
+
+        public int SelectedBossCount;
+        public int BossCompletedCount;
+        public int BossesNeededRemaining;
+        public bool BossesComplete;
+        public readonly List<string> RemainingBossNames = new List<string>();
+
+        public int PuppyGiftCompletedCount;
+        public int PuppyGiftsNeededRemaining;
+        public bool PuppyGiftsComplete;
+        public readonly List<string> RemainingPuppyGiftNames = new List<string>();
+
+        public int WastelanderCompletedCount;
+        public int WastelandersNeededRemaining;
+        public bool WastelandersComplete;
+        public readonly List<string> RemainingWastelanderNames = new List<string>();
+    }
+
+    private static bool IsGoalCategoryEnabled(string category)
+    {
+        if (WorldOptions == null || WorldOptions.GoalCategories == null)
+            return false;
+
+        foreach (string value in WorldOptions.GoalCategories)
+        {
+            if (string.Equals(value, category, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string GetBossGoalLocationKey(string bossName)
+    {
+        switch (bossName)
+        {
+            case "A Hundred Hungry Beaks":
+                return "B_BOSS_00_DEFEATED";
+            case "A Long Lost Woodcrawler":
+                return "B_BOSS_ROSCO_DEFEATED";
+            case "A Caterpillar Made of Sadness":
+                return "B_BOSS_01_DEFEATED";
+            case "A Gargantuan Swimcrab":
+                return "B_BOSS_02_DEFEATED";
+            case "Pope Melva VIII":
+                return "B_BOSS_03_DEFEATED";
+            case "Two-Beak God":
+                return "BOSS_04_DEFEATED";
+            default:
+                return null;
+        }
+    }
+
+    private static string GetPuppyGiftGoalDisplayName(string itemId)
+    {
+        switch (itemId)
+        {
+            case "I_TOY_BIKE":
+                return "Toy Bike";
+            case "I_GAMEBOY":
+                return "Handheld Console";
+            case "I_PLANT_PUPPY":
+                return "Tangerine Tree";
+            case "I_TOY_ANIMAL":
+                return "Toy Animal";
+            case "I_BOOK_MOTHER":
+                return "Great-Great-Grandma's Novella";
+            case "I_DREAMCATCHER":
+                return "Dreamcatcher";
+            case "I_UKULELE":
+                return "Ukulele";
+            default:
+                return itemId ?? "Unknown Gift";
+        }
+    }
+
+    private static string GetWastelanderGoalDisplayName(string questId)
+    {
+        switch (questId)
+        {
+            case "Q_D_A_MusiciansDrums":
+                return "Fogg's Only Wish";
+            case "Q_D_A_MusiciansErhu":
+                return "The Last Erhu";
+            case "Q_D_A_MusiciansFlute":
+                return "Clean Your Beak";
+            case "Q_D_A_MusiciansGuitar":
+                return "Desperately in Need of Music";
+            case "Q_D_A_MusiciansPiano":
+                return "Sober Up";
+            case "Q_D_A_MusiciansVoice":
+                return "Oooo Ooo Oo O Ooo";
+            default:
+                return questId ?? "Unknown Wastelander Quest";
+        }
+    }
+
+    private static APGoalProgressSnapshot BuildAPGoalProgressSnapshot()
+    {
+        APGoalProgressSnapshot snapshot = new APGoalProgressSnapshot();
+
+        if (WorldOptions == null)
+            return snapshot;
+
+        snapshot.GoalAmount = WorldOptions.GoalAmount;
+        snapshot.BossesEnabled = IsGoalCategoryEnabled("bosses");
+        snapshot.PuppyGiftsEnabled = IsGoalCategoryEnabled("puppy_gifts");
+        snapshot.WastelandersEnabled = IsGoalCategoryEnabled("wastelanders");
+
+        snapshot.EnabledCategoryCount =
+            (snapshot.BossesEnabled ? 1 : 0) +
+            (snapshot.PuppyGiftsEnabled ? 1 : 0) +
+            (snapshot.WastelandersEnabled ? 1 : 0);
+
+        if (snapshot.BossesEnabled && WorldOptions.BossGoals != null)
+        {
+            // OptionSet values should already be unique. The HashSet also protects
+            // the display/evaluation from legacy cached lists that were observed
+            // to contain duplicate entries before live slot_data replaced them.
+            HashSet<string> uniqueBosses =
+                new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (string bossName in WorldOptions.BossGoals)
+            {
+                if (string.IsNullOrWhiteSpace(bossName) || !uniqueBosses.Add(bossName))
+                    continue;
+
+                string locationKey = GetBossGoalLocationKey(bossName);
+                if (string.IsNullOrEmpty(locationKey))
+                    continue;
+
+                snapshot.SelectedBossCount++;
+
+                APLocationDefinition definition;
+                bool defeated =
+                    TryGetLocationDefinition(locationKey, out definition) &&
+                    HasLocationBeenSent(definition.LocationId);
+
+                if (defeated)
+                    snapshot.BossCompletedCount++;
+                else
+                    snapshot.RemainingBossNames.Add(bossName);
+            }
+        }
+
+        snapshot.BossesComplete =
+            snapshot.BossesEnabled &&
+            snapshot.SelectedBossCount > 0 &&
+            WorldOptions.BossGoalAmount >= 1 &&
+            WorldOptions.BossGoalAmount <= snapshot.SelectedBossCount &&
+            snapshot.BossCompletedCount >= WorldOptions.BossGoalAmount;
+
+        snapshot.BossesNeededRemaining = Math.Max(
+            0,
+            WorldOptions.BossGoalAmount - snapshot.BossCompletedCount
+        );
+
+        if (snapshot.PuppyGiftsEnabled)
+        {
+            foreach (string itemId in GoalPuppyGiftInternalIds)
+            {
+                if (HasReceivedAPItem(ItemKind.PuppyTreat, itemId))
+                {
+                    snapshot.PuppyGiftCompletedCount++;
+                }
+                else
+                {
+                    snapshot.RemainingPuppyGiftNames.Add(
+                        GetPuppyGiftGoalDisplayName(itemId)
+                    );
+                }
+            }
+        }
+
+        snapshot.PuppyGiftsComplete =
+            snapshot.PuppyGiftsEnabled &&
+            snapshot.PuppyGiftCompletedCount >= WorldOptions.PuppyGiftGoalAmount;
+
+        snapshot.PuppyGiftsNeededRemaining = Math.Max(
+            0,
+            WorldOptions.PuppyGiftGoalAmount - snapshot.PuppyGiftCompletedCount
+        );
+
+        if (snapshot.WastelandersEnabled)
+        {
+            foreach (string questId in GoalWastelanderQuestIds)
+            {
+                APLocationDefinition definition;
+                bool completed =
+                    TryGetLocationDefinition(questId, out definition) &&
+                    HasLocationBeenSent(definition.LocationId);
+
+                if (completed)
+                {
+                    snapshot.WastelanderCompletedCount++;
+                }
+                else
+                {
+                    snapshot.RemainingWastelanderNames.Add(
+                        GetWastelanderGoalDisplayName(questId)
+                    );
+                }
+            }
+        }
+
+        snapshot.WastelandersComplete =
+            snapshot.WastelandersEnabled &&
+            snapshot.WastelanderCompletedCount >= WorldOptions.WastelanderGoalAmount;
+
+        snapshot.WastelandersNeededRemaining = Math.Max(
+            0,
+            WorldOptions.WastelanderGoalAmount - snapshot.WastelanderCompletedCount
+        );
+
+        snapshot.CompletedCategoryCount =
+            (snapshot.BossesComplete ? 1 : 0) +
+            (snapshot.PuppyGiftsComplete ? 1 : 0) +
+            (snapshot.WastelandersComplete ? 1 : 0);
+
+        snapshot.GoalsRemaining = Math.Max(
+            0,
+            snapshot.GoalAmount - snapshot.CompletedCategoryCount
+        );
+
+        return snapshot;
+    }
+
+    internal static void EvaluateAPGoalCompletion(string sourceTag)
+    {
+        try
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                return;
+
+            if (WorldOptions == null)
+                return;
+
+            // Goal-related events are also the natural refresh points for the
+            // optional live checklist. Keep updating it even after CLIENT_GOAL
+            // has already been reported so its final state remains accurate.
+            RefreshDevOverlay();
+
+            if (SessionState.GoalReported)
+                return;
+
+            APGoalProgressSnapshot snapshot = BuildAPGoalProgressSnapshot();
+
+            if (snapshot.EnabledCategoryCount <= 0)
+            {
+                LogWarning($"{sourceTag}: GOAL EVAL skipped because no goal categories are enabled.");
+                return;
+            }
+
+            if (snapshot.GoalAmount < 1 ||
+                snapshot.GoalAmount > snapshot.EnabledCategoryCount)
+            {
+                LogWarning(
+                    $"{sourceTag}: GOAL EVAL invalid goal configuration. " +
+                    $"GoalAmount={snapshot.GoalAmount}, EnabledCategories={snapshot.EnabledCategoryCount}."
+                );
+                return;
+            }
+
+            LogInfo(
+                $"{sourceTag}: GOAL EVAL -> " +
+                $"Categories={snapshot.CompletedCategoryCount}/{snapshot.GoalAmount}, " +
+                $"Bosses={(snapshot.BossesEnabled ? snapshot.BossCompletedCount + "/" + WorldOptions.BossGoalAmount : "off")}, " +
+                $"PuppyGifts={(snapshot.PuppyGiftsEnabled ? snapshot.PuppyGiftCompletedCount + "/" + WorldOptions.PuppyGiftGoalAmount : "off")}, " +
+                $"Wastelanders={(snapshot.WastelandersEnabled ? snapshot.WastelanderCompletedCount + "/" + WorldOptions.WastelanderGoalAmount : "off")}"
+            );
+
+            if (snapshot.CompletedCategoryCount < snapshot.GoalAmount)
+                return;
+
+            if (ArchipelagoClientManager.Instance == null)
+            {
+                LogWarning($"{sourceTag}: GOAL EVAL complete, but ArchipelagoClientManager.Instance is null.");
+                return;
+            }
+
+            ArchipelagoClientManager.Instance.SendGoalCompletionStatus(
+                sourceTag + "/ConfiguredGoal"
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"{sourceTag}: EvaluateAPGoalCompletion failed:\n{ex}");
+        }
+    }
+
     // AP location check and vanilla reward suppression helpers.
     // This file turns one-time vanilla pickups, quest rewards, cassettes, and gifts
     // into Archipelago location checks while preventing duplicate or fake checks.
@@ -336,13 +657,10 @@ public partial class LaikaMod
                 LogWarning($"{sourceTag}: could not find final boss AP location definition.");
             }
 
-            if (ArchipelagoClientManager.Instance == null)
-            {
-                LogWarning($"{sourceTag}: cannot report goal because ArchipelagoClientManager.Instance is null.");
-                return;
-            }
-
-            ArchipelagoClientManager.Instance.SendGoalCompletionStatus(sourceTag);
+            // The ending is now only another evaluation point. It must not
+            // unconditionally win the seed because the configured goal may
+            // require a different category or multiple categories.
+            EvaluateAPGoalCompletion(sourceTag + "/EndingSequence");
         }
         catch (Exception ex)
         {

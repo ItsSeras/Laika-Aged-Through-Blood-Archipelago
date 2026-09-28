@@ -169,9 +169,12 @@ public partial class LaikaMod
             // survive a save-slot switch.
             ClearPendingIncomingDeathLinks("save slot bind");
 
-            // Clear any pending runtime-only grants when changing slot context.
+            // Clear any pending runtime-only grants and cosmetic popups when
+            // binding save context. Presentation must not leak from a previous
+            // save or AP room into a fresh run.
             PendingItemQueue.Clear();
             IsProcessingQueue = false;
+            ClearAPPresentationState("save slot bind");
 
             if (SessionState != null && SessionState.APEnabled)
             {
@@ -208,6 +211,8 @@ public partial class LaikaMod
                 $"SkipOrella={WorldOptions.SkipOrellaTransition}, " +
                 $"SkipRoy={WorldOptions.SkipRoyBoat}, " +
                 $"AutoPurchaseHints={WorldOptions.AutomaticPurchaseHints}, " +
+                $"Goals=[{string.Join(",", WorldOptions.GoalCategories ?? new List<string>())}], " +
+                $"GoalAmount={WorldOptions.GoalAmount}, " +
                 $"VisceraProtection={WorldOptions.VisceraProtection}"
             );
 
@@ -543,6 +548,11 @@ public partial class LaikaMod
             SessionState.SentLocationIds.Add(locationId);
             SaveSessionState();
             LogInfo($"AP STATE: marked location as sent -> {locationId}");
+
+            // Boss and Wastelander victory categories are based on actual AP
+            // location checks, so every newly-sent location is a safe point to
+            // re-evaluate the configured goal.
+            EvaluateAPGoalCompletion("location check " + locationId);
         }
     }
 

@@ -10,6 +10,9 @@ using UnityEngine.UI;
 
 public partial class LaikaMod
 {
+    // Separate from the connection-status Text so goal rows can stay white/green
+    // without inheriting the connection state's red/yellow/green tint.
+    internal static Text DevOverlayGoalText;
 
     // ===== Logging helpers =====
     // Logs a message to both BepInEx and the in-game developer overlay.
@@ -511,6 +514,175 @@ public partial class LaikaMod
         LogInfo($"DEV OVERLAY SCALE: resolution changed to {width}x{height}; reapplied 16:9 safe-root scale.");
     }
 
+    private static string GetGoalProgressStateColor(bool isComplete, int completedCount)
+    {
+        if (isComplete)
+            return "#00E676";
+
+        if (completedCount > 0)
+            return "#FFD54F";
+
+        return "#FF6E6E";
+    }
+
+    private static string BuildColoredGoalCategory(string label, bool isComplete, int completedCount)
+    {
+        return OverlayColor(
+            GetGoalProgressStateColor(isComplete, completedCount),
+            label
+        );
+    }
+
+    private static string BuildGoalChecklistOverlayText()
+    {
+        try
+        {
+            if (WorldOptions == null || !WorldOptions.ShowGoalChecklist)
+                return string.Empty;
+
+            if (SessionState == null || !SessionState.APEnabled)
+                return string.Empty;
+
+            if (!HasAppliedLiveSlotData ||
+                ArchipelagoClientManager.Instance == null ||
+                !ArchipelagoClientManager.Instance.IsConnected)
+            {
+                return string.Empty;
+            }
+
+            APGoalProgressSnapshot snapshot = BuildAPGoalProgressSnapshot();
+
+            if (snapshot.EnabledCategoryCount <= 0)
+                return string.Empty;
+
+            List<string> categoryParts = new List<string>();
+
+            if (snapshot.BossesEnabled)
+            {
+                categoryParts.Add(
+                    BuildColoredGoalCategory(
+                        "Bosses",
+                        snapshot.BossesComplete,
+                        snapshot.BossCompletedCount
+                    )
+                );
+            }
+
+            if (snapshot.PuppyGiftsEnabled)
+            {
+                categoryParts.Add(
+                    BuildColoredGoalCategory(
+                        "Puppy Gifts",
+                        snapshot.PuppyGiftsComplete,
+                        snapshot.PuppyGiftCompletedCount
+                    )
+                );
+            }
+
+            if (snapshot.WastelandersEnabled)
+            {
+                categoryParts.Add(
+                    BuildColoredGoalCategory(
+                        "Wastelanders",
+                        snapshot.WastelandersComplete,
+                        snapshot.WastelanderCompletedCount
+                    )
+                );
+            }
+
+            List<string> lines = new List<string>();
+
+            lines.Add(
+                OverlayColor("#7FDBFF", "<b>Goals:</b> ") +
+                string.Join(", ", categoryParts.ToArray())
+            );
+
+            if (snapshot.GoalsRemaining <= 0)
+            {
+                string completionText =
+                    snapshot.GoalAmount > 1
+                        ? "All Goals Complete!"
+                        : "Goal Complete!";
+
+                lines.Add(
+                    OverlayColor(
+                        "#00E676",
+                        $"<b>{completionText}</b>"
+                    )
+                );
+            }
+            else
+            {
+                lines.Add(
+                    OverlayColor("#82AAFF", "<b>Goals Remaining:</b> ") +
+                    snapshot.GoalsRemaining
+                );
+            }
+
+            if (snapshot.BossesEnabled && !snapshot.BossesComplete)
+            {
+                string remainingBosses = snapshot.RemainingBossNames.Count > 0
+                    ? string.Join(", ", snapshot.RemainingBossNames.ToArray())
+                    : "None listed";
+
+                if (snapshot.SelectedBossCount == 1)
+                {
+                    lines.Add(
+                        OverlayColor("#C792EA", "<b>Boss Required:</b> ") +
+                        remainingBosses
+                    );
+                }
+                else
+                {
+                    lines.Add(
+                        OverlayColor(
+                            "#C792EA",
+                            $"<b>Bosses Remaining ({snapshot.BossesNeededRemaining} needed):</b> "
+                        ) +
+                        remainingBosses
+                    );
+                }
+            }
+
+            if (snapshot.PuppyGiftsEnabled && !snapshot.PuppyGiftsComplete)
+            {
+                string remainingGifts = snapshot.RemainingPuppyGiftNames.Count > 0
+                    ? string.Join(", ", snapshot.RemainingPuppyGiftNames.ToArray())
+                    : "None listed";
+
+                lines.Add(
+                    OverlayColor(
+                        "#FFB86C",
+                        $"<b>Puppy Gifts Remaining ({snapshot.PuppyGiftsNeededRemaining} needed):</b> "
+                    ) +
+                    remainingGifts
+                );
+            }
+
+            if (snapshot.WastelandersEnabled && !snapshot.WastelandersComplete)
+            {
+                string remainingWastelanders = snapshot.RemainingWastelanderNames.Count > 0
+                    ? string.Join(", ", snapshot.RemainingWastelanderNames.ToArray())
+                    : "None listed";
+
+                lines.Add(
+                    OverlayColor(
+                        "#F78CBA",
+                        $"<b>Wastelanders Remaining ({snapshot.WastelandersNeededRemaining} needed):</b> "
+                    ) +
+                    remainingWastelanders
+                );
+            }
+
+            return string.Join("\n", lines.ToArray());
+        }
+        catch (Exception ex)
+        {
+            LogWarning($"BuildGoalChecklistOverlayText failed:\n{ex}");
+            return string.Empty;
+        }
+    }
+
     // Creates the developer overlay canvas if it does not already exist.
     internal static void EnsureDevOverlayCanvas()
     {
@@ -534,7 +706,8 @@ public partial class LaikaMod
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
         scaler.scaleFactor = 1f;
 
-        DevOverlayCanvasObject.AddComponent<GraphicRaycaster>();
+        // Presentation-only overlay: intentionally no GraphicRaycaster.
+        // This canvas must never consume pointer input intended for gameplay or title-screen AP controls.
         GameObject safeRootObject = new GameObject("LaikaAPDevOverlaySafeRoot");
         safeRootObject.transform.SetParent(DevOverlayCanvasObject.transform, false);
 
@@ -560,7 +733,7 @@ public partial class LaikaMod
         statusPanelRect.anchorMax = new Vector2(0f, 1f);
         statusPanelRect.pivot = new Vector2(0f, 1f);
         statusPanelRect.anchoredPosition = new Vector2(24f, -24f);
-        statusPanelRect.sizeDelta = new Vector2(620f, 42f);
+        statusPanelRect.sizeDelta = new Vector2(1140f, 276f);
 
         GameObject statusTextObj = new GameObject("OverlayStatusText");
         statusTextObj.transform.SetParent(statusPanel.transform, false);
@@ -572,14 +745,37 @@ public partial class LaikaMod
         DevOverlayStatusText.color = Color.white;
         DevOverlayStatusText.alignment = TextAnchor.UpperLeft;
         DevOverlayStatusText.fontStyle = FontStyle.Bold;
+        DevOverlayStatusText.raycastTarget = false;
         DevOverlayStatusText.horizontalOverflow = HorizontalWrapMode.Wrap;
         DevOverlayStatusText.verticalOverflow = VerticalWrapMode.Overflow;
 
         RectTransform statusTextRect = statusTextObj.GetComponent<RectTransform>();
-        statusTextRect.anchorMin = new Vector2(0f, 0f);
-        statusTextRect.anchorMax = new Vector2(1f, 1f);
-        statusTextRect.offsetMin = new Vector2(26f, 12f);
-        statusTextRect.offsetMax = new Vector2(0f, -12f);
+        statusTextRect.anchorMin = new Vector2(0f, 1f);
+        statusTextRect.anchorMax = new Vector2(0f, 1f);
+        statusTextRect.pivot = new Vector2(0f, 1f);
+        statusTextRect.anchoredPosition = new Vector2(26f, -12f);
+        statusTextRect.sizeDelta = new Vector2(1080f, 30f);
+
+        GameObject goalTextObj = new GameObject("OverlayGoalText");
+        goalTextObj.transform.SetParent(statusPanel.transform, false);
+
+        DevOverlayGoalText = goalTextObj.AddComponent<Text>();
+        DevOverlayGoalText.font = builtInFont;
+        DevOverlayGoalText.supportRichText = true;
+        DevOverlayGoalText.fontSize = 14;
+        DevOverlayGoalText.color = Color.white;
+        DevOverlayGoalText.alignment = TextAnchor.UpperLeft;
+        DevOverlayGoalText.fontStyle = FontStyle.Normal;
+        DevOverlayGoalText.raycastTarget = false;
+        DevOverlayGoalText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        DevOverlayGoalText.verticalOverflow = VerticalWrapMode.Overflow;
+
+        RectTransform goalTextRect = goalTextObj.GetComponent<RectTransform>();
+        goalTextRect.anchorMin = new Vector2(0f, 1f);
+        goalTextRect.anchorMax = new Vector2(0f, 1f);
+        goalTextRect.pivot = new Vector2(0f, 1f);
+        goalTextRect.anchoredPosition = new Vector2(26f, -38f);
+        goalTextRect.sizeDelta = new Vector2(1090f, 224f);
 
         // ===== Recent log panel =====
         GameObject logPanel = new GameObject("OverlayRecentLogPanel");
@@ -587,6 +783,7 @@ public partial class LaikaMod
 
         Image logBg = logPanel.AddComponent<Image>();
         logBg.color = new Color(0f, 0f, 0f, 0.65f);
+        logBg.raycastTarget = false;
 
         RectTransform logPanelRect = logPanel.GetComponent<RectTransform>();
         logPanelRect.anchorMin = new Vector2(0f, 0f);
@@ -606,6 +803,7 @@ public partial class LaikaMod
         DevOverlayRecentLogText.alignment = TextAnchor.UpperLeft;
         DevOverlayRecentLogText.horizontalOverflow = HorizontalWrapMode.Wrap;
         DevOverlayRecentLogText.verticalOverflow = VerticalWrapMode.Overflow;
+        DevOverlayRecentLogText.raycastTarget = false;
 
         RectTransform logTextRect = logTextObj.GetComponent<RectTransform>();
         logTextRect.anchorMin = new Vector2(0f, 0f);
@@ -661,6 +859,18 @@ public partial class LaikaMod
         bool shouldShowStatus =
             SessionState != null &&
             SessionState.APEnabled;
+
+        string goalChecklistText = BuildGoalChecklistOverlayText();
+
+        if (DevOverlayGoalText != null)
+        {
+            DevOverlayGoalText.text = goalChecklistText;
+            DevOverlayGoalText.gameObject.SetActive(
+                shouldShowStatus &&
+                !vanillaSettingsOpen &&
+                !string.IsNullOrEmpty(goalChecklistText)
+            );
+        }
 
         DevOverlayStatusText.transform.parent.gameObject.SetActive(shouldShowStatus && !vanillaSettingsOpen);
         bool shouldShowRecentLog =

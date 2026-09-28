@@ -26,6 +26,9 @@ public partial class LaikaMod
         internal string Message;
         internal Action OnCloseCallback;
         internal string DebugTag;
+        internal bool IsReceivedItem;
+        internal string ReceivedItemName;
+        internal string ReceivedSourcePlayer;
     }
 
     private static readonly Queue<APPresentationPopupRequest>
@@ -37,12 +40,49 @@ public partial class LaikaMod
 
     internal static PendingItem ActiveAPGrantPresentationItem;
 
+    // Received items can arrive in large release/collect bursts after goal.
+    // Wait briefly so 3+ significant items can be represented by one summary
+    // popup instead of flooding or overwriting Laika's item-received UI.
+    private const float ReceivedPresentationBurstGraceSeconds = 0.40f;
+    private static float ReceivedPresentationBurstReadyAt = 0f;
+    private static bool APPresentationPopupActive = false;
+    private static int PresentationContextGeneration = 0;
+
+    internal static void ClearAPPresentationState(string reason)
+    {
+        int queued = PendingPresentationPopups.Count;
+        int captured = CapturedGrantPresentations.Count;
+
+        PendingPresentationPopups.Clear();
+        CapturedGrantPresentations.Clear();
+        ActiveAPGrantPresentationItem = null;
+        ActiveVanillaLocationPopupDefinition = null;
+        ActiveVanillaLocationPopupItemId = null;
+        ActiveForcedVanillaPopupTitle = null;
+        ActiveForcedVanillaPopupMessage = null;
+        ActiveForcedVanillaPopupItemId = null;
+        ReceivedPresentationBurstReadyAt = 0f;
+        APPresentationPopupActive = false;
+        PresentationContextGeneration++;
+
+        if (queued > 0 || captured > 0)
+        {
+            LogInfo(
+                $"AP PRESENTATION: cleared runtime presentation state. " +
+                $"Reason={reason}, Queued={queued}, Captured={captured}"
+            );
+        }
+    }
+
     // Vanilla key-item rewards sometimes must be allowed to run so their original
     // popup callback can advance quest/dialogue state. While such an AP location
     // reward is being added, keep a one-shot context so the vanilla popup can be
     // rebranded as an AP location check without suppressing its callback.
     private static APLocationDefinition ActiveVanillaLocationPopupDefinition;
     private static string ActiveVanillaLocationPopupItemId;
+    private static string ActiveForcedVanillaPopupTitle;
+    private static string ActiveForcedVanillaPopupMessage;
+    private static string ActiveForcedVanillaPopupItemId;
 
     internal static void ArmVanillaLocationPopupPresentation(
         APLocationDefinition definition,
@@ -96,6 +136,51 @@ public partial class LaikaMod
 
         ActiveVanillaLocationPopupDefinition = null;
         ActiveVanillaLocationPopupItemId = null;
+    }
+
+
+    internal static void ArmForcedVanillaPopupPresentation(
+        string title,
+        string message,
+        string sourceItemId)
+    {
+        if (string.IsNullOrWhiteSpace(title) ||
+            string.IsNullOrWhiteSpace(message) ||
+            string.IsNullOrWhiteSpace(sourceItemId))
+        {
+            return;
+        }
+
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
+        ActiveForcedVanillaPopupTitle = title;
+        ActiveForcedVanillaPopupMessage = message;
+        ActiveForcedVanillaPopupItemId = sourceItemId;
+
+        LogInfo(
+            $"AP PRESENTATION: armed forced vanilla popup rewrite -> " +
+            $"{title} / {message} ({sourceItemId})"
+        );
+    }
+
+    internal static void ClearForcedVanillaPopupPresentation(string itemId)
+    {
+        if (string.IsNullOrEmpty(ActiveForcedVanillaPopupItemId))
+            return;
+
+        if (!string.IsNullOrEmpty(itemId) &&
+            !string.Equals(
+                ActiveForcedVanillaPopupItemId,
+                itemId,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        ActiveForcedVanillaPopupTitle = null;
+        ActiveForcedVanillaPopupMessage = null;
+        ActiveForcedVanillaPopupItemId = null;
     }
 
     private static string APPresentationPlainText(string value)
@@ -171,7 +256,10 @@ public partial class LaikaMod
         string title,
         string message,
         Action onCloseCallback,
-        string debugTag)
+        string debugTag,
+        bool isReceivedItem = false,
+        string receivedItemName = null,
+        string receivedSourcePlayer = null)
     {
         PendingPresentationPopups.Enqueue(
             new APPresentationPopupRequest
@@ -180,9 +268,18 @@ public partial class LaikaMod
                 Title = title,
                 Message = message,
                 OnCloseCallback = onCloseCallback,
-                DebugTag = debugTag
+                DebugTag = debugTag,
+                IsReceivedItem = isReceivedItem,
+                ReceivedItemName = receivedItemName,
+                ReceivedSourcePlayer = receivedSourcePlayer
             }
         );
+
+        if (isReceivedItem)
+        {
+            ReceivedPresentationBurstReadyAt =
+                Time.unscaledTime + ReceivedPresentationBurstGraceSeconds;
+        }
 
         LogInfo(
             $"AP PRESENTATION: queued popup -> {debugTag}. " +
@@ -190,8 +287,69 @@ public partial class LaikaMod
         );
     }
 
+    private static APPresentationPopupRequest BuildBulkReceivedPresentation()
+    {
+        if (PendingPresentationPopups.Count < 3)
+            return null;
+
+        int contiguousReceivedCount = 0;
+        foreach (APPresentationPopupRequest candidate in PendingPresentationPopups)
+        {
+            if (candidate == null || !candidate.IsReceivedItem)
+                break;
+
+            contiguousReceivedCount++;
+        }
+
+        if (contiguousReceivedCount < 3)
+            return null;
+
+        var batch = new List<APPresentationPopupRequest>();
+        for (int i = 0; i < contiguousReceivedCount; i++)
+            batch.Add(PendingPresentationPopups.Dequeue());
+
+        Action combinedClose = delegate
+        {
+            foreach (APPresentationPopupRequest entry in batch)
+            {
+                try
+                {
+                    entry.OnCloseCallback?.Invoke();
+                }
+                catch (Exception ex)
+                {
+                    LogWarning(
+                        $"AP PRESENTATION: bulk popup close callback failed for " +
+                        $"{entry.DebugTag}:\n{ex}"
+                    );
+                }
+            }
+        };
+
+        LogInfo(
+            $"AP PRESENTATION: collapsed {batch.Count} received-item popups " +
+            "into one bulk presentation."
+        );
+
+        return new APPresentationPopupRequest
+        {
+            Sprite = GetRenatoPopupLogoSprite(),
+            Title = "ITEMS RECEIVED!",
+            // Keep bulk popups intentionally compact. The vanilla popup layout reserves
+            // substantial space for the sprite, so detailed item lists can overlap the icon
+            // and OK button on large release/collect bursts. Individual grants remain detailed.
+            Message = $"\n\nYou received {batch.Count} items.",
+            OnCloseCallback = combinedClose,
+            DebugTag = $"bulk received x{batch.Count}",
+            IsReceivedItem = false
+        };
+    }
+
     internal static void ProcessPendingPresentationPopups()
     {
+        if (APPresentationPopupActive)
+            return;
+
         if (PendingPresentationPopups.Count == 0)
             return;
 
@@ -202,11 +360,21 @@ public partial class LaikaMod
         if (ui == null || ui.IsScreenOpen)
             return;
 
-        APPresentationPopupRequest request = PendingPresentationPopups.Dequeue();
+        APPresentationPopupRequest head = PendingPresentationPopups.Peek();
+        if (head != null &&
+            head.IsReceivedItem &&
+            Time.unscaledTime < ReceivedPresentationBurstReadyAt)
+        {
+            return;
+        }
+
+        APPresentationPopupRequest request =
+            BuildBulkReceivedPresentation() ?? PendingPresentationPopups.Dequeue();
 
         try
         {
             Sprite sprite = request.Sprite ?? GetRenatoPopupLogoSprite();
+            APPresentationPopupActive = true;
 
             ui.ShowItemReceivedPopup(
                 sprite,
@@ -214,6 +382,8 @@ public partial class LaikaMod
                 request.Message ?? string.Empty,
                 delegate
                 {
+                    APPresentationPopupActive = false;
+
                     try
                     {
                         request.OnCloseCallback?.Invoke();
@@ -235,6 +405,8 @@ public partial class LaikaMod
         }
         catch (Exception ex)
         {
+            APPresentationPopupActive = false;
+
             LogWarning(
                 $"AP PRESENTATION: failed showing popup {request.DebugTag}:\n{ex}"
             );
@@ -263,10 +435,14 @@ public partial class LaikaMod
     private static System.Collections.IEnumerator WaitForSentLocationPresentation(
         APLocationDefinition definition)
     {
+        int presentationGeneration = PresentationContextGeneration;
         float deadline = Time.unscaledTime + 10f;
 
         while (Time.unscaledTime < deadline)
         {
+            if (presentationGeneration != PresentationContextGeneration)
+                yield break;
+
             ArchipelagoClientManager client =
                 ArchipelagoClientManager.Instance;
 
@@ -338,7 +514,10 @@ public partial class LaikaMod
                     "\nFrom " +
                     APPresentationPlainText(item.SourcePlayerName),
                 OnCloseCallback = onCloseCallback,
-                DebugTag = "received " + item.DisplayName
+                DebugTag = "received " + item.DisplayName,
+                IsReceivedItem = true,
+                ReceivedItemName = item.DisplayName,
+                ReceivedSourcePlayer = item.SourcePlayerName
             };
     }
 
@@ -358,6 +537,8 @@ public partial class LaikaMod
         {
             CapturedGrantPresentations.Remove(item);
             PendingPresentationPopups.Enqueue(captured);
+            ReceivedPresentationBurstReadyAt =
+                Time.unscaledTime + ReceivedPresentationBurstGraceSeconds;
             LogInfo(
                 $"AP PRESENTATION: committed captured received popup -> " +
                 $"{item.DisplayName}. Pending={PendingPresentationPopups.Count}"
@@ -376,7 +557,10 @@ public partial class LaikaMod
                 "\nFrom " +
                 APPresentationPlainText(item.SourcePlayerName),
             null,
-            "received fallback " + item.DisplayName
+            "received fallback " + item.DisplayName,
+            true,
+            item.DisplayName,
+            item.SourcePlayerName
         );
     }
 
@@ -409,40 +593,64 @@ public partial class LaikaMod
                 // Change only the presentation and let the original popup/callback run.
                 if (!IsGrantingAPItem &&
                     SessionState != null &&
-                    SessionState.APEnabled &&
-                    ActiveVanillaLocationPopupDefinition != null)
+                    SessionState.APEnabled)
                 {
-                    APLocationDefinition location =
-                        ActiveVanillaLocationPopupDefinition;
-
-                    string itemId = ActiveVanillaLocationPopupItemId;
-                    ClearVanillaLocationPopupPresentation(itemId);
-
-                    if (HasLocationBeenSent(location.LocationId))
+                    if (!string.IsNullOrEmpty(ActiveForcedVanillaPopupItemId))
                     {
+                        string forcedItemId = ActiveForcedVanillaPopupItemId;
+                        string forcedTitle = ActiveForcedVanillaPopupTitle;
+                        string forcedMessage = ActiveForcedVanillaPopupMessage;
+                        ClearForcedVanillaPopupPresentation(forcedItemId);
+
                         Sprite apLogo = GetRenatoPopupLogoSprite();
                         if (apLogo != null)
                             sprite = apLogo;
 
-                        localizedTitle = "LOCATION SENT!";
-                        localizedMessage =
-                            APPresentationPlainText(location.DisplayName);
+                        localizedTitle = APPresentationPlainText(forcedTitle);
+                        localizedMessage = APPresentationPlainText(forcedMessage);
 
                         LogInfo(
-                            $"AP PRESENTATION: rewrote vanilla location popup -> " +
-                            $"{location.DisplayName} ({location.LocationId})"
+                            $"AP PRESENTATION: rewrote vanilla popup from forced context -> " +
+                            $"{forcedTitle} / {forcedMessage} ({forcedItemId})"
                         );
-                    }
-                    else
-                    {
-                        LogWarning(
-                            $"AP PRESENTATION: vanilla location popup fired before " +
-                            $"location was marked sent -> {location.DisplayName}. " +
-                            "Keeping vanilla text."
-                        );
+
+                        return true;
                     }
 
-                    return true;
+                    if (ActiveVanillaLocationPopupDefinition != null)
+                    {
+                        APLocationDefinition location =
+                            ActiveVanillaLocationPopupDefinition;
+
+                        string itemId = ActiveVanillaLocationPopupItemId;
+                        ClearVanillaLocationPopupPresentation(itemId);
+
+                        if (HasLocationBeenSent(location.LocationId))
+                        {
+                            Sprite apLogo = GetRenatoPopupLogoSprite();
+                            if (apLogo != null)
+                                sprite = apLogo;
+
+                            localizedTitle = "LOCATION SENT!";
+                            localizedMessage =
+                                APPresentationPlainText(location.DisplayName);
+
+                            LogInfo(
+                                $"AP PRESENTATION: rewrote vanilla location popup -> " +
+                                $"{location.DisplayName} ({location.LocationId})"
+                            );
+                        }
+                        else
+                        {
+                            LogWarning(
+                                $"AP PRESENTATION: vanilla location popup fired before " +
+                                $"location was marked sent -> {location.DisplayName}. " +
+                                "Keeping vanilla text."
+                            );
+                        }
+
+                        return true;
+                    }
                 }
 
                 PendingItem item = ActiveAPGrantPresentationItem;
@@ -644,6 +852,17 @@ public partial class LaikaMod
                     if (granted)
                     {
                         QueueReceivedItemPresentationIfNeeded(item);
+
+                        // Puppy Gifts are themselves a configurable victory
+                        // category, so a successful AP gift grant can complete
+                        // the seed even without another location check firing.
+                        if (item.Kind == ItemKind.PuppyTreat)
+                        {
+                            EvaluateAPGoalCompletion(
+                                sourceTag + "/PuppyGiftGrant/" + item.Id
+                            );
+                        }
+
                         // A first AP weapon can activate G_GUN_RECEIVED during this pass.
                         // Queue the missing Pistol now so this pass can deliver it too.
                         if (item.Kind == ItemKind.Weapon &&

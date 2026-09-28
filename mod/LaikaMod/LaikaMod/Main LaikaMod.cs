@@ -798,11 +798,7 @@ public partial class LaikaMod : BaseUnityPlugin
             CommitAPSettingsOptionsToRuntime("AP settings Connect button");
 
             AnnounceAPActivity("[AP] Connection requested from title screen.");
-            ConnectActiveSlotIfConfigured();
-
-            UpdateTitleScreenAPPanel();
-            RefreshVisibleSaveSlotAPLabels();
-            RefreshDevOverlay();
+            QueueTitleScreenConnectAfterPointerRelease();
         });
 
         AddAPActionButton(contentObject.transform, "Disconnect", () =>
@@ -955,6 +951,73 @@ public partial class LaikaMod : BaseUnityPlugin
         });
 
         refresh();
+    }
+
+    // The AP login call is synchronous and can briefly stall Unity while the
+    // server/world data is loading. Starting that work directly from a Button
+    // onClick callback can leave Unity's pointer event half-finished if the stall
+    // lasts long enough, which makes the AP panel stop receiving later clicks.
+    // Defer the actual login until the end of the current frame so Unity can finish
+    // releasing the Connect button first. The connection behavior itself is unchanged.
+    private static bool TitleScreenConnectQueued = false;
+
+    private static void QueueTitleScreenConnectAfterPointerRelease()
+    {
+        if (TitleScreenConnectQueued)
+        {
+            LogInfo("AP TITLE: Connect already queued; ignoring duplicate title-screen click.");
+            return;
+        }
+
+        EnsureCoroutineRunner();
+
+        if (CoroutineRunner == null)
+        {
+            LogWarning("AP TITLE: coroutine runner unavailable; falling back to immediate title-screen connect.");
+            ConnectActiveSlotIfConfigured();
+            UpdateTitleScreenAPPanel();
+            RefreshVisibleSaveSlotAPLabels();
+            RefreshDevOverlay();
+            return;
+        }
+
+        // A text field may have just lost focus because Connect was clicked. Make
+        // sure our own text-input guard is clear before the network stall begins.
+        APSettingsTextInputActive = false;
+
+        if (EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(null);
+
+        TitleScreenConnectQueued = true;
+        LogInfo("AP TITLE: Connect click accepted; deferring AP login until pointer release completes.");
+        CoroutineRunner.StartCoroutine(DeferredTitleScreenConnectCoroutine());
+    }
+
+    private static System.Collections.IEnumerator DeferredTitleScreenConnectCoroutine()
+    {
+        // Let the current Unity UI event fully complete, including Button pointer-up
+        // cleanup, before TryConnectAndLogin is allowed to block the main thread.
+        yield return new WaitForEndOfFrame();
+
+        try
+        {
+            ConnectActiveSlotIfConfigured();
+        }
+        finally
+        {
+            TitleScreenConnectQueued = false;
+        }
+
+        // The panel intentionally remains open after Connect. Refresh it only after
+        // the synchronous login returns so the X and other controls stay usable.
+        if (ShowAPSettingsPopup && APSettingsPanelObject != null)
+            APSettingsPanelObject.SetActive(true);
+
+        UpdateTitleScreenAPPanel();
+        RefreshVisibleSaveSlotAPLabels();
+        RefreshDevOverlay();
+
+        LogInfo("AP TITLE: deferred title-screen AP connect finished; AP settings panel remains interactive.");
     }
 
     private static void AddAPActionButton(Transform parent, string label, Action onClick)
@@ -1747,6 +1810,16 @@ public partial class LaikaMod : BaseUnityPlugin
             WorldOptions.SkipRoyBoat = SessionState.Options.SkipRoyBoat;
             WorldOptions.AutomaticPurchaseHints =
                 SessionState.Options.AutomaticPurchaseHints;
+            WorldOptions.GoalCategories = SessionState.Options.GoalCategories != null
+                ? new List<string>(SessionState.Options.GoalCategories)
+                : new List<string> { "bosses" };
+            WorldOptions.GoalAmount = Mathf.Clamp(SessionState.Options.GoalAmount, 1, 3);
+            WorldOptions.BossGoals = SessionState.Options.BossGoals != null
+                ? new List<string>(SessionState.Options.BossGoals)
+                : new List<string> { "Two-Beak God" };
+            WorldOptions.BossGoalAmount = Mathf.Clamp(SessionState.Options.BossGoalAmount, 1, 6);
+            WorldOptions.PuppyGiftGoalAmount = Mathf.Clamp(SessionState.Options.PuppyGiftGoalAmount, 1, 7);
+            WorldOptions.WastelanderGoalAmount = Mathf.Clamp(SessionState.Options.WastelanderGoalAmount, 1, 6);
             WorldOptions.VisceraProtection = SessionState.Options.VisceraProtection;
             WorldOptions.DeathLinkEnabled = SessionState.Options.DeathLinkEnabled;
             WorldOptions.DeathAmnestyEnabled = SessionState.Options.DeathAmnestyEnabled;
@@ -1765,7 +1838,13 @@ public partial class LaikaMod : BaseUnityPlugin
                 $"DeathAmnestyCount={WorldOptions.DeathAmnestyCount}, " +
                 $"DeathAmnestyCountOverride={SessionState.Options.DeathAmnestyCountLocalOverrideEnabled}, " +
                 $"WeaponMode={WorldOptions.WeaponMode}, " +
-                $"AutoPurchaseHints={WorldOptions.AutomaticPurchaseHints}"
+                $"AutoPurchaseHints={WorldOptions.AutomaticPurchaseHints}, " +
+                $"Goals=[{string.Join(",", WorldOptions.GoalCategories)}], " +
+                $"GoalAmount={WorldOptions.GoalAmount}, " +
+                $"Bosses=[{string.Join(",", WorldOptions.BossGoals)}], " +
+                $"BossGoalAmount={WorldOptions.BossGoalAmount}, " +
+                $"PuppyGiftGoalAmount={WorldOptions.PuppyGiftGoalAmount}, " +
+                $"WastelanderGoalAmount={WorldOptions.WastelanderGoalAmount}"
             );
         }
         catch (Exception ex)

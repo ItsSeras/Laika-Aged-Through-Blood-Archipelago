@@ -891,6 +891,15 @@ public partial class LaikaMod
                 if (cassetteId != "I_COLLECTION_JAKOB")
                     return;
 
+                if (LaikaMod.SessionState != null && LaikaMod.SessionState.APEnabled)
+                {
+                    LaikaMod.ArmForcedVanillaPopupPresentation(
+                        "LOCATION SENT!",
+                        "Cassette Tape: Jakob's Music Collection",
+                        cassetteId
+                    );
+                }
+
                 var manager = Singleton<CassettesManager>.Instance;
                 var loader = Singleton<CassettesDataLoader>.Instance;
 

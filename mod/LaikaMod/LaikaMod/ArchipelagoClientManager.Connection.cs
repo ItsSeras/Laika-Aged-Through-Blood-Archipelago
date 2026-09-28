@@ -238,8 +238,22 @@ public partial class ArchipelagoClientManager
             LaikaMod.SessionState.SentLocationIds.Clear();
             LaikaMod.SessionState.TutorialHookDebrisEventObserved = false;
 
+            // These histories describe what THIS AP session delivered/consumed.
+            // Keeping them when the seed identity changes can falsely satisfy a
+            // new goal (notably Puppy Gifts) before the new room sends anything.
+            if (LaikaMod.SessionState.ReceivedAPItemKeys == null)
+                LaikaMod.SessionState.ReceivedAPItemKeys = new List<string>();
+            else
+                LaikaMod.SessionState.ReceivedAPItemKeys.Clear();
+
+            if (LaikaMod.SessionState.VanillaConsumedAPItemKeys == null)
+                LaikaMod.SessionState.VanillaConsumedAPItemKeys = new List<string>();
+            else
+                LaikaMod.SessionState.VanillaConsumedAPItemKeys.Clear();
+
             LaikaMod.PendingItemQueue.Clear();
             LaikaMod.IsProcessingQueue = false;
+            LaikaMod.ClearAPPresentationState("new AP session identity");
 
             LaikaMod.AnnounceAPWarning("[AP] New seed/session detected. Resetting AP cache for this save slot.");
         }

@@ -54,7 +54,7 @@ public partial class LaikaMod
     {
         static void Prefix()
         {
-            LaikaMod.LogInfo("GOAL VERIFY: Ending_Sequence.DestroyBomb fired. Reporting AP goal completion.");
+            LaikaMod.LogInfo("GOAL VERIFY: Ending_Sequence.DestroyBomb fired. Evaluating configured AP goal.");
             LaikaMod.ReportLaikaGoalComplete("Ending_Sequence.DestroyBomb");
         }
     }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 
 
 public partial class ArchipelagoClientManager
@@ -52,6 +53,92 @@ public partial class ArchipelagoClientManager
             $"AP: Invalid {key} value '{value}'; using {fallback}."
         );
         return fallback;
+    }
+
+
+    private static int ReadSlotInt(
+        IDictionary slotData,
+        string key,
+        int fallback,
+        int minimum,
+        int maximum)
+    {
+        if (!slotData.Contains(key) || slotData[key] == null)
+            return fallback;
+
+        int parsed;
+        if (!int.TryParse(slotData[key].ToString().Trim(), out parsed))
+        {
+            LaikaMod.LogWarning(
+                $"AP: Invalid {key} value '{slotData[key]}'; using {fallback}."
+            );
+            return fallback;
+        }
+
+        if (parsed < minimum || parsed > maximum)
+        {
+            LaikaMod.LogWarning(
+                $"AP: Out-of-range {key} value {parsed}; using {fallback}."
+            );
+            return fallback;
+        }
+
+        return parsed;
+    }
+
+    private static List<string> ReadSlotStringList(
+        IDictionary slotData,
+        string key,
+        IEnumerable<string> fallback)
+    {
+        List<string> fallbackList = new List<string>();
+        if (fallback != null)
+            fallbackList.AddRange(fallback);
+
+        if (!slotData.Contains(key) || slotData[key] == null)
+            return fallbackList;
+
+        List<string> values = new List<string>();
+        object rawValue = slotData[key];
+
+        string rawString = rawValue as string;
+        if (rawString != null)
+        {
+            string cleaned = rawString.Trim();
+
+            if (cleaned.StartsWith("[") && cleaned.EndsWith("]"))
+                cleaned = cleaned.Substring(1, cleaned.Length - 2);
+
+            foreach (string part in cleaned.Split(','))
+            {
+                string value = part.Trim().Trim('\"', '\'');
+                if (!string.IsNullOrWhiteSpace(value) && !values.Contains(value))
+                    values.Add(value);
+            }
+
+            return values;
+        }
+
+        IEnumerable enumerable = rawValue as IEnumerable;
+        if (enumerable != null)
+        {
+            foreach (object entry in enumerable)
+            {
+                if (entry == null)
+                    continue;
+
+                string value = entry.ToString().Trim();
+                if (!string.IsNullOrWhiteSpace(value) && !values.Contains(value))
+                    values.Add(value);
+            }
+
+            return values;
+        }
+
+        LaikaMod.LogWarning(
+            $"AP: Could not parse list slot_data value for {key}; using compatibility fallback."
+        );
+        return fallbackList;
     }
 
     private static VisceraProtectionMode ReadVisceraProtection(
@@ -121,6 +208,9 @@ public partial class ArchipelagoClientManager
             bool hadDeathAmnestyCount = slotDataDictionary.Contains("death_amnesty_count");
             bool hadAutomaticPurchaseHints =
                 slotDataDictionary.Contains("automatic_purchase_hints");
+            bool hadGoalChecklist =
+                slotDataDictionary.Contains("show_goal_checklist");
+            bool hadGoalOptions = slotDataDictionary.Contains("goals");
 
             ApplySlotDataValue(slotDataDictionary, "weapon_mode");
             ApplySlotDataValue(slotDataDictionary, "death_link");
@@ -145,6 +235,38 @@ public partial class ArchipelagoClientManager
                     false
                 );
 
+            LaikaMod.WorldOptions.ShowGoalChecklist =
+                ReadSlotToggle(
+                    slotDataDictionary,
+                    "show_goal_checklist",
+                    true
+                );
+
+            // Old seeds do not contain these fields. Their compatibility
+            // fallback remains the original Two-Beak God-only victory.
+            LaikaMod.WorldOptions.GoalCategories = ReadSlotStringList(
+                slotDataDictionary,
+                "goals",
+                new string[] { "bosses" }
+            );
+            LaikaMod.WorldOptions.GoalAmount = ReadSlotInt(
+                slotDataDictionary, "goal_amount", 1, 1, 3
+            );
+            LaikaMod.WorldOptions.BossGoals = ReadSlotStringList(
+                slotDataDictionary,
+                "bosses",
+                new string[] { "Two-Beak God" }
+            );
+            LaikaMod.WorldOptions.BossGoalAmount = ReadSlotInt(
+                slotDataDictionary, "boss_goal_amount", 1, 1, 6
+            );
+            LaikaMod.WorldOptions.PuppyGiftGoalAmount = ReadSlotInt(
+                slotDataDictionary, "puppy_gift_goal_amount", 7, 1, 7
+            );
+            LaikaMod.WorldOptions.WastelanderGoalAmount = ReadSlotInt(
+                slotDataDictionary, "wastelander_goal_amount", 6, 1, 6
+            );
+
             LaikaMod.WorldOptions.VisceraProtection =
                 ReadVisceraProtection(slotDataDictionary);
 
@@ -154,6 +276,13 @@ public partial class ArchipelagoClientManager
                 $"SkipOrella={LaikaMod.WorldOptions.SkipOrellaTransition}, " +
                 $"SkipRoy={LaikaMod.WorldOptions.SkipRoyBoat}, " +
                 $"AutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}, " +
+                $"GoalChecklist={LaikaMod.WorldOptions.ShowGoalChecklist}, " +
+                $"Goals=[{string.Join(",", LaikaMod.WorldOptions.GoalCategories)}], " +
+                $"GoalAmount={LaikaMod.WorldOptions.GoalAmount}, " +
+                $"Bosses=[{string.Join(",", LaikaMod.WorldOptions.BossGoals)}], " +
+                $"BossGoalAmount={LaikaMod.WorldOptions.BossGoalAmount}, " +
+                $"PuppyGiftGoalAmount={LaikaMod.WorldOptions.PuppyGiftGoalAmount}, " +
+                $"WastelanderGoalAmount={LaikaMod.WorldOptions.WastelanderGoalAmount}, " +
                 $"VisceraProtection={LaikaMod.WorldOptions.VisceraProtection}"
             );
 
@@ -164,11 +293,14 @@ public partial class ArchipelagoClientManager
                 $"HadDeathAmnesty={hadDeathAmnesty}, " +
                 $"HadDeathAmnestyCount={hadDeathAmnestyCount}, " +
                 $"HadAutoPurchaseHints={hadAutomaticPurchaseHints}, " +
+                $"HadGoalChecklist={hadGoalChecklist}, " +
+                $"HadGoalOptions={hadGoalOptions}, " +
                 $"SlotDataWeaponMode={LaikaMod.WorldOptions.WeaponMode}, " +
                 $"SlotDataDeathLink={LaikaMod.WorldOptions.DeathLinkEnabled}, " +
                 $"SlotDataDeathAmnesty={LaikaMod.WorldOptions.DeathAmnestyEnabled}, " +
                 $"SlotDataDeathAmnestyCount={LaikaMod.WorldOptions.DeathAmnestyCount}, " +
-                $"SlotDataAutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}"
+                $"SlotDataAutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}, " +
+                $"SlotDataGoalChecklist={LaikaMod.WorldOptions.ShowGoalChecklist}"
             );
 
             if (LaikaMod.SessionState != null)
@@ -187,6 +319,16 @@ public partial class ArchipelagoClientManager
                     LaikaMod.WorldOptions.SkipRoyBoat;
                 options.AutomaticPurchaseHints =
                     LaikaMod.WorldOptions.AutomaticPurchaseHints;
+                options.GoalCategories = new List<string>(
+                    LaikaMod.WorldOptions.GoalCategories ?? new List<string>()
+                );
+                options.GoalAmount = LaikaMod.WorldOptions.GoalAmount;
+                options.BossGoals = new List<string>(
+                    LaikaMod.WorldOptions.BossGoals ?? new List<string>()
+                );
+                options.BossGoalAmount = LaikaMod.WorldOptions.BossGoalAmount;
+                options.PuppyGiftGoalAmount = LaikaMod.WorldOptions.PuppyGiftGoalAmount;
+                options.WastelanderGoalAmount = LaikaMod.WorldOptions.WastelanderGoalAmount;
                 options.VisceraProtection =
                     LaikaMod.WorldOptions.VisceraProtection;
 
@@ -237,11 +379,17 @@ public partial class ArchipelagoClientManager
                     $"DeathAmnestyOverride={options.DeathAmnestyLocalOverrideEnabled}, " +
                     $"DeathAmnestyCount={LaikaMod.WorldOptions.DeathAmnestyCount}, " +
                     $"DeathAmnestyCountOverride={options.DeathAmnestyCountLocalOverrideEnabled}, " +
-                    $"AutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}"
+                    $"AutoPurchaseHints={LaikaMod.WorldOptions.AutomaticPurchaseHints}, " +
+                    $"Goals=[{string.Join(",", LaikaMod.WorldOptions.GoalCategories)}], " +
+                    $"GoalAmount={LaikaMod.WorldOptions.GoalAmount}"
                 );
             }
 
             LaikaMod.HasAppliedLiveSlotData = true;
+
+            // Re-evaluate after reconnect using the live seed configuration plus
+            // server-imported checked locations and this save's received items.
+            LaikaMod.EvaluateAPGoalCompletion("AP live slot_data applied");
         }
         catch (Exception ex)
         {
