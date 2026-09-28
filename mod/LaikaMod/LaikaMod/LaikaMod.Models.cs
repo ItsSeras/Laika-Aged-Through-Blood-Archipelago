@@ -106,6 +106,37 @@ public class APWorldOptions
         = VisceraProtectionMode.Off;
 }
 
+public class APLocationPreview
+{
+    public long LocationId { get; private set; }
+    public long ItemId { get; private set; }
+    public string ItemName { get; private set; }
+    public int RecipientSlot { get; private set; }
+    public string RecipientName { get; private set; }
+
+    public APLocationPreview(
+        long locationId,
+        long itemId,
+        string itemName,
+        int recipientSlot,
+        string recipientName)
+    {
+        LocationId = locationId;
+        ItemId = itemId;
+        ItemName = itemName;
+        RecipientSlot = recipientSlot;
+        RecipientName = recipientName;
+    }
+
+    public string DisplayText
+    {
+        get
+        {
+            return ItemName + " for " + RecipientName;
+        }
+    }
+}
+
 public class PendingItem
 {
     public ItemKind Kind { get; private set; }
@@ -113,6 +144,9 @@ public class PendingItem
     public int Amount { get; private set; }
     public string DisplayName { get; private set; }
     public long ApItemId { get; private set; } = -1;
+    public string SourcePlayerName { get; private set; }
+    public string SourceLocationName { get; private set; }
+    public bool PresentationQueued { get; private set; }
 
     public PendingItem(ItemKind kind, string id, int amount, string displayName)
     {
@@ -127,6 +161,22 @@ public class PendingItem
         ApItemId = apItemId;
     }
 
+    public void SetReceiveMetadata(string playerName, string locationName)
+    {
+        SourcePlayerName = playerName;
+        SourceLocationName = locationName;
+    }
+
+    public void MarkPresentationQueued()
+    {
+        PresentationQueued = true;
+    }
+
+    public void ResetPresentationQueued()
+    {
+        PresentationQueued = false;
+    }
+
     public void AddAmount(int amount)
     {
         Amount += amount;
@@ -134,7 +184,7 @@ public class PendingItem
 
     public override string ToString()
     {
-        return $"Kind={Kind}, Id={Id}, Amount={Amount}, DisplayName={DisplayName}, ApItemId={ApItemId}";
+        return $"Kind={Kind}, Id={Id}, Amount={Amount}, DisplayName={DisplayName}, ApItemId={ApItemId}, SourcePlayer={SourcePlayerName}";
     }
 }
 

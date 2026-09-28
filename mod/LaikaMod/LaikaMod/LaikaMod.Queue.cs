@@ -1,10 +1,12 @@
 ﻿using BepInEx;
+using HarmonyLib;
 using Laika.Cassettes;
 using Laika.Economy;
 using Laika.Inventory;
 using Laika.Persistence;
 using Laika.Quests;
 using Laika.Quests.Goals;
+using Laika.UI.InGame;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -13,6 +15,477 @@ using UnityEngine;
 // Pending item queue, item granting, reconciliation, and DeathLink helpers.
 public partial class LaikaMod
 {
+    // ===== AP presentation popup queue =====
+    // Item grants and location checks never wait for these popups. Presentation is
+    // cosmetic only and is shown later when Laika has no other in-game screen open.
+
+    private sealed class APPresentationPopupRequest
+    {
+        internal Sprite Sprite;
+        internal string Title;
+        internal string Message;
+        internal Action OnCloseCallback;
+        internal string DebugTag;
+    }
+
+    private static readonly Queue<APPresentationPopupRequest>
+        PendingPresentationPopups = new Queue<APPresentationPopupRequest>();
+
+    private static readonly Dictionary<PendingItem, APPresentationPopupRequest>
+        CapturedGrantPresentations =
+            new Dictionary<PendingItem, APPresentationPopupRequest>();
+
+    internal static PendingItem ActiveAPGrantPresentationItem;
+
+    // Vanilla key-item rewards sometimes must be allowed to run so their original
+    // popup callback can advance quest/dialogue state. While such an AP location
+    // reward is being added, keep a one-shot context so the vanilla popup can be
+    // rebranded as an AP location check without suppressing its callback.
+    private static APLocationDefinition ActiveVanillaLocationPopupDefinition;
+    private static string ActiveVanillaLocationPopupItemId;
+
+    internal static void ArmVanillaLocationPopupPresentation(
+        APLocationDefinition definition,
+        string sourceItemId)
+    {
+        if (definition == null || string.IsNullOrEmpty(sourceItemId))
+            return;
+
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
+        ActiveVanillaLocationPopupDefinition = definition;
+        ActiveVanillaLocationPopupItemId = sourceItemId;
+
+        LogInfo(
+            $"AP PRESENTATION: armed vanilla location popup rewrite -> " +
+            $"{definition.DisplayName} ({sourceItemId})"
+        );
+    }
+
+    internal static void ArmVanillaLocationPopupPresentation(
+        APLocationDefinition definition,
+        ItemData item,
+        bool silent)
+    {
+        if (definition == null || item == null || string.IsNullOrEmpty(item.id))
+            return;
+
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
+        if (IsGrantingAPItem || silent || item.IsSilentItem || !item.IsKeyItem)
+            return;
+
+        ArmVanillaLocationPopupPresentation(definition, item.id);
+    }
+
+    internal static void ClearVanillaLocationPopupPresentation(string itemId)
+    {
+        if (string.IsNullOrEmpty(ActiveVanillaLocationPopupItemId))
+            return;
+
+        if (!string.IsNullOrEmpty(itemId) &&
+            !string.Equals(
+                ActiveVanillaLocationPopupItemId,
+                itemId,
+                StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        ActiveVanillaLocationPopupDefinition = null;
+        ActiveVanillaLocationPopupItemId = null;
+    }
+
+    private static string APPresentationPlainText(string value)
+    {
+        return (value ?? string.Empty)
+            .Replace('<', '‹')
+            .Replace('>', '›')
+            .Replace('\r', ' ')
+            .Replace('\n', ' ');
+    }
+
+    private static bool ShouldShowReceivedItemPopup(PendingItem item)
+    {
+        if (item == null || string.IsNullOrWhiteSpace(item.SourcePlayerName))
+            return false;
+
+        switch (item.Kind)
+        {
+            case ItemKind.Weapon:
+            case ItemKind.WeaponUpgrade:
+            case ItemKind.Collectible:
+            case ItemKind.PuppyTreat:
+            case ItemKind.KeyItem:
+                return true;
+
+            // Ingredients, materials, currency and map pieces are intentionally
+            // quiet because their normal Laika acquisition is not a major popup.
+            default:
+                return false;
+        }
+    }
+
+    private static Sprite ResolveReceivedItemPresentationSprite(PendingItem item)
+    {
+        try
+        {
+            if (item == null)
+                return null;
+
+            var loader = Singleton<ItemDataLoader>.Instance;
+            if (loader == null)
+                return null;
+
+            ItemData data = null;
+
+            if (item.Kind == ItemKind.Weapon ||
+                item.Kind == ItemKind.WeaponUpgrade)
+            {
+                data = loader.FindWeapon(item.Id);
+            }
+            else
+            {
+                data = loader.Find(item.Id);
+            }
+
+            if (data == null)
+                return null;
+
+            return data.BigIcon != null ? data.BigIcon : data.Icon;
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                $"AP PRESENTATION: failed resolving received-item sprite for " +
+                $"{item?.DisplayName}:\n{ex}"
+            );
+            return null;
+        }
+    }
+
+    private static void EnqueuePresentationPopup(
+        Sprite sprite,
+        string title,
+        string message,
+        Action onCloseCallback,
+        string debugTag)
+    {
+        PendingPresentationPopups.Enqueue(
+            new APPresentationPopupRequest
+            {
+                Sprite = sprite,
+                Title = title,
+                Message = message,
+                OnCloseCallback = onCloseCallback,
+                DebugTag = debugTag
+            }
+        );
+
+        LogInfo(
+            $"AP PRESENTATION: queued popup -> {debugTag}. " +
+            $"Pending={PendingPresentationPopups.Count}"
+        );
+    }
+
+    internal static void ProcessPendingPresentationPopups()
+    {
+        if (PendingPresentationPopups.Count == 0)
+            return;
+
+        if (IsActuallyOnTitleScreen())
+            return;
+
+        InGameUIManager ui = MonoSingleton<InGameUIManager>.Instance;
+        if (ui == null || ui.IsScreenOpen)
+            return;
+
+        APPresentationPopupRequest request = PendingPresentationPopups.Dequeue();
+
+        try
+        {
+            Sprite sprite = request.Sprite ?? GetRenatoPopupLogoSprite();
+
+            ui.ShowItemReceivedPopup(
+                sprite,
+                request.Title ?? string.Empty,
+                request.Message ?? string.Empty,
+                delegate
+                {
+                    try
+                    {
+                        request.OnCloseCallback?.Invoke();
+                    }
+                    catch (Exception ex)
+                    {
+                        LogWarning(
+                            $"AP PRESENTATION: popup close callback failed for " +
+                            $"{request.DebugTag}:\n{ex}"
+                        );
+                    }
+                }
+            );
+
+            LogInfo(
+                $"AP PRESENTATION: showing popup -> {request.DebugTag}. " +
+                $"Remaining={PendingPresentationPopups.Count}"
+            );
+        }
+        catch (Exception ex)
+        {
+            LogWarning(
+                $"AP PRESENTATION: failed showing popup {request.DebugTag}:\n{ex}"
+            );
+
+            try
+            {
+                request.OnCloseCallback?.Invoke();
+            }
+            catch
+            {
+            }
+        }
+    }
+
+    internal static void QueueSentLocationPresentation(
+        APLocationDefinition definition)
+    {
+        if (definition == null || CoroutineRunner == null)
+            return;
+
+        CoroutineRunner.StartCoroutine(
+            WaitForSentLocationPresentation(definition)
+        );
+    }
+
+    private static System.Collections.IEnumerator WaitForSentLocationPresentation(
+        APLocationDefinition definition)
+    {
+        float deadline = Time.unscaledTime + 10f;
+
+        while (Time.unscaledTime < deadline)
+        {
+            ArchipelagoClientManager client =
+                ArchipelagoClientManager.Instance;
+
+            if (client == null || !client.IsConnected)
+                yield break;
+
+            APLocationPreview preview = client.GetLocationPreview(
+                definition.LocationId,
+                false,
+                "AP SEND PREVIEW"
+            );
+
+            if (preview != null)
+            {
+                int localSlot =
+                    SessionState != null && SessionState.Connection != null
+                        ? SessionState.Connection.Slot
+                        : 0;
+
+                // Self-sends are represented by the received-item popup instead,
+                // where we can use the actual Laika item artwork.
+                if (preview.RecipientSlot != localSlot)
+                {
+                    EnqueuePresentationPopup(
+                        GetRenatoPopupLogoSprite(),
+                        "ITEM SENT!",
+                        APPresentationPlainText(preview.ItemName) +
+                            "\nTo " +
+                            APPresentationPlainText(preview.RecipientName),
+                        null,
+                        "sent " + definition.DisplayName
+                    );
+                }
+
+                yield break;
+            }
+
+            yield return null;
+        }
+
+        LogWarning(
+            $"AP PRESENTATION: timed out waiting for sent-item preview -> " +
+            $"{definition.DisplayName}"
+        );
+    }
+
+    private static void CaptureReceivedPresentation(
+        PendingItem item,
+        Sprite vanillaSprite,
+        Action onCloseCallback)
+    {
+        if (item == null || item.PresentationQueued)
+            return;
+
+        item.MarkPresentationQueued();
+
+        if (!ShouldShowReceivedItemPopup(item))
+            return;
+
+        Sprite sprite =
+            ResolveReceivedItemPresentationSprite(item) ?? vanillaSprite;
+
+        CapturedGrantPresentations[item] =
+            new APPresentationPopupRequest
+            {
+                Sprite = sprite,
+                Title = "ITEM RECEIVED!",
+                Message = APPresentationPlainText(item.DisplayName) +
+                    "\nFrom " +
+                    APPresentationPlainText(item.SourcePlayerName),
+                OnCloseCallback = onCloseCallback,
+                DebugTag = "received " + item.DisplayName
+            };
+    }
+
+    private static void QueueReceivedItemPresentationIfNeeded(PendingItem item)
+    {
+        if (item == null)
+            return;
+
+        if (!ShouldShowReceivedItemPopup(item))
+        {
+            CapturedGrantPresentations.Remove(item);
+            return;
+        }
+
+        APPresentationPopupRequest captured;
+        if (CapturedGrantPresentations.TryGetValue(item, out captured))
+        {
+            CapturedGrantPresentations.Remove(item);
+            PendingPresentationPopups.Enqueue(captured);
+            LogInfo(
+                $"AP PRESENTATION: committed captured received popup -> " +
+                $"{item.DisplayName}. Pending={PendingPresentationPopups.Count}"
+            );
+            return;
+        }
+
+        // Some grant types (notably weapons) do not invoke Laika's vanilla
+        // ItemReceivedPopup. Give those the same AP presentation as a fallback.
+        item.MarkPresentationQueued();
+
+        EnqueuePresentationPopup(
+            ResolveReceivedItemPresentationSprite(item),
+            "ITEM RECEIVED!",
+            APPresentationPlainText(item.DisplayName) +
+                "\nFrom " +
+                APPresentationPlainText(item.SourcePlayerName),
+            null,
+            "received fallback " + item.DisplayName
+        );
+    }
+
+    private static void DiscardCapturedGrantPresentation(PendingItem item)
+    {
+        if (item == null)
+            return;
+
+        CapturedGrantPresentations.Remove(item);
+        item.ResetPresentationQueued();
+    }
+
+    // Intercept popups created during a concrete AP item grant. The actual item
+    // grant continues immediately, while its visual presentation is serialized
+    // through our cosmetic queue so back-to-back received items do not overwrite
+    // each other or fight shop/camera screens.
+    [HarmonyPatch(typeof(InGameUIManager), "ShowItemReceivedPopup")]
+    public class InGameUIManager_ShowItemReceivedPopup_APPresentationPatch
+    {
+        static bool Prefix(
+            ref Sprite sprite,
+            ref string localizedTitle,
+            ref string localizedMessage,
+            Action onCloseCallback)
+        {
+            try
+            {
+                // Vanilla quest/key-item rewards need their real popup to stay alive
+                // because its close callback may advance dialogue or restore control.
+                // Change only the presentation and let the original popup/callback run.
+                if (!IsGrantingAPItem &&
+                    SessionState != null &&
+                    SessionState.APEnabled &&
+                    ActiveVanillaLocationPopupDefinition != null)
+                {
+                    APLocationDefinition location =
+                        ActiveVanillaLocationPopupDefinition;
+
+                    string itemId = ActiveVanillaLocationPopupItemId;
+                    ClearVanillaLocationPopupPresentation(itemId);
+
+                    if (HasLocationBeenSent(location.LocationId))
+                    {
+                        Sprite apLogo = GetRenatoPopupLogoSprite();
+                        if (apLogo != null)
+                            sprite = apLogo;
+
+                        localizedTitle = "LOCATION SENT!";
+                        localizedMessage =
+                            APPresentationPlainText(location.DisplayName);
+
+                        LogInfo(
+                            $"AP PRESENTATION: rewrote vanilla location popup -> " +
+                            $"{location.DisplayName} ({location.LocationId})"
+                        );
+                    }
+                    else
+                    {
+                        LogWarning(
+                            $"AP PRESENTATION: vanilla location popup fired before " +
+                            $"location was marked sent -> {location.DisplayName}. " +
+                            "Keeping vanilla text."
+                        );
+                    }
+
+                    return true;
+                }
+
+                PendingItem item = ActiveAPGrantPresentationItem;
+
+                if (!IsGrantingAPItem || item == null ||
+                    string.IsNullOrWhiteSpace(item.SourcePlayerName))
+                {
+                    return true;
+                }
+
+                CaptureReceivedPresentation(
+                    item,
+                    sprite,
+                    onCloseCallback
+                );
+
+                // If this AP item is intentionally silent, preserve a rare
+                // callback rather than dropping it. Our AP grant calls normally
+                // pass null here, but this keeps the interception defensive.
+                if (!ShouldShowReceivedItemPopup(item) &&
+                    onCloseCallback != null)
+                {
+                    onCloseCallback();
+                }
+
+                LogInfo(
+                    $"AP PRESENTATION: intercepted vanilla received popup for " +
+                    $"{item.DisplayName}. Eligible={ShouldShowReceivedItemPopup(item)}"
+                );
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                LogWarning(
+                    "AP PRESENTATION: received-popup interception failed; " +
+                    "allowing vanilla popup.\n" + ex
+                );
+                return true;
+            }
+        }
+    }
+
     // ===== Queue processing =====
     // Development-only queue entries go here when I want to force-test item grants.
     // These are commented examples for every ItemKind currently supported by the grant handler.
@@ -155,10 +628,22 @@ public partial class LaikaMod
 
                 try
                 {
-                    bool granted = TryGrantPendingItem(item, sourceTag);
+                    item.ResetPresentationQueued();
+                    ActiveAPGrantPresentationItem = item;
+
+                    bool granted;
+                    try
+                    {
+                        granted = TryGrantPendingItem(item, sourceTag);
+                    }
+                    finally
+                    {
+                        ActiveAPGrantPresentationItem = null;
+                    }
 
                     if (granted)
                     {
+                        QueueReceivedItemPresentationIfNeeded(item);
                         // A first AP weapon can activate G_GUN_RECEIVED during this pass.
                         // Queue the missing Pistol now so this pass can deliver it too.
                         if (item.Kind == ItemKind.Weapon &&
@@ -195,6 +680,8 @@ public partial class LaikaMod
                     }
                     else
                     {
+                        DiscardCapturedGrantPresentation(item);
+
                         if (ShouldKeepPendingAfterFailedGrant(item, sourceTag))
                         {
                             remainingQueue.Enqueue(item);
@@ -215,6 +702,8 @@ public partial class LaikaMod
                 }
                 catch (Exception ex)
                 {
+                    ActiveAPGrantPresentationItem = null;
+                    DiscardCapturedGrantPresentation(item);
                     LogError($"{sourceTag}: exception while processing {item}:\n{ex}");
                     remainingQueue.Enqueue(item);
                 }

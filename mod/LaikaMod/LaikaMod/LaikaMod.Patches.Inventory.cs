@@ -194,6 +194,12 @@ public partial class LaikaMod
                         );
                     }
 
+                    LaikaMod.ArmVanillaLocationPopupPresentation(
+                        definition,
+                        item,
+                        silent
+                    );
+
                     return true;
                 }
 
@@ -237,6 +243,12 @@ public partial class LaikaMod
                         );
                     }
 
+                    LaikaMod.ArmVanillaLocationPopupPresentation(
+                        definition,
+                        item,
+                        silent
+                    );
+
                     return true;
                 }
 
@@ -259,6 +271,25 @@ public partial class LaikaMod
                 LaikaMod.LogError($"InventoryManager_AddItem_APLocationPatch exception:\n{ex}");
                 return true;
             }
+        }
+
+        static Exception Finalizer(ItemData item, Exception __exception)
+        {
+            try
+            {
+                // If no popup was produced (silent item, failed add, unusual flow),
+                // do not let the one-shot location context leak into a later popup.
+                if (item != null)
+                    LaikaMod.ClearVanillaLocationPopupPresentation(item.id);
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    "InventoryManager_AddItem_APLocationPatch finalizer cleanup failed:\n" + ex
+                );
+            }
+
+            return __exception;
         }
 
         static void Postfix(ItemData item, int amount, Action onAddedCallback, bool silent, bool __result)

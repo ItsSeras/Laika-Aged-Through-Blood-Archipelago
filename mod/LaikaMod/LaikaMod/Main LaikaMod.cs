@@ -142,6 +142,10 @@ public partial class LaikaMod : BaseUnityPlugin
             // Process them here so the actual vanilla death is always evaluated
             // on Unity's main thread, independently of title-screen/item-pump logic.
             LaikaMod.ProcessPendingIncomingDeathLink();
+
+            // Cosmetic AP item/send popups are also serialized on Unity's main
+            // thread and only appear when the normal in-game UI is free.
+            LaikaMod.ProcessPendingPresentationPopups();
         }
     }
 

@@ -1,9 +1,19 @@
 ﻿using HarmonyLib;
 using Laika.Cassettes;
+using Laika.Economy.Shops;
 using Laika.Inventory;
+using Laika.UI;
+using Laika.UI.InGame;
+using Laika.UI.InGame.Inventory;
+using Laika.UI.InGame.Shop;
 using Laika.Persistence;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
 public partial class LaikaMod
 {
@@ -22,6 +32,467 @@ public partial class LaikaMod
             itemId,
             StringComparison.Ordinal
         );
+    }
+
+    // ===== AP-aware normal shop / travelling merchant presentation =====
+
+    private static readonly FieldInfo ShopScreenShopContentField =
+        AccessTools.Field(typeof(ShopScreen), "shopContent");
+
+    private static readonly FieldInfo ShopScreenPreviewField =
+        AccessTools.Field(typeof(ShopScreen), "shopItemPreview");
+
+    private static readonly FieldInfo ItemSlotDisplayField =
+        AccessTools.Field(typeof(ItemSlotWidget), "display");
+
+    private static readonly FieldInfo ItemDisplayIconField =
+        AccessTools.Field(typeof(ItemDisplayWidget), "itemIcon");
+
+    private static readonly FieldInfo ItemDisplayNameField =
+        AccessTools.Field(typeof(ItemDisplayWidget), "itemName");
+
+    private static readonly FieldInfo ItemPreviewImageField =
+        AccessTools.Field(typeof(ItemPreviewWidget), "itemImage");
+
+    private static readonly FieldInfo ItemPreviewNameField =
+        AccessTools.Field(typeof(ItemPreviewWidget), "itemName");
+
+    private static readonly FieldInfo ItemPreviewDescriptionField =
+        AccessTools.Field(typeof(ItemPreviewWidget), "itemDescription");
+
+    private static readonly FieldInfo ItemPreviewIngredientDescriptionField =
+        AccessTools.Field(typeof(ItemPreviewWidget), "ingredientDescription");
+
+    private static readonly FieldInfo ItemPreviewIngredientTagField =
+        AccessTools.Field(typeof(ItemPreviewWidget), "ingredientTag");
+
+    private static readonly FieldInfo ShopPreviewInventoryAmountField =
+        AccessTools.Field(typeof(ShopItemPreviewWidget), "itemInventoryAmount");
+
+    private static readonly FieldInfo ShopCartImageField =
+        AccessTools.Field(typeof(ShopCart), "itemImage");
+
+    private static readonly FieldInfo ShopCartNameField =
+        AccessTools.Field(typeof(ShopCart), "itemName");
+
+    private static readonly FieldInfo ShopCartInventoryAmountField =
+        AccessTools.Field(typeof(ShopCart), "inventoryAmount");
+
+    private static bool TryGetActiveAPShopLocation(
+        ItemData itemData,
+        out APLocationDefinition definition)
+    {
+        definition = null;
+
+        if (SessionState == null || !SessionState.APEnabled ||
+            itemData == null || string.IsNullOrEmpty(itemData.id))
+        {
+            return false;
+        }
+
+        if (!TryGetLocationDefinition(itemData.id, out definition))
+            return false;
+
+        // Once the AP location has already been checked, any remaining vanilla
+        // stock is no longer representing an unresolved AP purchase.
+        if (HasLocationBeenSent(definition.LocationId))
+            return false;
+
+        return true;
+    }
+
+    private static List<long> GetCurrentAPShopLocationIds(ShopController shop)
+    {
+        var result = new List<long>();
+
+        if (shop == null || shop.ItemStock == null)
+            return result;
+
+        foreach (KeyValuePair<ItemData, int> entry in shop.ItemStock)
+        {
+            // This is the spoiler boundary: only stock the game has actually
+            // made available right now is allowed to be scouted/hinted.
+            if (entry.Key == null || entry.Value <= 0)
+                continue;
+
+            APLocationDefinition definition;
+            if (!TryGetActiveAPShopLocation(entry.Key, out definition))
+                continue;
+
+            if (!result.Contains(definition.LocationId))
+                result.Add(definition.LocationId);
+        }
+
+        return result;
+    }
+
+    private static bool TryGetCachedAPShopPreview(
+        ItemData itemData,
+        out APLocationDefinition definition,
+        out APLocationPreview preview)
+    {
+        preview = null;
+
+        if (!TryGetActiveAPShopLocation(itemData, out definition))
+            return false;
+
+        ArchipelagoClientManager client =
+            ArchipelagoClientManager.Instance;
+
+        if (client != null)
+        {
+            client.TryGetCachedLocationPreview(
+                definition.LocationId,
+                out preview
+            );
+        }
+
+        return true;
+    }
+
+    private static string GetAPShopLoadingText()
+    {
+        ArchipelagoClientManager client =
+            ArchipelagoClientManager.Instance;
+
+        if (client == null || !client.IsConnected)
+            return "Connect to Archipelago for preview.";
+
+        return WorldOptions.AutomaticPurchaseHints
+            ? "Creating hints and loading shop previews..."
+            : "Loading AP shop preview...";
+    }
+
+    private static void ApplyAPShopGridPresentation(ShopScreen screen)
+    {
+        if (screen == null || SessionState == null || !SessionState.APEnabled)
+            return;
+
+        ItemsGrid grid = ShopScreenShopContentField?.GetValue(screen) as ItemsGrid;
+        if (grid == null)
+            return;
+
+        Sprite logo = GetRenatoPopupLogoSprite();
+
+        foreach (NavigableItem navigable in grid.Items)
+        {
+            ItemSlotWidget slot = navigable as ItemSlotWidget;
+            if (slot == null || slot.DisplayData.ItemData == null)
+                continue;
+
+            APLocationDefinition definition;
+            APLocationPreview preview;
+            if (!TryGetCachedAPShopPreview(
+                slot.DisplayData.ItemData,
+                out definition,
+                out preview))
+            {
+                continue;
+            }
+
+            ItemDisplayWidget display =
+                ItemSlotDisplayField?.GetValue(slot) as ItemDisplayWidget;
+
+            if (display == null)
+                continue;
+
+            Image icon = ItemDisplayIconField?.GetValue(display) as Image;
+            if (icon != null && logo != null)
+                icon.sprite = logo;
+
+            TextMeshProUGUI name =
+                ItemDisplayNameField?.GetValue(display) as TextMeshProUGUI;
+
+            if (name != null)
+                name.text = preview != null ? preview.ItemName : "AP Item";
+        }
+    }
+
+    private static void RefreshHighlightedAPShopPreview(
+        ShopScreen screen,
+        ShopController shop)
+    {
+        if (screen == null || shop == null)
+            return;
+
+        ItemsGrid grid = ShopScreenShopContentField?.GetValue(screen) as ItemsGrid;
+        ShopItemPreviewWidget previewWidget =
+            ShopScreenPreviewField?.GetValue(screen) as ShopItemPreviewWidget;
+
+        if (grid == null || previewWidget == null ||
+            grid.HighlightedItemIdx < 0 ||
+            grid.HighlightedItemIdx >= grid.Items.Count)
+        {
+            return;
+        }
+
+        ItemSlotWidget slot =
+            grid.Items[grid.HighlightedItemIdx] as ItemSlotWidget;
+
+        if (slot == null || slot.DisplayData.ItemData == null)
+            return;
+
+        ItemData itemData = slot.DisplayData.ItemData;
+
+        previewWidget.SetUp(itemData);
+        previewWidget.SetPrice(shop.GetPrice(itemData, 1));
+    }
+
+    private static IEnumerator RefreshAPShopPresentationC(
+        ShopScreen screen,
+        ShopController shop,
+        List<long> locationIds)
+    {
+        ApplyAPShopGridPresentation(screen);
+
+        ArchipelagoClientManager client =
+            ArchipelagoClientManager.Instance;
+
+        if (client == null || !client.IsConnected || locationIds.Count == 0)
+        {
+            RefreshHighlightedAPShopPreview(screen, shop);
+            yield break;
+        }
+
+        float deadline = Time.unscaledTime + 10f;
+
+        while (screen != null &&
+               SessionState != null &&
+               SessionState.APEnabled &&
+               client.IsConnected &&
+               Time.unscaledTime < deadline)
+        {
+            client.PrimeLocationPreviews(
+                locationIds,
+                true,
+                "SHOP AP PREVIEW"
+            );
+
+            if (client.AreLocationPreviewsReady(locationIds))
+                break;
+
+            yield return null;
+        }
+
+        if (screen == null || SessionState == null || !SessionState.APEnabled)
+            yield break;
+
+        ApplyAPShopGridPresentation(screen);
+        RefreshHighlightedAPShopPreview(screen, shop);
+    }
+
+    private static void BeginAPShopPresentation(
+        ShopScreen screen,
+        ShopController shop)
+    {
+        if (screen == null || shop == null ||
+            SessionState == null || !SessionState.APEnabled)
+        {
+            return;
+        }
+
+        List<long> currentLocations =
+            GetCurrentAPShopLocationIds(shop);
+
+        LogInfo(
+            $"SHOP AP PREVIEW: opened shop id={shop.Id}, title={shop.Title}, " +
+            $"currentAPStock={currentLocations.Count}, " +
+            $"autoHints={WorldOptions.AutomaticPurchaseHints}"
+        );
+
+        ApplyAPShopGridPresentation(screen);
+        RefreshHighlightedAPShopPreview(screen, shop);
+
+        if (CoroutineRunner != null)
+        {
+            CoroutineRunner.StartCoroutine(
+                RefreshAPShopPresentationC(
+                    screen,
+                    shop,
+                    currentLocations
+                )
+            );
+        }
+    }
+
+    private static void ApplyAPShopPreviewWidget(
+        ShopItemPreviewWidget widget,
+        ItemData itemData)
+    {
+        if (widget == null)
+            return;
+
+        APLocationDefinition definition;
+        APLocationPreview preview;
+        if (!TryGetCachedAPShopPreview(itemData, out definition, out preview))
+            return;
+
+        Sprite logo = GetRenatoPopupLogoSprite();
+
+        Image image = ItemPreviewImageField?.GetValue(widget) as Image;
+        if (image != null && logo != null)
+        {
+            image.enabled = true;
+            image.sprite = logo;
+            image.preserveAspect = true;
+        }
+
+        TextMeshProUGUI itemName =
+            ItemPreviewNameField?.GetValue(widget) as TextMeshProUGUI;
+
+        if (itemName != null)
+        {
+            itemName.enabled = true;
+            itemName.text = preview != null
+                ? preview.ItemName.ToUpperInvariant()
+                : "RANDOMIZED AP ITEM";
+        }
+
+        TextMeshProUGUI description =
+            ItemPreviewDescriptionField?.GetValue(widget) as TextMeshProUGUI;
+
+        if (description != null)
+        {
+            description.enabled = true;
+            description.text = preview != null
+                ? "For " + preview.RecipientName
+                : GetAPShopLoadingText();
+        }
+
+        TextMeshProUGUI ingredientDescription =
+            ItemPreviewIngredientDescriptionField?.GetValue(widget) as TextMeshProUGUI;
+
+        if (ingredientDescription != null)
+            ingredientDescription.enabled = false;
+
+        Component ingredientTag =
+            ItemPreviewIngredientTagField?.GetValue(widget) as Component;
+
+        if (ingredientTag != null)
+            ingredientTag.gameObject.SetActive(false);
+
+        TextMeshProUGUI inventoryAmount =
+            ShopPreviewInventoryAmountField?.GetValue(widget) as TextMeshProUGUI;
+
+        if (inventoryAmount != null)
+            inventoryAmount.text = "AP";
+    }
+
+    private static void ApplyAPShopCart(ShopCart cart, ShopCart.Data data)
+    {
+        if (cart == null || data == null || data.ItemData == null)
+            return;
+
+        APLocationDefinition definition;
+        APLocationPreview preview;
+        if (!TryGetCachedAPShopPreview(
+            data.ItemData,
+            out definition,
+            out preview))
+        {
+            return;
+        }
+
+        Image image = ShopCartImageField?.GetValue(cart) as Image;
+        Sprite logo = GetRenatoPopupLogoSprite();
+
+        if (image != null && logo != null)
+        {
+            image.sprite = logo;
+            image.preserveAspect = true;
+        }
+
+        TextMeshProUGUI itemName =
+            ShopCartNameField?.GetValue(cart) as TextMeshProUGUI;
+
+        if (itemName != null)
+        {
+            string body = preview != null
+                ? preview.ItemName + "\nfor " + preview.RecipientName
+                : "Randomized AP Item\n" + GetAPShopLoadingText();
+
+            itemName.text = "<size=88%>" + body + "</size>";
+        }
+
+        TextMeshProUGUI inventoryAmount =
+            ShopCartInventoryAmountField?.GetValue(cart) as TextMeshProUGUI;
+
+        if (inventoryAmount != null)
+            inventoryAmount.text = string.Empty;
+    }
+
+    [HarmonyPatch(typeof(ShopScreen), "SetUp")]
+    public class ShopScreen_SetUp_APPreviewPatch
+    {
+        static void Postfix(ShopScreen __instance, object data)
+        {
+            try
+            {
+                if (SessionState == null || !SessionState.APEnabled)
+                    return;
+
+                ShopScreen.ShopScreenData shopData =
+                    data as ShopScreen.ShopScreenData;
+
+                if (shopData == null || shopData.ShopController == null)
+                    return;
+
+                BeginAPShopPresentation(
+                    __instance,
+                    shopData.ShopController
+                );
+            }
+            catch (Exception ex)
+            {
+                LogWarning("SHOP AP PREVIEW: ShopScreen.SetUp failed:\n" + ex);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(ShopItemPreviewWidget), "SetUp")]
+    public class ShopItemPreviewWidget_SetUp_APPreviewPatch
+    {
+        static void Postfix(ShopItemPreviewWidget __instance, object data)
+        {
+            try
+            {
+                if (SessionState == null || !SessionState.APEnabled)
+                    return;
+
+                ApplyAPShopPreviewWidget(
+                    __instance,
+                    data as ItemData
+                );
+            }
+            catch (Exception ex)
+            {
+                LogWarning(
+                    "SHOP AP PREVIEW: ShopItemPreviewWidget.SetUp failed:\n" + ex
+                );
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(ShopCart), "SetUp")]
+    public class ShopCart_SetUp_APPreviewPatch
+    {
+        static void Postfix(ShopCart __instance, object data)
+        {
+            try
+            {
+                if (SessionState == null || !SessionState.APEnabled)
+                    return;
+
+                ApplyAPShopCart(
+                    __instance,
+                    data as ShopCart.Data
+                );
+            }
+            catch (Exception ex)
+            {
+                LogWarning("SHOP AP PREVIEW: ShopCart.SetUp failed:\n" + ex);
+            }
+        }
     }
 
     // Cassette and shop-source Harmony patches.
@@ -137,6 +608,114 @@ public partial class LaikaMod
             {
                 LaikaMod.LogWarning($"ResourceDestructible_CanBeUsed_APCassetteSourcePatch exception:\n{ex}");
             }
+        }
+    }
+
+    // Physical cassette pickups (including cassettes dropped by boomboxes) do not
+    // use InventoryManager.AddItem. CassettesManager shows its vanilla popup before
+    // our AddCassetteToInventory postfix can identify/send the AP location, so arm
+    // the popup rewrite from the concrete ItemInstance pickup instead.
+    [HarmonyPatch(typeof(ItemInstance), "OnEquip")]
+    public class ItemInstance_OnEquip_APCassetteLocationPopupPatch
+    {
+        static void Prefix(ItemInstance __instance, out string __state)
+        {
+            __state = null;
+
+            try
+            {
+                if (__instance == null)
+                    return;
+
+                if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return;
+
+                if (LaikaMod.IsGrantingAPItem)
+                    return;
+
+                CassetteData cassette = __instance.ItemData as CassetteData;
+                if (cassette == null || string.IsNullOrEmpty(cassette.id))
+                    return;
+
+                APLocationDefinition definition;
+                if (!LaikaMod.TryGetLocationDefinition(cassette.id, out definition))
+                    return;
+
+                // Quest-reward cassettes are handled by their completed-quest hooks,
+                // not as generic physical pickups.
+                if (LaikaMod.IsQuestRewardCassetteId(cassette.id))
+                    return;
+
+                // The player has concretely collected the physical cassette source.
+                // Send/mark the AP check before vanilla creates its cassette popup so
+                // ShowItemReceivedPopup can safely rebrand that same popup.
+                if (!LaikaMod.HasSentLocationCheck(definition))
+                {
+                    LaikaMod.TrySendLocationCheck(
+                        definition,
+                        "ItemInstance_OnEquip_APCassetteLocationPopupPatch",
+                        false
+                    );
+                }
+
+                if (!LaikaMod.HasLocationBeenSent(definition.LocationId))
+                {
+                    LaikaMod.LogWarning(
+                        $"AP PRESENTATION: physical cassette pickup was not marked sent before popup -> " +
+                        $"{definition.DisplayName} ({cassette.id}). Keeping vanilla presentation."
+                    );
+
+                    return;
+                }
+
+                LaikaMod.ArmVanillaLocationPopupPresentation(
+                    definition,
+                    cassette.id
+                );
+
+                __state = cassette.id;
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    $"ItemInstance_OnEquip_APCassetteLocationPopupPatch.Prefix exception:\n{ex}"
+                );
+            }
+        }
+
+        static void Postfix(string __state)
+        {
+            try
+            {
+                // Normally ShowItemReceivedPopup consumes the one-shot context. If
+                // AddCassetteToInventory returned false and no popup was created,
+                // clean it here so an unrelated later popup cannot be rewritten.
+                if (!string.IsNullOrEmpty(__state))
+                    LaikaMod.ClearVanillaLocationPopupPresentation(__state);
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    $"ItemInstance_OnEquip_APCassetteLocationPopupPatch.Postfix exception:\n{ex}"
+                );
+            }
+        }
+
+        static Exception Finalizer(string __state, Exception __exception)
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(__state))
+                    LaikaMod.ClearVanillaLocationPopupPresentation(__state);
+            }
+            catch (Exception ex)
+            {
+                LaikaMod.LogWarning(
+                    $"ItemInstance_OnEquip_APCassetteLocationPopupPatch.Finalizer cleanup failed:\n{ex}"
+                );
+            }
+
+            return __exception;
         }
     }
 
@@ -646,10 +1225,22 @@ public partial class LaikaMod
             }
         }
 
-        static void Postfix()
+        static void Postfix(Laika.UI.InGame.Shop.ShopScreen __instance)
         {
             try
             {
+                if (LaikaMod.SessionState != null &&
+                    LaikaMod.SessionState.APEnabled &&
+                    __instance != null)
+                {
+                    ShopController shop =
+                        AccessTools.Field(typeof(ShopScreen), "shop")?.GetValue(__instance)
+                            as ShopController;
+
+                    if (shop != null)
+                        BeginAPShopPresentation(__instance, shop);
+                }
+
                 if (!string.IsNullOrEmpty(LaikaMod.ActiveShopPurchaseItemId))
                 {
                     LaikaMod.LogInfo(

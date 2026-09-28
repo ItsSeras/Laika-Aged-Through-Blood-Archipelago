@@ -83,10 +83,6 @@ public partial class ArchipelagoClientManager
                 {
                     pendingItem.SetApItemId(apItemId);
 
-                    LaikaMod.LogInfo($"AP ITEMS: mapped AP item id {apItemId} -> {pendingItem}");
-
-                    LaikaMod.EnqueueItem(pendingItem);
-
                     string receivedLocationName = ReadStringProperty(receivedItem, "LocationName", "locationName");
                     if (string.IsNullOrWhiteSpace(receivedLocationName))
                     {
@@ -100,6 +96,15 @@ public partial class ArchipelagoClientManager
                             }
                         }
                     }
+
+                    // Keep the AP sender/location attached to this concrete received item.
+                    // Reconcile-created PendingItems intentionally do not have this metadata,
+                    // which prevents old/restored items from showing fresh presentation popups.
+                    pendingItem.SetReceiveMetadata(playerName, receivedLocationName);
+
+                    LaikaMod.LogInfo($"AP ITEMS: mapped AP item id {apItemId} -> {pendingItem}");
+
+                    LaikaMod.EnqueueItem(pendingItem);
 
                     string receiveLine = LaikaMod.BuildReceivedFromOtherPlayerOverlayLine(
                         pendingItem.DisplayName,
