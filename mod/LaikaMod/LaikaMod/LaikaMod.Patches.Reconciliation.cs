@@ -43,6 +43,7 @@ public partial class LaikaMod
 
     // Scene-load reconciliation Harmony patches.
     // These retry AP item/state reconciliation after Laika managers become available.
+    [HarmonyPatch(typeof(PersistenceManager), "OnSceneLoaded")]
     public class PersistenceManager_OnSceneLoaded_APReconcilePatch
     {
         static void Postfix(Scene scene, LoadSceneMode mode)
