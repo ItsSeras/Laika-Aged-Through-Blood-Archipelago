@@ -1236,6 +1236,8 @@ public partial class LaikaMod
 
         static void Postfix(Laika.UI.InGame.Shop.ShopScreen __instance)
         {
+            LaikaMod.SaveCompletedAPShopPurchase();
+
             try
             {
                 if (LaikaMod.SessionState != null &&

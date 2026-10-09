@@ -39,7 +39,8 @@ public partial class LaikaMod
             }
 
             string json = File.ReadAllText(path);
-            APSaveState state = JsonConvert.DeserializeObject<APSaveState>(json) ?? new APSaveState();
+            APSaveState state = JsonConvert.DeserializeObject<APSaveState>(json,
+                new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace }) ?? new APSaveState();
 
             state.SaveSlotIndex = slotIndex;
             if (state.Connection == null)
@@ -348,7 +349,8 @@ public partial class LaikaMod
             }
 
             string json = File.ReadAllText(path);
-            SessionState = JsonConvert.DeserializeObject<APSaveState>(json);
+            SessionState = JsonConvert.DeserializeObject<APSaveState>(json,
+                new JsonSerializerSettings { ObjectCreationHandling = ObjectCreationHandling.Replace });
 
             if (SessionState == null)
             {
@@ -394,6 +396,11 @@ public partial class LaikaMod
 
     internal static void SaveSessionStateForSlot(int slotIndex)
     {
+        TrySaveSessionStateForSlot(slotIndex);
+    }
+
+    internal static bool TrySaveSessionStateForSlot(int slotIndex)
+    {
         try
         {
             if (SessionState == null)
@@ -406,7 +413,14 @@ public partial class LaikaMod
             string path = GetAPStatePathForSlot(slotIndex);
             string json = JsonConvert.SerializeObject(SessionState, Formatting.Indented);
 
-            File.WriteAllText(path, json);
+            // Never truncate the only receipt journal during an interrupted
+            // write. Replace the existing file only after the new JSON is ready.
+            string temporaryPath = path + ".tmp";
+            File.WriteAllText(temporaryPath, json);
+            if (File.Exists(path))
+                File.Replace(temporaryPath, path, path + ".bak");
+            else
+                File.Move(temporaryPath, path);
 
             LogInfo(
                 $"AP session state saved for slot {slotIndex}. " +
@@ -414,10 +428,12 @@ public partial class LaikaMod
                 $"SentChecks={SessionState.SentLocationIds.Count}, " +
                 $"GoalReported={SessionState.GoalReported}"
             );
+            return true;
         }
         catch (Exception ex)
         {
             LogError($"Failed to save AP session state for slot {slotIndex}:\n{ex}");
+            return false;
         }
     }
 

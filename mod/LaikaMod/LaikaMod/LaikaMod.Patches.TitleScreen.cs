@@ -473,6 +473,8 @@ public partial class LaikaMod
     {
         static void Prefix(int slot)
         {
+            LaikaMod.SuspendAPItemDelivery("starting a new game");
+
             try
             {
                 LaikaMod.BindToGameSaveSlot(
@@ -505,6 +507,8 @@ public partial class LaikaMod
     {
         static void Prefix(int slot)
         {
+            LaikaMod.SuspendAPItemDelivery("loading a save slot");
+
             try
             {
                 LaikaMod.BindToGameSaveSlot(
@@ -549,6 +553,8 @@ public partial class LaikaMod
 
                 if (LaikaMod.ActiveSaveSlotIndex == slot)
                 {
+                    LaikaMod.SuspendAPItemDelivery("active save deleted");
+
                     if (ArchipelagoClientManager.Instance != null &&
                         (ArchipelagoClientManager.Instance.IsConnected || ArchipelagoClientManager.Instance.IsConnecting))
                     {
@@ -571,6 +577,8 @@ public partial class LaikaMod
     {
         static void Prefix()
         {
+            LaikaMod.SuspendAPItemDelivery("returning to title screen");
+
             if (ArchipelagoClientManager.Instance != null &&
                 ArchipelagoClientManager.Instance.IsConnected)
             {

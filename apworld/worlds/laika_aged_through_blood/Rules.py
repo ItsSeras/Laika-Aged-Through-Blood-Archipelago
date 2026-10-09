@@ -960,8 +960,10 @@ def set_rules(world):
             )
         )
 
-    # Radio Silence harpoon pieces.
-    # These are physically found during Radio Silence after reaching Roy's boat/lighthouse route.
+    # Radio Silence harpoon-piece locations remain physical pickup checks.
+    # Dash can bypass the repair sequence without collecting these locations.
+    # Both pickups remain obtainable after the quest; quest completion alone
+    # should not automatically award their checks.
     for name in [
         "Key Item: Carved Whale Tooth",
         "Key Item: Long Rope",

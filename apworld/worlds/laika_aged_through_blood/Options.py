@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import Choice, DefaultOnToggle, OptionSet, PerGameCommonOptions, Range, Toggle
+from Options import Choice, DefaultOnToggle, OptionSet, PerGameCommonOptions, Range, StartInventoryPool, Toggle
 
 
 GOAL_CATEGORY_BOSSES = "bosses"
@@ -125,6 +125,24 @@ class WeaponMode(Choice):
     option_direct = 0
     option_crafting = 1
     default = 0
+
+
+class LaikaStartInventoryPool(StartInventoryPool):
+    """Start with items removed from your randomized pool and replaced by filler.
+
+    Fixed items are limited to their pool counts. Viscera x300 and ingredients
+    are supported too; their combined requested count cannot exceed the pool's
+    random filler slots. Each Viscera x300 copy grants 300 viscera.
+
+    Blueprint weapon names work in both weapon modes, using the existing
+    mode-aware unlock behavior. Direct weapon names are accepted as aliases.
+    Crafting materials remain separate items in Crafting mode.
+
+    Heartglaze Flower and Harpoon Pieces still wait for their safe quest states
+    in-game. Weapon upgrades may wait for their weapon. Use exact item names.
+    """
+
+    display_name = "Starting Inventory from Pool"
 
 
 class DeathLink(Toggle):
@@ -256,6 +274,7 @@ class LaikaOptions(PerGameCommonOptions):
     puppy_gift_goal_amount: PuppyGiftGoalAmount
     wastelander_goal_amount: WastelanderGoalAmount
     weapon_mode: WeaponMode
+    start_inventory_from_pool: LaikaStartInventoryPool
     death_link: DeathLink
     death_amnesty: DeathAmnesty
     death_amnesty_count: DeathAmnestyCount

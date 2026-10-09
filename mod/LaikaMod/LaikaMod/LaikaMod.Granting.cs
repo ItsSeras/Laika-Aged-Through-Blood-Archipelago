@@ -3,6 +3,9 @@ using Laika.Economy;
 using Laika.Inventory;
 using Laika.Persistence;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Globalization;
 
 public partial class LaikaMod
 {
@@ -34,10 +37,14 @@ public partial class LaikaMod
                     return TryGrantWeaponUpgrade(item, sourceTag);
 
                 case ItemKind.Ingredient:
-                    return TryGrantIngredient(item, sourceTag);
+                    return item.ReceivedItemIndex >= 0
+                        ? TryGrantRecordedInventoryConsumable(item, sourceTag)
+                        : TryGrantIngredient(item, sourceTag);
 
                 case ItemKind.Material:
-                    return TryGrantMaterial(item, sourceTag);
+                    return item.ReceivedItemIndex >= 0
+                        ? TryGrantRecordedInventoryConsumable(item, sourceTag)
+                        : TryGrantMaterial(item, sourceTag);
 
                 case ItemKind.Collectible:
                     return TryGrantCollectible(item, sourceTag);
@@ -88,19 +95,314 @@ public partial class LaikaMod
             }
 
             int before = economy.Money;
+            SaveData save = null;
+            string marker = null;
+            if (item.ReceivedItemIndex >= 0)
+            {
+                bool alreadyApplied;
+                if (!PrepareAPConsumableGrant(item, out save, out marker, out alreadyApplied))
+                    return false;
+                if (alreadyApplied)
+                    return true;
+            }
+
+            if ((long)before + amountToGrant > int.MaxValue)
+            {
+                LogWarning($"{sourceTag}: holding currency receipt to avoid integer overflow.");
+                return false;
+            }
+
+            // AddMoney changes Money before invoking UI/event callbacks. A save
+            // from one of those callbacks must capture the receipt and balance.
+            if (marker != null)
+                AddAPConsumableMarker(save, marker, amountToGrant);
+
             LogInfo($"{sourceTag}: currency before grant = {before}");
 
-            economy.AddMoney(amountToGrant);
+            try
+            {
+                economy.AddMoney(amountToGrant);
+            }
+            catch (Exception ex)
+            {
+                // Native AddMoney mutates Money before notifying listeners.
+                // A listener failure must not make us repeat an applied receipt.
+                LogWarning($"{sourceTag}: currency was applied but its update callback failed:\n{ex}");
+            }
 
             int after = economy.Money;
             LogInfo($"{sourceTag}: currency after grant = {after}");
 
-            return after > before;
+            return true;
         }
         catch (Exception ex)
         {
             LogError($"{sourceTag}: exception while granting currency:\n{ex}");
             return false;
+        }
+    }
+
+    internal static bool IsSaveTrackedConsumable(ItemKind kind)
+    {
+        return kind == ItemKind.Currency || kind == ItemKind.Ingredient || kind == ItemKind.Material;
+    }
+
+    private static bool PrepareAPConsumableGrant(
+        PendingItem item, out SaveData save, out string marker, out bool alreadyApplied)
+    {
+        save = null;
+        marker = null;
+        alreadyApplied = false;
+        if (!CanProcessAPItems() || item.ReceivedSessionIdentity != SessionState.SessionIdentityKey)
+            return false;
+
+        APConsumableJournal journal = EnsureAPConsumableJournal();
+        if (journal == null)
+            return false;
+
+        if (item.ReceivedItemIndex < journal.LegacyReceiptFloor)
+        {
+            alreadyApplied = true;
+            return true;
+        }
+
+        int amount = item.Kind == ItemKind.Currency ? ResolveCurrencyAmount(item) : item.Amount;
+        APConsumableReceipt receipt = journal.Receipts.Find(
+            entry => entry != null && entry.ReceivedItemIndex == item.ReceivedItemIndex);
+        if (receipt == null || receipt.Kind != item.Kind || receipt.ApItemId != item.ApItemId ||
+            receipt.ItemId != item.Id || receipt.Amount != amount)
+        {
+            LogWarning("AP RECEIPTS: consumable is not in the durable journal; leaving it pending.");
+            return false;
+        }
+
+        save = MonoSingleton<ProgressionManager>.Instance.LocalSaveData;
+        marker = APConsumableMarker(item.ReceivedSessionIdentity, item.ReceivedItemIndex);
+        alreadyApplied = HasAPConsumableMarker(save, marker);
+        return true;
+    }
+
+    private static PersistentValue AddAPConsumableMarker(SaveData save, string marker, int amount)
+    {
+        if (save.values == null)
+            save.values = new List<PersistentValue>();
+        var value = new PersistentValue { id = marker, value = amount.ToString(CultureInfo.InvariantCulture) };
+        save.values.Add(value);
+        return value;
+    }
+
+    internal static bool TryGrantRecordedInventoryConsumable(PendingItem item, string sourceTag)
+    {
+        var inventory = Singleton<InventoryManager>.Instance;
+        if (inventory == null)
+            return false;
+
+        SaveData save;
+        string marker;
+        bool alreadyApplied;
+        if (!PrepareAPConsumableGrant(item, out save, out marker, out alreadyApplied))
+            return false;
+        if (alreadyApplied)
+            return true;
+
+        int before = inventory.GetItemAmount(item.Id);
+        PersistentValue receiptMarker = AddAPConsumableMarker(save, marker, item.Amount);
+        bool granted = item.Kind == ItemKind.Ingredient
+            ? TryGrantIngredient(item, sourceTag)
+            : TryGrantMaterial(item, sourceTag);
+
+        // A vanilla popup callback can fail after AddItem changed the count.
+        // Retain the receipt in that case so a retry cannot double the items.
+        if (granted || inventory.GetItemAmount(item.Id) > before)
+            return true;
+
+        save.values.Remove(receiptMarker);
+        return false;
+    }
+
+    internal static APConsumableJournal EnsureAPConsumableJournal()
+    {
+        if (SessionState == null || !SessionState.APEnabled ||
+            SessionState.SaveSlotIndex != ActiveSaveSlotIndex ||
+            string.IsNullOrWhiteSpace(SessionState.SessionIdentityKey))
+        {
+            return null;
+        }
+
+        APConsumableJournal previous = SessionState.ConsumableJournal;
+        if (previous != null && previous.SessionIdentityKey == SessionState.SessionIdentityKey)
+        {
+            if (previous.Receipts == null)
+                previous.Receipts = new List<APConsumableReceipt>();
+            return previous;
+        }
+
+        var journal = new APConsumableJournal
+        {
+            SessionIdentityKey = SessionState.SessionIdentityKey,
+            LegacyReceiptFloor = Math.Max(0, SessionState.LastProcessedReceivedItemIndex)
+        };
+        SessionState.ConsumableJournal = journal;
+        if (!TrySaveSessionStateForSlot(ActiveSaveSlotIndex))
+        {
+            SessionState.ConsumableJournal = previous;
+            return null;
+        }
+
+        LogInfo("AP RECEIPTS: initialized consumable journal. LegacyReceiptFloor=" +
+            journal.LegacyReceiptFloor + ". Earlier receipts are not automatically refunded.");
+        return journal;
+    }
+
+    internal static bool TryRememberAPConsumableReceipt(PendingItem item, int index)
+    {
+        APConsumableJournal journal = EnsureAPConsumableJournal();
+        if (journal == null || item == null || !IsSaveTrackedConsumable(item.Kind) || index < 0)
+            return false;
+
+        item.SetReceivedItemIndex(index, journal.SessionIdentityKey);
+        if (index < journal.LegacyReceiptFloor)
+            return true;
+
+        int amount = item.Kind == ItemKind.Currency ? ResolveCurrencyAmount(item) : item.Amount;
+        if (amount <= 0)
+            return false;
+
+        APConsumableReceipt existing = journal.Receipts.Find(
+            entry => entry != null && entry.ReceivedItemIndex == index);
+        if (existing != null)
+        {
+            bool matches = existing.Kind == item.Kind && existing.ApItemId == item.ApItemId &&
+                existing.ItemId == item.Id && existing.Amount == amount;
+            if (!matches)
+                LogWarning("AP RECEIPTS: conflicting receipt at index " + index + "; delivery paused.");
+            return matches;
+        }
+
+        var receipt = new APConsumableReceipt
+        {
+            ReceivedItemIndex = index,
+            Kind = item.Kind,
+            ApItemId = item.ApItemId,
+            ItemId = item.Id,
+            DisplayName = item.DisplayName,
+            Amount = amount
+        };
+        journal.Receipts.Add(receipt);
+        if (!TrySaveSessionStateForSlot(ActiveSaveSlotIndex))
+        {
+            journal.Receipts.Remove(receipt);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static string APConsumableMarker(string identity, int index)
+    {
+        return "__LAIKA_AP_CONSUMABLE_V1__|" + identity + "|" +
+            index.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static bool HasAPConsumableMarker(SaveData save, string marker)
+    {
+        return save != null && save.values != null &&
+            save.values.Exists(value => value != null && value.id == marker);
+    }
+
+    internal static void EnqueueMissingAPConsumableReceipts()
+    {
+        if (!CanProcessAPItems())
+            return;
+
+        APConsumableJournal journal = SessionState.ConsumableJournal;
+        if (journal == null || journal.SessionIdentityKey != SessionState.SessionIdentityKey ||
+            journal.Receipts == null)
+        {
+            return;
+        }
+
+        SaveData save = MonoSingleton<ProgressionManager>.Instance.LocalSaveData;
+        foreach (APConsumableReceipt receipt in journal.Receipts)
+        {
+            if (receipt == null || !IsSaveTrackedConsumable(receipt.Kind) ||
+                receipt.ReceivedItemIndex < journal.LegacyReceiptFloor ||
+                receipt.Amount <= 0 || string.IsNullOrEmpty(receipt.ItemId) ||
+                HasAPConsumableMarker(save, APConsumableMarker(journal.SessionIdentityKey, receipt.ReceivedItemIndex)))
+            {
+                continue;
+            }
+
+            bool alreadyQueued = false;
+            foreach (PendingItem pending in PendingItemQueue)
+            {
+                if (pending != null && pending.Kind == receipt.Kind &&
+                    pending.ReceivedItemIndex == receipt.ReceivedItemIndex &&
+                    pending.ReceivedSessionIdentity == journal.SessionIdentityKey)
+                {
+                    alreadyQueued = true;
+                    break;
+                }
+            }
+            if (alreadyQueued)
+                continue;
+
+            var item = new PendingItem(receipt.Kind, receipt.ItemId, receipt.Amount, receipt.DisplayName);
+            item.SetApItemId(receipt.ApItemId);
+            item.SetReceivedItemIndex(receipt.ReceivedItemIndex, journal.SessionIdentityKey);
+            // No sender metadata: this is a restore, not a new received-item popup.
+            EnqueueItem(item);
+            LogInfo("AP RECEIPTS: restoring consumable absent from loaded save -> index=" +
+                receipt.ReceivedItemIndex + ", item=" + receipt.ItemId + ", amount=" + receipt.Amount);
+        }
+    }
+
+    internal static void ScheduleAPConsumableRecovery(SaveData save, int slotIndex)
+    {
+        if (SessionState == null || !SessionState.APEnabled || SessionState.ConsumableJournal == null)
+            return;
+
+        EnsureCoroutineRunner();
+        if (CoroutineRunner != null)
+            CoroutineRunner.StartCoroutine(RecoverAPConsumablesWhenReady(save, slotIndex));
+    }
+
+    private static IEnumerator RecoverAPConsumablesWhenReady(SaveData save, int slotIndex)
+    {
+        while (ReferenceEquals(save, APItemDeliverySaveData) && slotIndex == ActiveSaveSlotIndex)
+        {
+            if (SessionState == null || !SessionState.APEnabled)
+                yield break;
+
+            if (CanProcessAPItems() && !IsProcessingQueue)
+            {
+                // Works with the server offline because the receipt journal is local.
+                ProcessPendingItemQueue("AP ConsumableRestore");
+                yield break;
+            }
+            yield return null;
+        }
+    }
+
+    internal static void SaveCompletedAPShopPurchase()
+    {
+        if (!CanProcessAPItems())
+            return;
+
+        var persistence = MonoSingleton<PersistenceManager>.Instance;
+        if (persistence == null || !persistence.CanSave)
+            return;
+
+        try
+        {
+            // OnBuySucceded has now charged money, updated stock and granted or
+            // suppressed the vanilla reward. Save the complete transaction so
+            // a sent AP check cannot persist while its currency cost rolls back.
+            persistence.SaveGame(false);
+        }
+        catch (Exception ex)
+        {
+            LogWarning("AP CURRENCY: save after completed shop purchase failed:\n" + ex);
         }
     }
 

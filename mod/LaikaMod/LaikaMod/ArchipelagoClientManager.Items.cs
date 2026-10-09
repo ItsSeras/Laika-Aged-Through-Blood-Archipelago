@@ -5,6 +5,8 @@ using System.Linq;
 
 public partial class ArchipelagoClientManager
 {
+    private bool waitingForGameplayItemDelivery;
+
     // Received item handling and reconciliation.
     // Processes AP ReceivedItems packets and restores important AP state after reconnects or scene loads.
     public void PumpReceivedItems()
@@ -28,8 +30,32 @@ public partial class ArchipelagoClientManager
             return;
         }
 
+        // Do not even advance LastProcessedReceivedItemIndex at the title screen
+        // or during save loading. Queue-only gating would still lose consumables
+        // when BindToGameSaveSlot clears runtime grants for the selected save.
+        if (!LaikaMod.CanProcessAPItems())
+        {
+            if (!waitingForGameplayItemDelivery)
+            {
+                waitingForGameplayItemDelivery = true;
+                LaikaMod.LogInfo("AP ITEMS: waiting for a fully loaded gameplay save; received index unchanged.");
+            }
+            return;
+        }
+
+        if (waitingForGameplayItemDelivery)
+        {
+            waitingForGameplayItemDelivery = false;
+            LaikaMod.LogInfo("AP ITEMS: gameplay save ready; resuming received-item delivery.");
+        }
+
         try
         {
+            // Capture the old index once when upgrading an existing AP save.
+            // It must not drift forward each time an older checkpoint is loaded.
+            if (LaikaMod.EnsureAPConsumableJournal() == null)
+                return;
+
             var allItems = session.Items.AllItemsReceived;
             if (allItems == null)
             {
@@ -82,6 +108,14 @@ public partial class ArchipelagoClientManager
                 if (LaikaMod.TryCreatePendingItemFromApItemId(apItemId, out pendingItem))
                 {
                     pendingItem.SetApItemId(apItemId);
+
+                    if (LaikaMod.IsSaveTrackedConsumable(pendingItem.Kind) &&
+                        !LaikaMod.TryRememberAPConsumableReceipt(pendingItem, i))
+                    {
+                        // Do not acknowledge a consumable receipt before its
+                        // recoverable history has been written successfully.
+                        return;
+                    }
 
                     string receivedLocationName = ReadStringProperty(receivedItem, "LocationName", "locationName");
                     if (string.IsNullOrWhiteSpace(receivedLocationName))
@@ -145,6 +179,9 @@ public partial class ArchipelagoClientManager
 
     public void ForceReconcileReceivedItems(string sourceTag)
     {
+        if (!LaikaMod.CanProcessAPItems())
+            return;
+
         try
         {
             if (session == null || session.Items == null)

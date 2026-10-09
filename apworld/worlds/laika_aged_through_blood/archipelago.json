@@ -1,7 +1,7 @@
 {
   "game": "Laika: Aged Through Blood",
   "minimum_ap_version": "0.6.4",
-  "world_version": "0.1.5",
+  "world_version": "0.1.6",
   "authors": ["Seras"],
   "version": 7,
   "compatible_version": 7

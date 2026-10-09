@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from collections import Counter
+
+from Options import OptionError
+
 
 STARTING_PROGRESSION_ITEMS = [
     "Bike Upgrade: Dash",
@@ -197,6 +201,60 @@ def get_filler_item_name(world) -> str:
     )[0]
 
 
+WEAPON_START_ALIASES = {
+    "Blueprint: Shotgun": "Shotgun (Weapon)",
+    "Blueprint: Sniper": "Sniper Rifle (Weapon)",
+    "Blueprint: Machine Gun": "Machine Gun (Weapon)",
+    "Blueprint: Rocket Launcher": "Rocket Launcher (Weapon)",
+}
+
+
+def get_fixed_item_names(weapon_mode: str) -> list[str]:
+    """The fixed pool, in its original order, shared by validation and creation."""
+    return (
+        STARTING_PROGRESSION_ITEMS
+        + PROGRESSION_KEY_ITEMS
+        + get_weapon_unlock_pool(weapon_mode)
+        + WEAPON_UPGRADES
+        + UNIQUE_FILLER_ITEMS
+    )
+
+
+def validate_start_inventory(world) -> None:
+    """Resolve weapon aliases before Core precollects and removes matching names."""
+    mode = world.options.weapon_mode.current_key
+    aliases = WEAPON_START_ALIASES if mode == "direct" else {
+        direct: blueprint for blueprint, direct in WEAPON_START_ALIASES.items()
+    }
+    available = Counter(get_fixed_item_names(mode))
+    requested = Counter()
+    for name, count in world.options.start_inventory_from_pool.value.items():
+        if type(count) is not int or count < 0:
+            raise OptionError(
+                f"Laika slot {world.player}: start_inventory_from_pool quantity for "
+                f"{name!r} must be a non-negative whole number."
+            )
+        if count == 0:
+            continue
+        canonical = aliases.get(name, name)
+        if canonical not in available and canonical not in FILLER_ITEM_NAMES:
+            raise OptionError(
+                f"Laika slot {world.player}: start_inventory_from_pool item {name!r} "
+                f"is not in the {mode} pool. Blueprint weapon names work in both "
+                "modes; separate weapon crafting materials require crafting mode."
+            )
+        requested[canonical] += count
+
+    for name, count in requested.items():
+        if name in available and count > available[name]:
+            raise OptionError(
+                f"Laika slot {world.player}: start_inventory_from_pool requests "
+                f"{count} copies of {name!r}, but the pool contains {available[name]}. "
+                "Blueprint and direct weapon aliases count as the same unlock."
+            )
+    world.options.start_inventory_from_pool.value = dict(requested)
+
+
 def create_item_pool(world) -> list:
     """
     Build the complete Laika item pool for one player.
@@ -204,24 +262,23 @@ def create_item_pool(world) -> list:
     This keeps the World class focused on Archipelago lifecycle methods while
     leaving the static item-pool composition in one easy-to-audit place.
     """
-    pool = []
-
-    for item_name in STARTING_PROGRESSION_ITEMS:
-        pool.append(world.create_item(item_name))
-
-    for item_name in PROGRESSION_KEY_ITEMS:
-        pool.append(world.create_item(item_name))
-
-    for item_name in get_weapon_unlock_pool(world.options.weapon_mode.current_key):
-        pool.append(world.create_item(item_name))
-
-    for item_name in WEAPON_UPGRADES:
-        pool.append(world.create_item(item_name))
-
-    for item_name in UNIQUE_FILLER_ITEMS:
-        pool.append(world.create_item(item_name))
-
+    fixed_names = get_fixed_item_names(world.options.weapon_mode.current_key)
     total_locations = len(world.multiworld.get_unfilled_locations(world.player))
+    filler_slots = total_locations - len(fixed_names)
+    requested = world.options.start_inventory_from_pool.value
+    reserved_filler = sum(requested.get(name, 0) for name in FILLER_ITEM_NAMES)
+    if filler_slots < 0 or reserved_filler > filler_slots:
+        raise OptionError(
+            f"Laika slot {world.player}: start_inventory_from_pool requests "
+            f"{reserved_filler} currency/ingredient copies, but this pool has "
+            f"{max(0, filler_slots)} random filler slots. Reduce their combined quantity."
+        )
+
+    pool = [world.create_item(name) for name in fixed_names]
+    # Guarantee these copies exist even when weighted filler would not roll them.
+    # Core owns precollection, removal, and replacement; do not do those twice.
+    for name in FILLER_ITEM_NAMES:
+        pool.extend(world.create_item(name) for _ in range(requested.get(name, 0)))
 
     while len(pool) < total_locations:
         pool.append(world.create_item(get_filler_item_name(world)))

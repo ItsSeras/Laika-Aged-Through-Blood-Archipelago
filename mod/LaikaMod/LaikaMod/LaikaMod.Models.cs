@@ -36,6 +36,10 @@ public class APSaveState
     public bool HeartglazeFlowerDeferredNoticeShown { get; set; } = false;
 
     public int LastProcessedReceivedItemIndex = 0;
+    // Receipt history is durable independently of the native checkpoint. Each
+    // applied receipt also has a marker inside SaveData.values beside the money
+    // and inventory snapshot.
+    public APConsumableJournal ConsumableJournal;
     public bool GoalReported = false;
 
     public bool HarpoonPieceDeferredDeliveryNoticeShown = false;
@@ -53,6 +57,26 @@ public class APSaveState
     public bool RadioSilenceDashBypassNoticeShown { get; set; } = false;
 
     public bool TutorialHookDebrisEventObserved { get; set; } = false;
+}
+
+[Serializable]
+public class APConsumableJournal
+{
+    public string SessionIdentityKey = "";
+    // Pre-journal receipts cannot safely be refunded: they may have been spent.
+    public int LegacyReceiptFloor;
+    public List<APConsumableReceipt> Receipts = new List<APConsumableReceipt>();
+}
+
+[Serializable]
+public class APConsumableReceipt
+{
+    public int ReceivedItemIndex;
+    public ItemKind Kind;
+    public long ApItemId;
+    public string ItemId;
+    public string DisplayName;
+    public int Amount;
 }
 
 public enum ItemKind
@@ -163,6 +187,8 @@ public class PendingItem
     public int Amount { get; private set; }
     public string DisplayName { get; private set; }
     public long ApItemId { get; private set; } = -1;
+    public int ReceivedItemIndex { get; private set; } = -1;
+    public string ReceivedSessionIdentity { get; private set; }
     public string SourcePlayerName { get; private set; }
     public string SourceLocationName { get; private set; }
     public bool PresentationQueued { get; private set; }
@@ -178,6 +204,12 @@ public class PendingItem
     public void SetApItemId(long apItemId)
     {
         ApItemId = apItemId;
+    }
+
+    public void SetReceivedItemIndex(int index, string sessionIdentity)
+    {
+        ReceivedItemIndex = index;
+        ReceivedSessionIdentity = sessionIdentity;
     }
 
     public void SetReceiveMetadata(string playerName, string locationName)

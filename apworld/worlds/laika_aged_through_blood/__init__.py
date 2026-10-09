@@ -5,7 +5,7 @@ from Options import OptionError
 from worlds.AutoWorld import World, WebWorld
 
 from .Items import ITEM_TABLE, LaikaItem
-from .ItemPools import create_item_pool
+from .ItemPools import create_item_pool, get_filler_item_name, validate_start_inventory
 from .Locations import LOCATION_TABLE
 from .LogicExplanations import explain_rule as explain_laika_rule
 from .Options import (
@@ -36,6 +36,7 @@ class LaikaWorld(World):
     tracker_world: ClassVar = LAIKA_TRACKER_WORLD
 
     def generate_early(self):
+        validate_start_inventory(self)
         enabled_goals = set(self.options.goals.value)
 
         if not enabled_goals:
@@ -66,9 +67,16 @@ class LaikaWorld(World):
                 )
 
         if self.options.weapon_mode.current_key == "crafting":
-            self.multiworld.local_early_items[self.player]["Weapon Crafting Material: Rusty Spring"] = 1
+            early_item = "Weapon Crafting Material: Rusty Spring"
         else:
-            self.multiworld.local_early_items[self.player]["Shotgun (Weapon)"] = 1
+            early_item = "Shotgun (Weapon)"
+
+        # Do not require a pool copy of an item that Core will precollect/remove.
+        if not self.options.start_inventory_from_pool.value.get(early_item, 0):
+            self.multiworld.local_early_items[self.player][early_item] = 1
+
+    def get_filler_item_name(self) -> str:
+        return get_filler_item_name(self)
 
     def create_item(self, name: str):
         data = ITEM_TABLE[name]

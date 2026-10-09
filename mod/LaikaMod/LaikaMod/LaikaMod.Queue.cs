@@ -15,6 +15,99 @@ using UnityEngine;
 // Pending item queue, item granting, reconciliation, and DeathLink helpers.
 public partial class LaikaMod
 {
+    // Inventory/Economy singletons and the AP overlay survive return-to-title.
+    // Their existence is not evidence that a gameplay save has finished loading.
+    private static SaveData APItemDeliverySaveData;
+    private static int APItemDeliverySaveSlot = -1;
+
+    internal static void SuspendAPItemDelivery(string reason)
+    {
+        bool wasInitialized = APItemDeliverySaveData != null;
+        APItemDeliverySaveData = null;
+        APItemDeliverySaveSlot = -1;
+
+        if (wasInitialized)
+            LogInfo("AP ITEMS: delivery suspended -> " + reason);
+    }
+
+    internal static void MarkAPItemSaveInitialized(ProgressionManager progression)
+    {
+        if (progression == null || progression.LocalSaveData == null)
+            return;
+
+        APItemDeliverySaveData = progression.LocalSaveData;
+        APItemDeliverySaveSlot = ActiveSaveSlotIndex;
+        ScheduleAPConsumableRecovery(APItemDeliverySaveData, APItemDeliverySaveSlot);
+    }
+
+    internal static bool CanProcessAPItems()
+    {
+        if (SessionState == null || !SessionState.APEnabled ||
+            APItemDeliverySaveData == null ||
+            APItemDeliverySaveSlot != ActiveSaveSlotIndex)
+        {
+            return false;
+        }
+
+        var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+        if (!scene.IsValid() || !scene.isLoaded || IsActuallyOnTitleScreen() ||
+            string.Equals(scene.name, "LoadingScreen", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(scene.name, "Autosave", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        // Laika loads its transition scene additively, so the active scene can
+        // still look like gameplay while the destination save is being restored.
+        var loadingScene = UnityEngine.SceneManagement.SceneManager.GetSceneByName("LoadingScreen");
+        if (loadingScene.IsValid() && loadingScene.isLoaded)
+            return false;
+
+        var progression = MonoSingleton<ProgressionManager>.Instance;
+        if (progression == null || progression.ProgressionData == null ||
+            !ReferenceEquals(APItemDeliverySaveData, progression.LocalSaveData))
+        {
+            return false;
+        }
+
+        var ui = MonoSingleton<InGameUIManager>.Instance;
+        var player = MonoSingleton<PlayerManager>.Instance;
+        return ui != null && ui.Active &&
+            player != null &&
+            (player.CurrentRider != null || player.CurrentBike != null) &&
+            Singleton<InventoryManager>.Instance != null &&
+            Singleton<EconomyManager>.Instance != null;
+    }
+
+    internal static bool CanShowAPPresentationPopups()
+    {
+        if (!CanProcessAPItems())
+            return false;
+
+        var ui = MonoSingleton<InGameUIManager>.Instance;
+        var transitions = MonoSingleton<UITransitionsManager>.Instance;
+        var controllers = MonoSingleton<PlayerControllersManager>.Instance;
+        if (ui.IsScreenOpen || transitions == null || transitions.Fading ||
+            controllers == null)
+        {
+            return false;
+        }
+
+        // UI.Active becomes true before the initial fade finishes. An item popup
+        // pauses game time, including the scaled delay that starts that fade.
+        // Wait for the fade and scripted interactions, without delaying receipts
+        // or requiring a weapon/bike before presenting starting items.
+        const PlayerControllerBlockingFlags blocked =
+            PlayerControllerBlockingFlags.INTERACT |
+            PlayerControllerBlockingFlags.DIALOGUE |
+            PlayerControllerBlockingFlags.DEAD |
+            PlayerControllerBlockingFlags.UI |
+            PlayerControllerBlockingFlags.TUTORIAL |
+            PlayerControllerBlockingFlags.TRANSITION;
+
+        return (controllers.BlockingFlags & blocked) == 0;
+    }
+
     // ===== AP presentation popup queue =====
     // Item grants and location checks never wait for these popups. Presentation is
     // cosmetic only and is shown later when Laika has no other in-game screen open.
@@ -353,12 +446,10 @@ public partial class LaikaMod
         if (PendingPresentationPopups.Count == 0)
             return;
 
-        if (IsActuallyOnTitleScreen())
+        if (!CanShowAPPresentationPopups())
             return;
 
         InGameUIManager ui = MonoSingleton<InGameUIManager>.Instance;
-        if (ui == null || ui.IsScreenOpen)
-            return;
 
         APPresentationPopupRequest head = PendingPresentationPopups.Peek();
         if (head != null &&
@@ -799,11 +890,20 @@ public partial class LaikaMod
     // recovery point for quest softlocks on older saves.
     internal static void ProcessPendingItemQueue(string sourceTag)
     {
+        // Guard every caller, including persistent overlay polling and vanilla
+        // inventory callbacks. Leave the queue untouched until the save is ready.
+        if (!CanProcessAPItems())
+            return;
+
         if (IsProcessingQueue)
         {
             LogInfo($"{sourceTag}: queue processing already in progress, skipping nested call.");
             return;
         }
+
+        // A receipt can be in AP's persisted index but absent from this native
+        // save's money/inventory snapshot. Recover it once using its marker.
+        EnqueueMissingAPConsumableReceipts();
 
         // Some AP softlocks are not item grant failures.
         // They happen because the player already owns the required item before the vanilla quest reaches
@@ -909,7 +1009,10 @@ public partial class LaikaMod
 
                             if (DeferredUpgradeNoticesShown.Add(noticeKey))
                             {
-                                LaikaMod.AnnounceAPWarning($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
+                                if (item.Kind == ItemKind.WeaponUpgrade)
+                                    LaikaMod.AnnounceAPWarning($"[AP] Holding upgrade until weapon is owned: {item.DisplayName}");
+                                else
+                                    LaikaMod.AnnounceAPWarning($"[AP] Item delivery is pending and will be retried: {item.DisplayName}");
                             }
                         }
                         else
@@ -946,12 +1049,16 @@ public partial class LaikaMod
 
         if (item.Kind == ItemKind.Currency)
         {
-            return Singleton<EconomyManager>.Instance == null;
+            return Singleton<EconomyManager>.Instance == null ||
+                (item.ReceivedItemIndex >= 0 && SessionState != null &&
+                 item.ReceivedSessionIdentity == SessionState.SessionIdentityKey);
         }
 
         if (item.Kind == ItemKind.Ingredient || item.Kind == ItemKind.Material)
         {
-            return Singleton<InventoryManager>.Instance == null;
+            return Singleton<InventoryManager>.Instance == null ||
+                (item.ReceivedItemIndex >= 0 && SessionState != null &&
+                 item.ReceivedSessionIdentity == SessionState.SessionIdentityKey);
         }
 
         if (item.Kind == ItemKind.MapUnlock)

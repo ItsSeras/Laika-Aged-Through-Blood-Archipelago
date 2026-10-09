@@ -1,12 +1,24 @@
+# --------------------------------------------------------------------------
+# Laika: Aged Through Blood .yaml Instructions
+# --------------------------------------------------------------------------
+
 # Laika: Aged Through Blood - Archipelago player options
 #
 # Copy this file into your Archipelago Players folder before generating a seed.
 # The values below are safe defaults, but you can change them to match how you
 # want your Laika: Aged Through Blood game to play.
 
+# --------------------------------------------------------------------------
+# Archipelago Slot/Player Name
+# --------------------------------------------------------------------------
+
 # Your player name in the multiworld.
 # This is the name other players and the server will see.
 name: Wastelander
+
+# --------------------------------------------------------------------------
+# DO NOT TWEAK THIS PORTION
+# --------------------------------------------------------------------------
 
 # Keep this exactly as written so Archipelago loads the correct APWorld.
 # DO NOT change this.
@@ -35,7 +47,7 @@ game: "Laika: Aged Through Blood"
   accessibility: items
 
   # --------------------------------------------------------------------------
-  # Laika-specific options
+  # Quality of Life Options
   # --------------------------------------------------------------------------
 
   # Controls how major weapons are sent by Archipelago.
@@ -51,6 +63,156 @@ game: "Laika: Aged Through Blood"
   #
   # Valid values: direct, crafting
   weapon_mode: direct
+
+  # Start with selected AP items instead of finding those copies in the world.
+  # Empty {} means no starting items. To enable, replace that line with entries
+  # using the exact quoted item names shown below. Quantities count AP copies.
+  #
+  # Example (Dash, the Shotgun unlock, and 3,000 viscera):
+  # start_inventory_from_pool:
+  #   "Bike Upgrade: Dash": 1
+  #   "Blueprint: Shotgun": 1
+  #   "Viscera x300": 10
+  #
+  # Blueprint names work with BOTH weapon modes using the existing mode-aware
+  # unlock behavior: Blueprint: Shotgun, Blueprint: Sniper,
+  # Blueprint: Machine Gun, and Blueprint: Rocket Launcher.
+  # The corresponding direct weapon names are accepted too. Use only one name
+  # per weapon. Crossbow always uses "Crossbow (Weapon)".
+  # Crafting materials are separate pool items in crafting mode only.
+  #
+  # All fixed pool items are supported, including quest items, Puppy Gifts,
+  # cassettes, maps, and upgrades. Unique items allow 1 copy; Shotgun upgrades
+  # allow up to 3. Viscera x300 and Ingredient items support multiple copies,
+  # limited by the combined number of random filler slots in the seed.
+  # Requested currency/ingredient copies are guaranteed before pool removal.
+  # Replacement filler can still include more currency or ingredients.
+  #
+  # Items count as received by AP immediately. Existing in-game protections
+  # still defer Heartglaze Flower and Harpoon Pieces until their safe quest
+  # states, and weapon upgrades can wait until their weapon is available.
+  start_inventory_from_pool:
+    "Viscera x300": 1
+   
+  # Automatically creates an Archipelago hint when an AP-aware randomized
+  # purchase offer is previewed.
+  #
+  # false:
+  #   Item previews remain private and do not automatically send a
+  #   hint to other players.
+  #
+  # true:
+  #   The first preview of an unhinted offer also creates and announces its
+  #   Archipelago hint to other players.
+  #
+  # Previewing an offer does NOT purchase it or send its location check.
+  #
+  # Valid values: true, false
+  automatic_purchase_hints: true
+  
+  # Shows a live victory checklist underneath the Archipelago connection status.
+  #
+  # true:
+  #   Shows enabled goal categories, how many categories are still required,
+  #   and the remaining bosses, Puppy Gifts, and Wastelander quests.
+  #
+  # false:
+  #   Keeps only the normal Archipelago connection status in the top-left.
+  #
+  # Valid values: true, false
+  show_goal_checklist: true
+
+  
+  # Controls the existing cinematic skips.
+  #
+  # Jakob: skips the long road transition following his death.
+  # Orella: skips the long road transition following her encounter.
+  # Roy: enables both the outbound boat skip and the return dialogue skip.
+  #
+  # Recommended enabled for quicker repeat playthroughs.
+  # These settings never disable quest softlock protections.
+  #
+  # Valid values: true, false
+  skip_jakob_transition: true
+  skip_orella_transition: true
+  skip_roy_boat: true
+
+  # --------------------------------------------------------------------------
+  # Goals / Victory Conditions
+  # --------------------------------------------------------------------------
+
+  # Victory categories that are enabled for this seed.
+  #
+  # Valid values:
+  #   bosses
+  #   puppy_gifts
+  #   wastelanders
+  #
+  # The default enables all three routes. goal_amount below decides how many
+  # of those enabled categories must actually be completed to win.
+  goals:
+    - bosses
+    - puppy_gifts
+    - wastelanders
+
+  # Number of enabled victory categories required to win.
+  #
+  # 1 = completing any one enabled category wins.
+  # 2 = complete any two enabled categories.
+  # 3 = complete all three enabled categories.
+  #
+  # This cannot be higher than the number of entries in goals.
+  goal_amount: 1
+
+  # Bosses that are allowed to count toward the Bosses category.
+  #
+  # Valid bosses:
+  #   A Hundred Hungry Beaks
+  #   A Long Lost Woodcrawler
+  #   A Caterpillar Made of Sadness
+  #   A Gargantuan Swimcrab
+  #   Pope Melva VIII
+  #   Two-Beak God
+  #
+  # Default keeps the traditional final boss route.
+  bosses:
+    - Two-Beak God
+    
+  # Number of the selected bosses above that must be defeated for the Bosses
+  # category to count as complete.
+  #
+  #There are 6 bosses in total. Default requires killing the final boss.
+  boss_goal_amount: 1
+
+  # Number of distinct Puppy Gift AP items that must be received for the
+  # Puppy Gifts category to count as complete.
+  #
+  # There are 7 Puppy Gifts total. Default requires the full set.
+  puppy_gift_goal_amount: 7
+
+  # Number of Wastelander band side quests that must be completed for the
+  # Wastelanders category to count as complete.
+  #
+  # There are 6 band quests total. Default requires reuniting the whole band.
+  wastelander_goal_amount: 6
+
+  # --------------------------------------------------------------------------
+  # Death Interactions
+  # --------------------------------------------------------------------------
+
+  # Controls whether Laika is protected from dropping viscera sacks upon death or not.
+  #
+  # off: 
+  #   Vanilla behavior.
+  #
+  # deathlink_only: 
+  #   Preserve viscera on incoming DeathLink deaths.
+  #
+  # all_deaths: 
+  #   Preserve viscera on every death, even without DeathLink.
+  #
+  # Valid values: off, deathlink_only, and all_deaths
+  viscera_protection: "deathlink_only"
 
   # Controls whether this slot starts with DeathLink enabled.
   #
