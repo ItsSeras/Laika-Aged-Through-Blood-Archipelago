@@ -1,5 +1,5 @@
 # WARNING! PLEASE READ BEFORE USE IN *ANY* RUNS
-While the game is now in a much more stable state now, I would advise against running this in public runs! Please run this solo or inform users that you are willingly using a potentially unstable game in the run. Thank you.
+The current build is significantly more stable, but you may or may not run into some minor issues when using this Archipelago mod. As a result, please warn others when using this in public runs with random players.
 
 ![Intro](Images&Icons/laikabanner.png)
 # Laika:Aged Through Blood Archipelago Randomizer
