@@ -136,7 +136,9 @@ class LaikaStartInventoryPool(StartInventoryPool):
 
     Blueprint weapon names work in both weapon modes, using the existing
     mode-aware unlock behavior. Direct weapon names are accepted as aliases.
-    Crafting materials remain separate items in Crafting mode.
+    In Crafting mode, a blueprint grants only that blueprint; its material is
+    a separate pool item. In Direct mode, the unlock grants the weapon and
+    crafting materials are excluded from the generated pool.
 
     Heartglaze Flower and Harpoon Pieces still wait for their safe quest states
     in-game. Weapon upgrades may wait for their weapon. Use exact item names.

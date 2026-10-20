@@ -692,10 +692,12 @@ def can_reach_region(state, player: int, region_name: str) -> bool:
             return False
 
 
+# v0.1.7: Match generation logic, including access to Bones after Poochie.
 def has_shotgun_access(state, player: int) -> bool:
     return has_item(state, player, "Shotgun (Weapon)") or (
         has_item(state, player, "Blueprint: Shotgun")
         and has_item(state, player, "Weapon Crafting Material: Rusty Spring")
+        and can_reach_location(state, player, "Quest Complete: A Heart for Poochie")
     )
 
 
@@ -780,7 +782,7 @@ def requirement_label(requirement: Requirement) -> str:
         return requirement[1]
 
     if kind == "shotgun":
-        return "Shotgun access"
+        return "Shotgun access: direct weapon OR blueprint + Rusty Spring + A Heart for Poochie access (Bones)"
 
     if kind == "war_chapter":
         return "War chapter access: Rage and Sorrow + A Heart for Poochie"

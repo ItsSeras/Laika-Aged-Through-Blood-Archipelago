@@ -96,6 +96,14 @@ ITEM_TABLE = {
         "kind": "WeaponUpgrade",
     },    
 
+    # v0.1.7: New unused ID; existing upgrade IDs remain stable for older rooms.
+    "Weapon Upgrade: Pistol": {
+        "id": 1115,
+        "classification": ItemClassification.useful,
+        "internal_id": "I_W_PISTOL",
+        "kind": "WeaponUpgrade",
+    },
+
     # ===== Weapon recipes / blueprints =====
     "Blueprint: Shotgun": {
         "id": 1160,

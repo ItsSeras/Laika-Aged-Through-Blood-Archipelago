@@ -9,6 +9,8 @@ using System.Globalization;
 
 public partial class LaikaMod
 {
+    // v0.1.7: Native-save receipt markers prevent consumable duplication across
+    // checkpoint reloads; completed recipe flags prevent restoring exchanged paper.
     // AP item grant handlers.
     // Each ItemKind has its own grant path so Laika-specific edge cases stay isolated.
 
@@ -16,6 +18,25 @@ public partial class LaikaMod
     {
         if (item == null)
             return false;
+
+        // Normalize any old material-shaped weapon unlock still queued during
+        // migration. New receipts already use the mode-aware factory mapping.
+        if (IsLegacyWeaponUnlockMaterial(item.Kind, item.ApItemId))
+        {
+            PendingItem corrected;
+            if (!TryCreatePendingItemFromApItemId(item.ApItemId, out corrected))
+                return false;
+            corrected.SetApItemId(item.ApItemId);
+            item = corrected;
+        }
+
+        // A stalled receipt cursor can catch up after scene reconciliation
+        // already delivered and vanilla consumed a quest item. Do not refund it.
+        if (item.Kind == ItemKind.KeyItem && WasVanillaConsumedAPItem(item.Kind, item.Id))
+        {
+            LogInfo($"{sourceTag}: acknowledged already-consumed AP quest item {item.Id}.");
+            return true;
+        }
 
         RememberReceivedAPItem(item);
 
@@ -326,6 +347,7 @@ public partial class LaikaMod
         foreach (APConsumableReceipt receipt in journal.Receipts)
         {
             if (receipt == null || !IsSaveTrackedConsumable(receipt.Kind) ||
+                IsLegacyWeaponUnlockMaterial(receipt.Kind, receipt.ApItemId) ||
                 receipt.ReceivedItemIndex < journal.LegacyReceiptFloor ||
                 receipt.Amount <= 0 || string.IsNullOrEmpty(receipt.ItemId) ||
                 HasAPConsumableMarker(save, APConsumableMarker(journal.SessionIdentityKey, receipt.ReceivedItemIndex)))
@@ -537,8 +559,14 @@ public partial class LaikaMod
             // Laika weapon levels are zero-based internally.
             int currentInternalLevel = weaponInstance.Level;
 
-            // item.Amount means "how many upgrade steps to add from where the weapon is now".
-            int targetInternalLevel = currentInternalLevel + item.Amount;
+            // Prefer the received total when connected: a scene reconciliation
+            // or another receipt in this batch may already have applied these steps.
+            int receivedTarget;
+            int targetInternalLevel =
+                ArchipelagoClientManager.Instance != null &&
+                ArchipelagoClientManager.Instance.TryGetReceivedWeaponUpgradeTarget(item.Id, out receivedTarget)
+                    ? Math.Max(currentInternalLevel, receivedTarget)
+                    : currentInternalLevel + item.Amount;
 
             // Laika weapons cap at displayed level 4, which is internal level 3.
             // Clamp here so I never push a weapon past the game's valid level data.
@@ -902,6 +930,11 @@ public partial class LaikaMod
             LogWarning($"{sourceTag}: key item grant failed, InventoryManager is null.");
             return false;
         }
+
+        // Native receipt/exchange sets this permanent recipe flag. The paper
+        // blueprint can disappear at the blacksmith without losing the recipe.
+        if (HasLearnedWeaponBlueprint(item.Id))
+            return true;
 
         if (IsHarpoonPieceId(item.Id))
         {

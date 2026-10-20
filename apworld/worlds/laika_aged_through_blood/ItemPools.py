@@ -80,14 +80,12 @@ PROGRESSION_KEY_ITEMS = [
 ]
 
 
+# v0.1.7: Each weapon gets three separate +1 upgrade receipts, including Pistol.
+# The extra eleven fixed entries replace random filler; location count is unchanged.
 WEAPON_UPGRADES = [
-    "Weapon Upgrade: Shotgun",
-    "Weapon Upgrade: Shotgun",
-    "Weapon Upgrade: Shotgun",
-    "Weapon Upgrade: Sniper Rifle",
-    "Weapon Upgrade: Machine Gun",
-    "Weapon Upgrade: Rocket Launcher",
-    "Weapon Upgrade: Crossbow",
+    f"Weapon Upgrade: {weapon}"
+    for weapon in ("Pistol", "Shotgun", "Sniper Rifle", "Machine Gun", "Rocket Launcher", "Crossbow")
+    for _ in range(3)
 ]
 
 

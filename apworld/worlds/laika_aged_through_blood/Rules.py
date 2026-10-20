@@ -1,4 +1,4 @@
-from worlds.generic.Rules import set_rule
+from worlds.generic.Rules import set_rule, forbid_item
 
 from .Options import (
     GOAL_CATEGORY_BOSSES,
@@ -17,12 +17,15 @@ BOSS_GOAL_LOCATIONS = {
     "Two-Beak God": "Boss Defeated: Two-Beak God",
 }
 
+# v0.1.7: Crafting needs the Poochie chapter gate to reach the Bones supply
+# in Where Rock Bleeds. Direct weapons do not need crafting-resource access.
 def has_shotgun_access(state, player) -> bool:
     return (
         state.has("Shotgun (Weapon)", player)
         or (
             state.has("Blueprint: Shotgun", player)
             and state.has("Weapon Crafting Material: Rusty Spring", player)
+            and state.can_reach_location("Quest Complete: A Heart for Poochie", player)
         )
     )
 
@@ -70,6 +73,11 @@ def set_rules(world):
                 and has_hook_access(state)
             )
         )
+
+    # v0.1.7: Explicit placement safeguard in Crafting, in addition to the
+    # resource-access rule. Even relaxed accessibility must not self-lock Flower.
+    if world.options.weapon_mode.current_key == "crafting":
+        forbid_item(loc("Quest Complete: Old Warfare"), "Key Item: Heartglaze Flower", player)
 
     # Main opening
     # Vanilla provides the Pistol + reflect before Hundred Hungry Beaks,

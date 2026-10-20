@@ -11,6 +11,8 @@ using UnityEngine.UI;
 
 public partial class LaikaMod
 {
+    // v0.1.7: AP Off preserves vanilla map visibility. Routine visibility
+    // diagnostics are opt-in; warnings remain enabled.
     // Map and Renato map-purchase Harmony patches.
     // AP map items control map visibility, so vanilla map unlocks are intercepted here.
     [HarmonyPatch(typeof(MapArea), "OnEnable")]
@@ -24,6 +26,9 @@ public partial class LaikaMod
 
         static void Postfix(MapArea __instance)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             try
             {
                 if (__instance == null || MapAreaIdField == null)
@@ -41,7 +46,8 @@ public partial class LaikaMod
                 {
                     __instance.Enable(true);
 
-                    LaikaMod.LogInfo($"AP MAP VISUAL: forced visible on MapArea.OnEnable -> {mapAreaId}");
+                    if (LaikaMod.MapVisibilityDiagnostics != null && LaikaMod.MapVisibilityDiagnostics.Value)
+                        LaikaMod.LogInfo($"AP MAP VISUAL: forced visible on MapArea.OnEnable -> {mapAreaId}");
                     return;
                 }
 
@@ -49,7 +55,8 @@ public partial class LaikaMod
                 {
                     __instance.Enable(false);
 
-                    LaikaMod.LogInfo($"AP MAP VISUAL: forced hidden on MapArea.OnEnable because AP has not granted it -> {mapAreaId}");
+                    if (LaikaMod.MapVisibilityDiagnostics != null && LaikaMod.MapVisibilityDiagnostics.Value)
+                        LaikaMod.LogInfo($"AP MAP VISUAL: forced hidden on MapArea.OnEnable because AP has not granted it -> {mapAreaId}");
                 }
             }
             catch (Exception ex)

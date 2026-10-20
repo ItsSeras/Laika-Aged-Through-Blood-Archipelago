@@ -7,6 +7,8 @@ public partial class ArchipelagoClientManager
 {
     private bool waitingForGameplayItemDelivery;
 
+    // v0.1.7: Wait for a loaded gameplay save before advancing receipt indexes.
+    // Authoritative received upgrade totals avoid reconciliation double upgrades.
     // Received item handling and reconciliation.
     // Processes AP ReceivedItems packets and restores important AP state after reconnects or scene loads.
     public void PumpReceivedItems()
@@ -174,6 +176,40 @@ public partial class ArchipelagoClientManager
         {
             LaikaMod.LogError($"AP ITEMS: PumpReceivedItems failed:\n{ex}");
             LaikaMod.AnnounceAPError("[AP] Error while processing received items.");
+        }
+    }
+
+    // Reconciliation may have applied an upgrade before its raw receipt was
+    // processed. Use the authoritative received total to avoid applying it twice.
+    internal bool TryGetReceivedWeaponUpgradeTarget(string weaponId, out int target)
+    {
+        target = 0;
+        if (!IsConnected || session == null || session.Items == null ||
+            session.Items.AllItemsReceived == null)
+            return false;
+        try
+        {
+            foreach (object received in session.Items.AllItemsReceived)
+            {
+                if (received == null)
+                    continue;
+                PendingItem mapped;
+                long id = ReadLongProperty(received, "ItemId", "Item");
+                if (LaikaMod.TryCreatePendingItemFromApItemId(id, out mapped) &&
+                    mapped.Kind == ItemKind.WeaponUpgrade && mapped.Id == weaponId)
+                {
+                    target = Math.Min(3, target + Math.Max(0, mapped.Amount));
+                    if (target == 3)
+                        break;
+                }
+            }
+            return target > 0;
+        }
+        catch (Exception ex)
+        {
+            LaikaMod.LogWarning("AP upgrade target lookup failed:\n" + ex);
+            target = 0;
+            return false;
         }
     }
 

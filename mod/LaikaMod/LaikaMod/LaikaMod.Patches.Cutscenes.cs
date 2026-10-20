@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
+// v0.1.7 maintenance note: Skips require AP Enabled, including deferred transitions; enabling a skip option alone cannot skip vanilla play.
 public partial class LaikaMod
 {
     // Story, scene, dungeon-door, and scripted interaction Harmony patches.

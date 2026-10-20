@@ -13,6 +13,7 @@ using System.Reflection;
 using UnityEngine;
 
 // Pending item queue, item granting, reconciliation, and DeathLink helpers.
+// v0.1.7 maintenance note: Delivery waits for a loaded gameplay save; received popups are separate from location previews and honor AP Off.
 public partial class LaikaMod
 {
     // Inventory/Economy singletons and the AP overlay survive return-to-title.
@@ -677,6 +678,9 @@ public partial class LaikaMod
             ref string localizedMessage,
             Action onCloseCallback)
         {
+            if (SessionState == null || !SessionState.APEnabled)
+                return true;
+
             try
             {
                 // Vanilla quest/key-item rewards need their real popup to stay alive

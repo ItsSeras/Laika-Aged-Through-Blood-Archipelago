@@ -15,6 +15,7 @@ using System.Collections;
 
 public partial class LaikaMod
 {
+    // v0.1.7: Save readiness hooks prevent title/loading grants and lost receipts.
     // InitializeLocalSaveData sets LocalSaveData first, then restores inventory,
     // weapons, currency, and the player. Nested UI callbacks must wait until the
     // whole method completes successfully, not just until LocalSaveData exists.

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+// v0.1.7 maintenance note: Central AP Off guards preserve vanilla rewards/check behavior; received and consumed item records distinguish AP ownership from native sources.
 public partial class LaikaMod
 {
     private static readonly string[] GoalPuppyGiftInternalIds = new string[]
@@ -610,6 +611,9 @@ public partial class LaikaMod
         string sourceTag,
         bool consumeVanillaReward = true)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         if (definition == null)
         {
             LogWarning($"{sourceTag}: TrySendLocationCheck called with null definition.");
@@ -750,6 +754,9 @@ public partial class LaikaMod
     // Attempts to remove vanilla item rewards from the player.
     internal static void TryConsumeVanillaLocationReward(APLocationDefinition definition, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         if (definition == null)
             return;
 
@@ -780,6 +787,9 @@ public partial class LaikaMod
 
     internal static bool TryRemoveInventoryReward(string itemId, int amount, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return false;
+
         if (string.IsNullOrEmpty(itemId))
             return false;
 
@@ -820,6 +830,9 @@ public partial class LaikaMod
 
     internal static void TryRemoveCassetteReward(string cassetteId, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         if (string.IsNullOrEmpty(cassetteId))
             return;
 
@@ -988,6 +1001,9 @@ public partial class LaikaMod
     // a cassette does not accidentally count as finding its real in-world location.
     internal static void TryHandleCassetteLocationCheck(string cassetteId, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         if (string.IsNullOrEmpty(cassetteId))
         {
             LogWarning($"{sourceTag}: cassetteId was null or empty.");
@@ -1107,6 +1123,9 @@ public partial class LaikaMod
 
     internal static bool ShouldSuppressVanillaInventoryReward(APLocationDefinition definition)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return false;
+
         if (definition == null)
             return false;
 
@@ -1143,6 +1162,9 @@ public partial class LaikaMod
 
     internal static void TryHandlePuppyGiftLocationCheck(string giftId, string sourceTag, bool consumeVanillaReward)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         if (string.IsNullOrEmpty(giftId))
         {
             LogWarning($"{sourceTag}: puppy gift id was null or empty.");

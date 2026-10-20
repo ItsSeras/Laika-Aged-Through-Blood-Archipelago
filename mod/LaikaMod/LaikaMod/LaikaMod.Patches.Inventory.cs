@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using UnityEngine;
 
+// v0.1.7 maintenance note: Crafting box availability follows sent location checks instead of material/blueprint ownership. AP Off leaves vanilla pickup handling intact.
 public partial class LaikaMod
 {
     // Inventory and key-item Harmony patches.
@@ -15,6 +16,9 @@ public partial class LaikaMod
     {
         static void Postfix(ItemData item, int amount, bool silent, bool __result)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             try
             {
                 if (!__result || item == null || string.IsNullOrEmpty(item.id))
@@ -83,8 +87,9 @@ public partial class LaikaMod
     [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] { typeof(ItemData), typeof(int), typeof(Action), typeof(bool) })]
     public class InventoryManager_AddItem_APLocationPatch
     {
-        static bool Prefix(ItemData item, int amount, Action onAddedCallback, ref bool silent, ref bool __result)
+        static bool Prefix(ItemData item, int amount, Action onAddedCallback, ref bool silent, ref bool __result, out bool __state)
         {
+            __state = false;
             try
             {
                 if (item == null || string.IsNullOrEmpty(item.id))
@@ -127,6 +132,25 @@ public partial class LaikaMod
                     );
 
                     __result = true;
+                    return false;
+                }
+
+                if (LaikaMod.IsCraftingBoxReward(definition))
+                {
+                    // This reward is never added. Do not consume inventory or run the
+                    // normal postfix cleanup: it could remove a legitimate AP receipt,
+                    // including a self-found item delivered immediately after this check.
+                    __state = true;
+                    __result = true;
+                    LaikaMod.TrySendLocationCheck(definition, sourceTag + "/CraftingReward", false);
+                    if (onAddedCallback != null)
+                    {
+                        try { onAddedCallback(); }
+                        catch (Exception ex)
+                        {
+                            LaikaMod.LogWarning(sourceTag + "/CraftingReward callback failed:\n" + ex);
+                        }
+                    }
                     return false;
                 }
 
@@ -269,7 +293,7 @@ public partial class LaikaMod
             catch (Exception ex)
             {
                 LaikaMod.LogError($"InventoryManager_AddItem_APLocationPatch exception:\n{ex}");
-                return true;
+                return !__state;
             }
         }
 
@@ -292,10 +316,13 @@ public partial class LaikaMod
             return __exception;
         }
 
-        static void Postfix(ItemData item, int amount, Action onAddedCallback, bool silent, bool __result)
+        static void Postfix(ItemData item, int amount, Action onAddedCallback, bool silent, bool __result, bool __state)
         {
             try
             {
+                if (__state || LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                    return;
+
                 if (item == null || string.IsNullOrEmpty(item.id))
                     return;
 
@@ -471,6 +498,150 @@ public partial class LaikaMod
         }
     }
 
+    internal static bool IsCraftingBoxReward(APLocationDefinition definition)
+    {
+        if (definition == null)
+            return false;
+        // Explicit blueprint IDs avoid changing unrelated quest key-item flows.
+        return definition.Category == "Material" ||
+            (definition.Category == "KeyItem" &&
+             (definition.InternalId == "I_RECIPE_SHOTGUN" ||
+              definition.InternalId == "I_RECIPE_SNIPER" ||
+              definition.InternalId == "I_RECIPE_UZI" ||
+              definition.InternalId == "I_RECIPE_ROCKETLAUNCHER"));
+    }
+
+    private static readonly FieldInfo CraftingResourcePoolField =
+        typeof(ResourceDestructible).GetField("resourcesPool", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    internal static bool TryGetAPCraftingLocation(ItemData item, out APLocationDefinition definition)
+    {
+        definition = null;
+        return SessionState != null && SessionState.APEnabled &&
+            item != null && item.IsKeyItem && !string.IsNullOrEmpty(item.id) &&
+            TryGetLocationDefinition(item.id, out definition) && IsCraftingBoxReward(definition);
+    }
+
+    private static readonly FieldInfo ArmouredCraftingItemField =
+        typeof(ArmouredBoxInteractable).GetField("itemData", BindingFlags.Instance | BindingFlags.NonPublic);
+    private static readonly FieldInfo ArmouredCraftingDestructibleField =
+        typeof(ArmouredBoxInteractable).GetField("destructible", BindingFlags.Instance | BindingFlags.NonPublic);
+
+    internal static bool TryGetArmouredCraftingLocation(Destructible source, out APLocationDefinition definition)
+    {
+        definition = null;
+        if (source == null || SessionState == null || !SessionState.APEnabled ||
+            ArmouredCraftingItemField == null || ArmouredCraftingDestructibleField == null)
+            return false;
+
+        // Some boxes award their item from the interactable coroutine instead
+        // of their resource pool. Only match an interactable linked to this box.
+        var children = source.GetComponentsInChildren<ArmouredBoxInteractable>(true);
+        var parents = source.GetComponentsInParent<ArmouredBoxInteractable>(true);
+        foreach (var boxes in new[] { children, parents })
+        {
+            foreach (var box in boxes)
+            {
+                if (box == null || ArmouredCraftingDestructibleField.GetValue(box) as Destructible != source)
+                    continue;
+                if (TryGetAPCraftingLocation(ArmouredCraftingItemField.GetValue(box) as ItemData, out definition))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    [HarmonyPatch(typeof(Destructible), "CanBeUsed")]
+    public class Destructible_CanBeUsed_APArmouredCraftingPatch
+    {
+        static void Postfix(Destructible __instance, ref bool __result)
+        {
+            try
+            {
+                APLocationDefinition definition;
+                if (TryGetArmouredCraftingLocation(__instance, out definition))
+                    __result = !HasSentLocationCheck(definition);
+            }
+            catch (Exception ex)
+            {
+                LogWarning("AP armoured crafting box availability failed:\n" + ex);
+            }
+        }
+    }
+
+    internal static bool TryGetCraftingBoxLocation(ResourceDestructible source, out APLocationDefinition definition)
+    {
+        definition = null;
+        if (source == null || SessionState == null || !SessionState.APEnabled)
+            return false;
+        if (TryGetArmouredCraftingLocation(source, out definition))
+            return true;
+        if (CraftingResourcePoolField == null)
+            return false;
+
+        var pool = CraftingResourcePoolField.GetValue(source) as ResourceData[];
+        if (pool == null || pool.Length == 0)
+            return false;
+
+        // Only homogeneous, registered crafting sources. Ordinary loot crates,
+        // mixed pools, cassettes and quest-specific sources retain their own rules.
+        foreach (var resource in pool)
+        {
+            if (resource == null || resource.resourceObject == null)
+                return false;
+            var pickup = resource.resourceObject.GetComponent<ItemInstance>();
+            APLocationDefinition candidate;
+            if (pickup == null || !TryGetAPCraftingLocation(pickup.ItemData, out candidate))
+                return false;
+            if (definition != null && definition.LocationId != candidate.LocationId)
+                return false;
+            definition = candidate;
+        }
+        return definition != null;
+    }
+
+    [HarmonyPatch(typeof(ResourceDestructible), "CanBeUsed")]
+    public class ResourceDestructible_CanBeUsed_APCraftingSourcePatch
+    {
+        static void Postfix(ResourceDestructible __instance, ref bool __result)
+        {
+            try
+            {
+                APLocationDefinition definition;
+                if (TryGetCraftingBoxLocation(__instance, out definition))
+                    __result = !HasSentLocationCheck(definition);
+            }
+            catch (Exception ex)
+            {
+                LogWarning("AP crafting box availability failed:\n" + ex);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(ItemInstance), "Start")]
+    public class ItemInstance_Start_APCraftingVisibilityPatch
+    {
+        static void Postfix(ItemInstance __instance)
+        {
+            try
+            {
+                APLocationDefinition definition;
+                if (__instance == null || !TryGetAPCraftingLocation(__instance.ItemData, out definition))
+                    return;
+
+                // Vanilla Start hides unique items already in the bag. Keep the
+                // physical check collectible without changing inventory/achievement flags.
+                bool visible = !HasSentLocationCheck(definition);
+                if (__instance.gameObject.activeSelf != visible)
+                    __instance.gameObject.SetActive(visible);
+            }
+            catch (Exception ex)
+            {
+                LogWarning("AP crafting pickup visibility failed:\n" + ex);
+            }
+        }
+    }
+
     internal static bool IsPitKeyId(string itemId)
     {
         return
@@ -603,6 +774,9 @@ public partial class LaikaMod
 
         static void Postfix(ItemData __0, bool __result)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             try
             {
                 if (!__result || __0 == null || string.IsNullOrEmpty(__0.id))
@@ -719,8 +893,13 @@ public partial class LaikaMod
         }
     }
 
+    // v0.1.7: Cleanup retries belong to their original AP session and must not
+    // remove a self-find delivered between frames. See the ownership clamp below.
     internal static void ScheduleDelayedVanillaRewardRemoval(string itemId, int amount, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         EnsureCoroutineRunner();
 
         if (CoroutineRunner == null)
@@ -736,19 +915,50 @@ public partial class LaikaMod
         );
     }
 
+    // v0.1.7: A self-find can arrive between cleanup retries. Preserve one
+    // unconsumed AP-owned quest item/gift and remove only surplus vanilla copies.
+    // Both AddKeyItem and AddItem can schedule cleanup for the same pickup.
+    internal static void RemoveDelayedVanillaRewardSafely(string itemId, int amount, string sourceTag)
+    {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+        var inventory = Singleton<InventoryManager>.Instance;
+        if (inventory == null)
+            return;
+        ItemKind kind;
+        if (TryGetItemKindForInventoryLocation(itemId, out kind) &&
+            (kind == ItemKind.KeyItem || kind == ItemKind.PuppyTreat) &&
+            HasReceivedAPItem(kind, itemId) && !WasVanillaConsumedAPItem(kind, itemId))
+        {
+            amount = Math.Min(amount, Math.Max(0, inventory.GetItemAmount(itemId) - 1));
+        }
+        if (amount > 0)
+            TryRemoveInventoryReward(itemId, amount, sourceTag);
+    }
+
     private static System.Collections.IEnumerator DelayedVanillaRewardRemovalCoroutine(
         string itemId,
         int amount,
         string sourceTag)
     {
+        var cleanupSession = SessionState;
+        if (cleanupSession == null || !cleanupSession.APEnabled)
+            yield break;
+
         yield return null;
-        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemovalFrame1");
+        if (!ReferenceEquals(SessionState, cleanupSession) || !cleanupSession.APEnabled)
+            yield break;
+        RemoveDelayedVanillaRewardSafely(itemId, amount, sourceTag + "/DelayedRemovalFrame1");
 
         yield return new WaitForSecondsRealtime(0.25f);
-        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemoval025");
+        if (!ReferenceEquals(SessionState, cleanupSession) || !cleanupSession.APEnabled)
+            yield break;
+        RemoveDelayedVanillaRewardSafely(itemId, amount, sourceTag + "/DelayedRemoval025");
 
         yield return new WaitForSecondsRealtime(0.75f);
-        TryRemoveInventoryReward(itemId, amount, sourceTag + "/DelayedRemoval100");
+        if (!ReferenceEquals(SessionState, cleanupSession) || !cleanupSession.APEnabled)
+            yield break;
+        RemoveDelayedVanillaRewardSafely(itemId, amount, sourceTag + "/DelayedRemoval100");
     }
 
     [HarmonyPatch(typeof(InventoryManager), "AddItem", new Type[] {
@@ -761,6 +971,10 @@ public partial class LaikaMod
     {
         static void Prefix(ItemData item, int amount = 1, Action onAddedCallback = null, bool silent = false)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled ||
+                item == null || !item.IsKeyItem)
+                return;
+
             try
             {
                 if (item == null)

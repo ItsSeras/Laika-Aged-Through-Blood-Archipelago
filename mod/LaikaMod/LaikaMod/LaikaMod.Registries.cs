@@ -1670,6 +1670,8 @@ public partial class LaikaMod
         { 1112L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_UZI", 1, "Weapon Upgrade: Machine Gun") },
         { 1113L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_ROCKETLAUNCHER", 1, "Weapon Upgrade: Rocket Launcher") },
         { 1114L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_CROSSBOW", 1, "Weapon Upgrade: Crossbow") },
+        // v0.1.7: Pistol uses the same ownership wait, target-level and cap logic.
+        { 1115L, () => new PendingItem(ItemKind.WeaponUpgrade, "I_W_PISTOL", 1, "Weapon Upgrade: Pistol") },
 
         // ===== Crafting-mode weapon materials =====
         { 1150L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_SHOTGUN", 1, "Weapon Crafting Material: Rusty Spring") },
@@ -1678,8 +1680,8 @@ public partial class LaikaMod
         { 1153L, () => new PendingItem(ItemKind.Material, "I_MATERIAL_ROCKETLAUNCHER", 1, "Weapon Crafting Material: Missile") },
 
         // Compatibility IDs intentionally use the mode-aware unlock helpers.
-        // Direct mode grants weapons; Crafting mode grants their unique materials.
-        // Do not replace these with unconditional I_RECIPE_* grants
+        // Direct mode grants weapons; Crafting mode grants only their blueprints.
+        // Materials have separate IDs (1150..1153); keep these mappings mode-aware.
         // ===== Weapon recipes / blueprints =====
         { 1160L, () => GetShotgunUnlockItem() },
         { 1161L, () => GetSniperUnlockItem() },

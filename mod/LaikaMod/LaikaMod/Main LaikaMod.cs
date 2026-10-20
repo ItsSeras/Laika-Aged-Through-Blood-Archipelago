@@ -14,7 +14,8 @@ using UnityEngine.UI;
 using System.Runtime.InteropServices;
 
 // AP save-state, per-slot persistence, and connection-state helpers.
-[BepInPlugin("com.seras.laikaap", "Laika AP Beta", "0.1.6")]
+[BepInPlugin("com.seras.laikaap", "Laika AP Beta", "0.1.7")]
+// v0.1.7 maintenance note: Title UI lock/refresh work is limited to the title screen; startup logs the compiled module identity and binds opt-in map diagnostics.
 public partial class LaikaMod : BaseUnityPlugin
 {
     // Shared logger for Harmony patches.
@@ -87,12 +88,19 @@ public partial class LaikaMod : BaseUnityPlugin
         Connection = new APConnectionState()
     };
 
+    internal static BepInEx.Configuration.ConfigEntry<bool> MapVisibilityDiagnostics;
+
     // ===== Startup =====
     private void Awake()
     {
         Instance = this;
 
         Log = Logger;
+        MapVisibilityDiagnostics = Config.Bind("Diagnostics", "MapVisibilityLogging", false,
+            "Log routine AP map visibility decisions. Enable only when investigating map issues; warnings remain enabled.");
+        LogInfo("AP BUILD: Version=" + GetLaikaAPVersionString() +
+            "; ModuleId=" + typeof(LaikaMod).Module.ModuleVersionId.ToString("D") +
+            "; Diagnostics=elapsed-time-v1; clock=elapsed since mod startup.");
         LogInfo("AP LIFECYCLE: Awake() entered.");
         EnsureCoroutineRunner();
 
@@ -1059,20 +1067,9 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static void SetTitleScreenNavigationBlocked(bool blocked)
     {
-        EventSystem eventSystem = EventSystem.current;
-        if (eventSystem == null)
-            return;
-
-        if (blocked)
-        {
-            TitleScreenNavigationWasEnabled = eventSystem.sendNavigationEvents;
-            eventSystem.sendNavigationEvents = false;
-            eventSystem.SetSelectedGameObject(null);
-        }
-        else
-        {
-            eventSystem.sendNavigationEvents = TitleScreenNavigationWasEnabled;
-        }
+        // One owner for saving/restoring navigation. The previous second owner
+        // could overwrite the original value and wrote to vanilla UI every frame.
+        SetTitleScreenUINavigationLocked(blocked);
     }
 
     private static void DrawTitleScreenAPSettingsWindow(int windowId)
@@ -1191,6 +1188,9 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static void SetTitleScreenInputLocked(bool locked)
     {
+        if (!locked && LockedTitleScreenView == null)
+            return;
+
         try
         {
             TitleScreenView view = UnityEngine.Object.FindObjectOfType<TitleScreenView>();
@@ -1271,6 +1271,10 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static void SetTitleScreenUINavigationLocked(bool locked)
     {
+        // No state change means no UI writes or diagnostic log spam.
+        if (locked == HasSavedSendNavigationEvents)
+            return;
+
         EventSystem eventSystem = EventSystem.current;
         if (eventSystem == null)
             return;
@@ -1314,7 +1318,8 @@ public partial class LaikaMod : BaseUnityPlugin
 
     internal static bool ShouldBlockVanillaTitleInput()
     {
-        return ShowAPSettingsPopup || APSettingsTextInputActive || IsAPSettingsInputFocused();
+        return (ShowAPSettingsPopup || APSettingsTextInputActive || IsAPSettingsInputFocused()) &&
+            IsActuallyOnTitleScreen();
     }
 
     internal static bool ShouldShowAPActivityOverlay()
@@ -1616,6 +1621,8 @@ public partial class LaikaMod : BaseUnityPlugin
             MainMenuArchipelagoEditionLabelObject.SetActive(true);
     }
 
+    private float nextTitleStatusRefresh;
+
     private void Update()
     {
         PollTitleScreenAPHotkey();
@@ -1624,7 +1631,7 @@ public partial class LaikaMod : BaseUnityPlugin
         UpdateDevOverlaySafeRootForResolutionChange();
         RefreshDevOverlay();
 
-        bool shouldLockTitleScreen = ShowAPSettingsPopup;
+        bool shouldLockTitleScreen = ShowAPSettingsPopup && IsActuallyOnTitleScreen();
 
         SetTitleScreenInputLocked(shouldLockTitleScreen);
         SetTitleScreenNavigationBlocked(shouldLockTitleScreen);
@@ -1668,9 +1675,14 @@ public partial class LaikaMod : BaseUnityPlugin
 
         if (isTitleScreen)
         {
-            UpdateTitleScreenAPPanel();
-            RefreshVisibleSaveSlotAPLabels();
-            RefreshDevOverlay();
+            // Event handlers still refresh immediately. Periodic status refresh
+            // does not need scene-wide label searches every rendered frame.
+            if (Time.unscaledTime >= nextTitleStatusRefresh)
+            {
+                nextTitleStatusRefresh = Time.unscaledTime + 0.25f;
+                UpdateTitleScreenAPPanel();
+                RefreshVisibleSaveSlotAPLabels();
+            }
         }
         else
         {
@@ -1682,31 +1694,15 @@ public partial class LaikaMod : BaseUnityPlugin
             Input.ResetInputAxes();
         }
 
-        bool connectedForPump =
-            ArchipelagoClientManager.Instance != null &&
-            ArchipelagoClientManager.Instance.IsConnected;
-
-        if (connectedForPump && !isTitleScreen)
-        {
-            bool shouldPump =
-                ReceivedItemPumpRequested ||
-                Time.unscaledTime >= NextReceivedItemPumpAllowedAt;
-
-            if (shouldPump)
-            {
-                ReceivedItemPumpRequested = false;
-                NextReceivedItemPumpAllowedAt = Time.unscaledTime + 1.0f;
-
-                ArchipelagoClientManager.Instance.PumpReceivedItems();
-            }
-        }
+        // Delivery is owned by the persistent DevOverlayController polling
+        // coroutine, not this plugin Update (which did not tick in the reported run).
     }
 
     internal static System.Collections.IEnumerator SkipRageCreditsToCampCoroutine(CreditsDirector creditsDirector)
     {
         yield return null;
 
-        if (creditsDirector == null)
+        if (creditsDirector == null || !IsAPCutsceneSkipEnabled() || !WorldOptions.SkipJakobTransition)
             yield break;
 
         creditsDirector.LoadCampScene();

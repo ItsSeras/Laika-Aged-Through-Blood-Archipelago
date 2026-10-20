@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
+// v0.1.7 maintenance note: Per-slot AP state and receipt indexes preserve session identity across reconnects; replacing a run must not inherit its prior AP state.
 public partial class LaikaMod
 {
     // Local cache for AP slot_data values pushed from the AP server.

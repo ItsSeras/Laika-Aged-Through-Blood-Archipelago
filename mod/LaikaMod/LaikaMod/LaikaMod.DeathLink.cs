@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+// v0.1.7 maintenance note: AP Off discards queued incoming DeathLink events and bypasses outgoing AP death handling.
 public partial class LaikaMod
 {
     // ===== DeathLink helpers =====
@@ -198,6 +199,16 @@ public partial class LaikaMod
 
     internal static void ProcessPendingIncomingDeathLink()
     {
+        if (SessionState == null || !SessionState.APEnabled)
+        {
+            // Do not apply queued remote deaths to vanilla gameplay or carry
+            // them into a later AP run. Avoid logging this every frame.
+            lock (IncomingDeathLinkQueueLock)
+                IncomingDeathLinkQueue.Clear();
+            SuppressedDeathLinksRemaining = 0;
+            return;
+        }
+
         try
         {
             IncomingDeathLinkRequest pendingRequest = null;
@@ -381,6 +392,9 @@ public partial class LaikaMod
     // Both RiderHead.Kill overloads forward into this method through Harmony patches.
     internal static void OnPlayerDeathDetected(string sourceTag, bool? useBlood = null, bool? moneySack = null)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         try
         {
             // If this death was caused by an incoming DeathLink,

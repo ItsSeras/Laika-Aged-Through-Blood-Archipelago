@@ -11,6 +11,8 @@ using UnityEngine;
 
 public partial class LaikaMod
 {
+    // v0.1.7: Restore missing permanent AP state, preserve consumed quest items
+    // and learned recipes, and defer upgrades until their weapon exists.
     // AP reconciliation helpers.
     // These restore important AP-owned state after scene loads, reconnects, save reloads,
     // or manager initialization timing issues.
@@ -149,6 +151,11 @@ public partial class LaikaMod
     private static bool TryBuildMissingInventoryReconcileItem(PendingItem expectedItem, out PendingItem missingItem)
     {
         missingItem = null;
+
+        // Only server-received items reach this recovery path. A learned
+        // recipe is satisfied even after the blacksmith removes its paper item.
+        if (expectedItem != null && HasLearnedWeaponBlueprint(expectedItem.Id))
+            return false;
 
         if (expectedItem != null && expectedItem.Id == "I_MAYA_PENDANT")
         {

@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
+// v0.1.7 maintenance note: Quest reconciliation is AP-gated so vanilla play does not receive randomizer progression repairs.
 public partial class LaikaMod
 {
     // Quest softlock reconciliation.
@@ -37,6 +38,9 @@ public partial class LaikaMod
     // I reconcile those here by only completing the one blocked goal, not the whole quest.
     internal static void TryReconcileKnownQuestSoftlocks(string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         try
         {
             QuestLog questLog = Singleton<QuestLog>.Instance;
@@ -64,6 +68,9 @@ public partial class LaikaMod
 
     internal static void TryReconcileDeferredHarpoonPieces(QuestLog questLog, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         try
         {
             if (SessionState == null)
@@ -250,6 +257,9 @@ public partial class LaikaMod
     // once the player already owns the shotgun so the quest can move on to ShowShotgun normally.
     internal static void TryReconcileOldWarfareShotgunGoal(QuestLog questLog, string sourceTag)
     {
+        if (SessionState == null || !SessionState.APEnabled)
+            return;
+
         QuestInstance quest = FindActiveQuest("Q_D_S_OldWarfare");
 
         if (quest == null)

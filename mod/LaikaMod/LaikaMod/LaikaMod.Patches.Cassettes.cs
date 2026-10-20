@@ -15,6 +15,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+// v0.1.7 maintenance note: AP Off preserves vanilla cassette rewards. AP boombox checks remain independent of already-owned tapes.
 public partial class LaikaMod
 {
     internal static string ActiveShopPurchaseItemId = null;
@@ -883,6 +884,9 @@ public partial class LaikaMod
     {
         static void Prefix(string cassetteId, Action finishedCallback, bool silent)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             try
             {
                 if (LaikaMod.IsGrantingAPItem)
@@ -942,6 +946,9 @@ public partial class LaikaMod
 
         static void Postfix(string cassetteId, Action finishedCallback, bool silent, bool __result)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             try
             {
                 if (cassetteId != "I_COLLECTION_JAKOB")
@@ -997,6 +1004,9 @@ public partial class LaikaMod
     {
         static void Postfix(CassetteData cassette, bool silent, bool __result)
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             try
             {
                 if (!__result)

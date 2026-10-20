@@ -8,13 +8,15 @@ using System.Threading.Tasks;
 
 public partial class LaikaMod
 {
+    // v0.1.7: Blueprint/material receipts are independent in Crafting;
+    // Direct keeps full weapon grants. Legacy combo receipts cannot refund materials.
     // Weapon-mode helpers.
     //
     // Direct mode:
     // Returns the weapon itself.
     //
     // Crafting mode:
-    // Returns the weapon's unique crafting material instead. APWorld handles the blueprint side of the unlock.
+    // Returns only the blueprint. Its material has a separate AP item and receipt.
     //
     // Note:
     // Crossbow does not currently have a clean one-to-one unique crafting material,
@@ -27,10 +29,34 @@ public partial class LaikaMod
     {
         if (WorldOptions.WeaponMode == WeaponGrantMode.Crafting)
         {
-            return new PendingItem(ItemKind.Material, craftingMaterialId, 1, craftingDisplayName);
+            return new PendingItem(ItemKind.KeyItem, craftingMaterialId.Replace("I_MATERIAL_", "I_RECIPE_"), 1, "Blueprint: " + directDisplayName);
         }
 
         return new PendingItem(ItemKind.Weapon, directWeaponId, 1, directDisplayName);
+    }
+
+    internal static bool IsWeaponBlueprint(string itemId)
+    {
+        return itemId == "I_RECIPE_SHOTGUN" || itemId == "I_RECIPE_SNIPER" ||
+            itemId == "I_RECIPE_UZI" || itemId == "I_RECIPE_ROCKETLAUNCHER";
+    }
+
+    internal static bool HasLearnedWeaponBlueprint(string itemId)
+    {
+        if (!IsWeaponBlueprint(itemId))
+            return false;
+        var progression = MonoSingleton<ProgressionManager>.Instance;
+        return progression != null && progression.ProgressionData != null &&
+            progression.ProgressionData.GetAchievementCompleted(itemId);
+    }
+
+    // Older builds journaled blueprint unlocks as materials. Do not replay
+    // those erroneous consumable grants. Standalone material receipts remain valid.
+    internal static bool IsLegacyWeaponUnlockMaterial(ItemKind kind, long apItemId)
+    {
+        return kind == ItemKind.Material &&
+            ((apItemId >= 1100L && apItemId <= 1103L) ||
+             (apItemId >= 1160L && apItemId <= 1163L));
     }
 
     // The Pistol is a vanilla safety item rather than an AP-randomized weapon.

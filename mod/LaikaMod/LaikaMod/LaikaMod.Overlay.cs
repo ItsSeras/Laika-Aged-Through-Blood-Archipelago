@@ -14,21 +14,43 @@ public partial class LaikaMod
     // without inheriting the connection state's red/yellow/green tint.
     internal static Text DevOverlayGoalText;
 
+    // v0.1.7: Monotonic timestamps are created per message. Overlay work is
+    // capped at 10 Hz; the persistent 0.25-second item pump remains independent.
     // ===== Logging helpers =====
-    // Logs a message to both BepInEx and the in-game developer overlay.
+    // Monotonic elapsed time since this mod initializes, including pauses/title.
+    // No Unity API: helpers can also be called by network callbacks.
+    private static readonly System.Diagnostics.Stopwatch APLogClock =
+        System.Diagnostics.Stopwatch.StartNew();
+
+    internal static string FormatAPElapsedTime(TimeSpan elapsed)
+    {
+        long seconds = Math.Max(0L, (long)elapsed.TotalSeconds);
+        if (seconds >= 3600L)
+            return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                "[{0:00}:{1:00}:{2:00}]", seconds / 3600L, (seconds / 60L) % 60L, seconds % 60L);
+        return string.Format(System.Globalization.CultureInfo.InvariantCulture,
+            "[{0:00}:{1:00}]", seconds / 60L, seconds % 60L);
+    }
+
+    private static string TimestampAPMessage(string message)
+    {
+        return FormatAPElapsedTime(APLogClock.Elapsed) + " " + message;
+    }
+
+    // Internal diagnostics go to BepInEx; activity has its own overlay path.
     internal static void LogInfo(string message)
     {
-        Log.LogInfo(message);
+        Log.LogInfo(TimestampAPMessage(message));
     }
 
     internal static void LogWarning(string message)
     {
-        Log.LogWarning(message);
+        Log.LogWarning(TimestampAPMessage(message));
     }
 
     internal static void LogError(string message)
     {
-        Log.LogError(message);
+        Log.LogError(TimestampAPMessage(message));
     }
 
     // Adds a player-facing AP activity line to the recent overlay.
@@ -44,7 +66,9 @@ public partial class LaikaMod
 
         EnsureDevOverlayCanvas();
 
-        OverlayLines.Enqueue(message);
+        // v0.1.7: Keep elapsed time visually secondary; color only the timestamp
+        // so event colors remain intact and file logs contain no UI color tags.
+        OverlayLines.Enqueue("<color=#9AA3AD>" + FormatAPElapsedTime(APLogClock.Elapsed) + "</color> " + message);
 
         while (OverlayLines.Count > MaxOverlayLines)
             OverlayLines.Dequeue();
@@ -816,12 +840,29 @@ public partial class LaikaMod
     }
 
     // Redraws both overlay panels based on the current shared overlay state.
-    // This method does not own timing; it only reflects the latest state to the UI.
+    // AP-off hiding is immediate; AP-on text rebuilding is capped at 10 Hz.
     // Refreshes the overlay text and visibility.
+    private static float NextAPOverlayRefreshAt;
+
     internal static void RefreshDevOverlay()
     {
         if (DevOverlayCanvasObject == null || DevOverlayStatusText == null || DevOverlayRecentLogText == null)
             return;
+
+        // Hide before throttling; AP-off must not scan UI or rebuild goal/log text.
+        if (SessionState == null || !SessionState.APEnabled)
+        {
+            DevOverlayStatusText.transform.parent.gameObject.SetActive(false);
+            DevOverlayRecentLogText.transform.parent.gameObject.SetActive(false);
+            if (DevOverlayGoalText != null)
+                DevOverlayGoalText.gameObject.SetActive(false);
+            NextAPOverlayRefreshAt = 0f;
+            return;
+        }
+
+        if (Time.unscaledTime < NextAPOverlayRefreshAt)
+            return;
+        NextAPOverlayRefreshAt = Time.unscaledTime + 0.1f;
 
         ApplyDevOverlaySafeRootScale();
 
@@ -1031,11 +1072,21 @@ public partial class LaikaMod
         {
             while (true)
             {
-                if (ArchipelagoClientManager.Instance != null)
+                if (LaikaMod.SessionState != null && LaikaMod.SessionState.APEnabled &&
+                    ArchipelagoClientManager.Instance != null)
                 {
                     if (ArchipelagoClientManager.Instance.IsConnected)
                     {
-                        ArchipelagoClientManager.Instance.PumpReceivedItems();
+                        try
+                        {
+                            LaikaMod.ReceivedItemPumpRequested = false;
+                            ArchipelagoClientManager.Instance.PumpReceivedItems();
+                        }
+                        catch (Exception ex)
+                        {
+                            // An unexpected error must not kill the persistent loop.
+                            LaikaMod.LogError("AP POLL: received-item pump failed:\n" + ex);
+                        }
                     }
                 }
 
@@ -1045,6 +1096,18 @@ public partial class LaikaMod
 
         void Update()
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+            {
+                LaikaMod.RefreshDevOverlay();
+                return;
+            }
+
+            if (!initialized)
+                InitializeOverlay();
+            // This persistent controller is known to tick in gameplay. Do not
+            // rely on the plugin component's Update to show activity/goals.
+            LaikaMod.RefreshDevOverlay();
+
             try
             {
                 if (LaikaMod.WaitingToRemoveHeartglazeFlowerAfterQuestUpdate &&
@@ -1118,6 +1181,9 @@ public partial class LaikaMod
 
         void OnGUI()
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             if (!initialized)
                 return;
 
@@ -1190,6 +1256,9 @@ public partial class LaikaMod
 
         private void InitializeOverlay()
         {
+            if (LaikaMod.SessionState == null || !LaikaMod.SessionState.APEnabled)
+                return;
+
             if (initialized)
                 return;
 
